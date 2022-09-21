@@ -42,3 +42,71 @@ while true do                             --while문 조건을 참(true)으로 �
     
     timeVal = timeVal + 1   --timeVal 값에 1을 더한 후 timeVal 변수에 저장
 end
+
+
+-- bgm 버튼 넣기 
+
+local button = script.Parent
+local on = script.Parent:WaitForChild("on")
+local off = script.Parent:WaitForChild("off")
+
+local Sound = Instance.new("Sound", script)
+
+Sound.Volume = 0.5 -- 볼륨
+
+musics = {"rbxassetid://1845385270", -- 음악 목록(아이디)
+ "rbxassetid://1840265649",
+ "rbxassetid://1846459727"
+ 
+}
+
+
+function playNewMusic()
+ Sound:Stop()
+ Sound.SoundId = musics[math.random(1, #musics)]
+ Sound.Loaded:Wait() -- 바꾼 음악 아이디 로딩 대기
+ Sound:Play()
+end
+
+button.MouseButton1Click:Connect(function(plr)
+ if Sound.IsPlaying then -- 음악 켜져있었음(정석 방법으로 바꿈)
+  off.Visible = true
+  on.Visible = false
+  Sound:Pause() -- 일시정지
+ else -- 음악 꺼져있었음
+  off.Visible = false
+  on.Visible = true
+  Sound:Resume() -- 다시 재생
+ end
+end)
+
+Sound.Ended:Connect(function()
+ if on.Visible then -- 여긴 그대로(음악은 끝까지 플레이 후 꺼진 상태라서)
+  playNewMusic()
+ end
+end)
+
+playNewMusic()
+
+
+-- 시간 GUI
+
+local minute = ('분')
+local second = ('초')
+
+while true do 
+ if minute == 0 then
+  script.Parent.Text = second .. "초"
+ else
+  script.Parent.Text = minute .. "분" .. second .. "초"
+ end
+ 
+ if  second == 0 then
+  minute = minute - 1
+  second = 60
+ end
+ 
+ second = second - 1
+ 
+ wait(1)
+end
