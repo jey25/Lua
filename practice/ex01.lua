@@ -132,7 +132,7 @@ local function onTouch(part)
  
  script.Parent.Touched:connect(onTouch)
  
- 
+
  -----피 조금 닳는 스크립트-----
  local Debounce = false
  
@@ -144,3 +144,14 @@ local function onTouch(part)
    Debounce = false
   end
  end)
+
+ 
+ -------- 피 회복 스크립트 ---------
+local function onTouch(part)
+    local humanoid = part.Parent:FindFirstChild("Humanoid")
+    if (humanoid) then
+     humanoid.Health = 100
+    end
+   end
+   
+   script.Parent.Touched:connect(onTouch)
