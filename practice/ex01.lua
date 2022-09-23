@@ -120,3 +120,27 @@ while true do
  script.Parent:TweenSize((UDim2.new(hp,0,1,0)),Enum.EasingDirection.Out,Enum.EasingStyle.Quad,0.15)
  wait(0.2)
 end
+
+
+-----닿으면 죽는 스크립트-----
+local function onTouch(part)
+    local humanoid = part.Parent:FindFirstChild("Humanoid")
+    if (humanoid) then
+       humanoid.Health = 0
+    end
+ end
+ 
+ script.Parent.Touched:connect(onTouch)
+ 
+ 
+ -----피 조금 닳는 스크립트-----
+ local Debounce = false
+ 
+ script.Parent.Touched:connect(function(hit)
+  if hit.Parent:FindFirstChild("Humanoid")and Debounce == false then
+   Debounce = true
+   hit.Parent.Humanoid:TakeDamage(10)
+   wait(0)
+   Debounce = false
+  end
+ end)
