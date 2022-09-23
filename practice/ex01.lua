@@ -155,3 +155,50 @@ local function onTouch(part)
    end
    
    script.Parent.Touched:connect(onTouch)
+
+
+
+-- 밟으면 시작되는 타이머, 다른 파트를 밟으면 끝나는 타이머
+local start = game.Workspace.ggl
+local stop = game.Workspace.asd
+local time_label = script.Parent
+local LPlayer = game.Players.LocalPlayer
+local jero = 0
+local timer_started = false
+local completed = false
+
+time_label.Visible = false
+
+local function start_timer(otherPart)
+
+	local player = game.Players:FindFirstChild(otherPart.Parent.Name)
+
+	if player.Name == LPlayer.Name and not timer_started then
+		timer_started = true
+		time_label.Text = jero
+		player.PlayerGui.Scree.TextLabel.Visible = true
+
+		local time_num = tonumber(player.PlayerGui.Scree.TextLabel.Text)
+
+		while time_num < 1000000 do
+			wait(0.1)
+			time_num = time_num + 0.1
+			player.PlayerGui.Scree.TextLabel.Text = tostring(time_num)
+		end
+
+		timer_started = false
+		completed = false
+		player.PlayerGui.Scree.TextLabel.Text = jero
+	end
+end
+
+local function finish_timer(otherPart)
+	local player = game.Players:FindFirstChild(otherPart.Parent.Name)
+	if player.Name == LPlayer.Name then
+		player.PlayerGui.Scree.TextLabel.Visible = false
+		completed = true
+	end
+end
+
+start.Touched:Connect(start_timer)
+stop.Touched:Connect(finish_timer)
