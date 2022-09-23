@@ -202,3 +202,44 @@ end
 
 start.Touched:Connect(start_timer)
 stop.Touched:Connect(finish_timer)
+
+
+------------------------------------------------------
+-- 파트를 밟으면 서버 메시지가 뜬다
+
+--스크립트1
+local TouchEvent = game.ReplicatedStorage.Touched
+
+script.Parent.Touched:Connect(function(hit)
+ local Human  = hit.Parent:FindFirstChild("Humanoid")
+ if Human then
+  TouchEvent:FireAllClients(hit)
+ end
+end)
+--스크립트끝
+
+--스크립트2
+local Message = " 님이 정상에 도착하였습니다!"
+
+game.ReplicatedStorage.Touched.OnClientEvent:Connect(function(hit)
+ local Name = hit.Parent.Name
+
+ if script.Value.Value ~= Name then
+  for _, plr in pairs(game.Players:GetChildren()) do
+   if plr.PlayerGui.TouchedGui.TextLabel.Visible == false then
+    plr.PlayerGui.TouchedGui.TextLabel.Visible = true
+    plr.PlayerGui.TouchedGui.TextLabel.Text = Name .. Message
+    plr.PlayerGui.TouchedGui.TextLabel:TweenPosition(UDim2.new(0.047, 0,0.063, 0))
+    wait(3)
+    plr.PlayerGui.TouchedGui.TextLabel:TweenPosition(UDim2.new(-0.9, 0,0.029, 0))
+    script.Value.Value = Name
+    wait(2)
+    plr.PlayerGui.TouchedGui.TextLabel.Visible = false
+   end
+  end
+ end
+end)
+
+------------------------------------------------------------------------
+
+
