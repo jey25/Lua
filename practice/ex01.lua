@@ -242,4 +242,47 @@ end)
 
 ------------------------------------------------------------------------
 
+-- 게임에 배경음악 버튼 넣기
 
+버튼 스크립트(수정)
+local button = script.Parent
+local on = script.Parent:WaitForChild("on")
+local off = script.Parent:WaitForChild("off")
+
+local Sound = Instance.new("Sound", script)
+
+Sound.Volume = 0.5 -- 볼륨
+
+musics = {"rbxassetid://1845385270", -- 음악 목록(아이디)
+ "rbxassetid://1840265649",
+ "rbxassetid://1846459727"
+ 
+}
+
+
+function playNewMusic()
+ Sound:Stop()
+ Sound.SoundId = musics[math.random(1, #musics)]
+ Sound.Loaded:Wait() -- 바꾼 음악 아이디 로딩 대기
+ Sound:Play()
+end
+
+button.MouseButton1Click:Connect(function(plr)
+ if Sound.IsPlaying then -- 음악 켜져있었음(정석 방법으로 바꿈)
+  off.Visible = true
+  on.Visible = false
+  Sound:Pause() -- 일시정지
+ else -- 음악 꺼져있었음
+  off.Visible = false
+  on.Visible = true
+  Sound:Resume() -- 다시 재생
+ end
+end)
+
+Sound.Ended:Connect(function()
+ if on.Visible then -- 여긴 그대로(음악은 끝까지 플레이 후 꺼진 상태라서)
+  playNewMusic()
+ end
+end)
+
+playNewMusic()
