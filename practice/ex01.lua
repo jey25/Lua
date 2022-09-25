@@ -286,3 +286,49 @@ Sound.Ended:Connect(function()
 end)
 
 playNewMusic()
+
+
+
+-- 시스템 메시지 띄우기
+
+local System = "[System] "
+
+local Message = "안녕하세요"
+
+local Waiter = 5
+
+local TextSizes = 18
+
+
+while wait(Waiter) do
+ game.StarterGui:SetCore("ChatMakeSystemMessage", 
+  {
+   Text = System .. Message,
+   Color = Color3.fromRGB(0, 0, 255),
+   TextSize = TextSizes,
+  })
+end
+
+-- 랜덤 시스템 메시지 띄우기
+
+local System = "[System] "
+local Message = 
+ {
+  "안녕하세요",
+  "플레이 해주셔서 감사합니다.",
+  "즐거운 시간 보내세요",
+ }
+
+local Waiter = 5
+local TextSizes = 18
+
+
+
+while wait(Waiter) do
+ game.StarterGui:SetCore("ChatMakeSystemMessage", 
+  {
+   Text = System .. Message[math.random(1, #Message)],
+   Color = Color3.fromRGB(0, 0, 255),
+   TextSize = TextSizes,
+  })
+end
