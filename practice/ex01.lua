@@ -332,3 +332,21 @@ while wait(Waiter) do
    TextSize = TextSizes,
   })
 end
+
+
+-- 닿으면 체력이 떨어지는 블록
+
+
+local box = script.Parent
+
+local function onTouched(hit)
+ print ("Touched")
+
+ local humanoid = hit.Parent:FindFirstChild('Humanoid')
+ if humanoid then
+  print(humanoid.health)
+  humanoid:TakeDamage(10)
+ end 
+end
+
+box.Touched:Connect(onTouched)
