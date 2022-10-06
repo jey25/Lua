@@ -1,6 +1,6 @@
 --따라오고 공격하는 좀비 npc
 
-local humanoid =  script.Parent:WaitForChild("Humanoid")
+local humanoid = script.Parent:WaitForChild("Humanoid")
 local rootpart = script.Parent:WaitForChild("HumanoidRootPart")
 
 local npc = workspace:WaitForChild("Npc")
@@ -15,10 +15,10 @@ local runservice = game:GetService("RunService")
 while runservice.Heartbeat:Wait() do
 	local distance = 100
 	local target
-	for i, v in pairs(game.Players:GetPlayers())do
-		if v.Character and v.Character:FindFirstChild("Humanoid") 
-		and v.Character.Humanoid.Health > 0 
-		and v.Character:FindFirstChild("HumanoidRootPart")then
+	for i, v in pairs(game.Players:GetPlayers()) do
+		if v.Character and v.Character:FindFirstChild("Humanoid")
+			and v.Character.Humanoid.Health > 0
+			and v.Character:FindFirstChild("HumanoidRootPart") then
 			local d = (rootpart.Position - v.Character.HumanoidRootPart.Position).magnitude
 			if distance > d then
 				distance = d
@@ -26,10 +26,10 @@ while runservice.Heartbeat:Wait() do
 			end
 		end
 	end
-	for i, v in pairs(npc:GetChildren())do
+	for i, v in pairs(npc:GetChildren()) do
 		if v:FindFirstChild("zombie") == nil and v:FindFirstChild("Humanoid")
-		and v.Humanoid.Health > 0 
-		and v:FindFirstChild("HumanoidRootPart")then
+			and v.Humanoid.Health > 0
+			and v:FindFirstChild("HumanoidRootPart") then
 			local d = (rootpart.Position - v.Character.HumanoidRootPart.Position).magnitude
 			if distance > d then
 				distance = d
