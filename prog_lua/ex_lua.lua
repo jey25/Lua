@@ -6,6 +6,9 @@ for i = 0, 3 do
 end
 print("j=", j)
 
+
+
+
 local first = 1
 local second = 2
 
