@@ -350,3 +350,20 @@ local function onTouched(hit)
 end
 
 box.Touched:Connect(onTouched)
+
+
+--서비스 목록 확인 스크립트
+
+local services = {}
+
+for _, service in ipairs(game:GetChildren()) do
+ local success, result = pcall(function()
+  table.insert(services, service.Name)
+ end)
+end
+
+table.sort(services)
+
+for _, service in ipairs(services) do
+ print(service)
+end

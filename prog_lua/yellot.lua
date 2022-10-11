@@ -16,9 +16,11 @@
 -- end
 
 
-function first(value)
-    number = value + 40
-    print(number)
-end
+-- function first(value, value2)
+--     number = value + value2
+--     print(number)
+-- end
 
-first(30)
+-- first(30, 40)
+
+
