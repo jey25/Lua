@@ -26,9 +26,19 @@ local green = Color3.fromRGB(0, 255, 0)
 local blue = Color3.fromRGB(0, 0, 255)
 
 
-
+--[[
 for count = 1, 10, 1 do
-    print("count = " .. count)
+	print("count = " .. count)
+	colorBlock.Color = red
+	wait(1)
+	colorBlock.Color = green
+	wait(1)
+	colorBlock.Color = blue
+	wait(1)
+end
+]]
+
+while true do
     colorBlock.Color = red
     wait(1)
     colorBlock.Color = green
