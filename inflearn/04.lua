@@ -56,3 +56,35 @@ while true do
     colorBlock.Color = blue
     wait(1)
 end
+
+
+local timeControl = game.Lighting
+local timeVal = 12
+local fire = script.Parent.Fire
+
+
+--시간이 흐름에 따라 낮밤이 바뀌고 Fire 의 크기와 컬러가 변함
+while true do
+    timeControl.ClockTime = timeVal
+    print(timeVal)
+    wait(1)
+
+    if timeVal < 12 then
+        fire.Size = 30
+        fire.Heat = 25
+        fire.Color = Color3.fromRGB(0, 0, 255)
+
+    elseif timeVal < 18 then
+        fire.Color = Color3.fromRGB(255, 0, 0)
+
+    else
+        fire.Size = 0
+        fire.Heat = 0
+    end
+
+    timeVal = timeVal + 1
+
+    if timeVal == 25 then
+        timeVal = 0
+    end
+end
