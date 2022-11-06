@@ -88,3 +88,23 @@ while true do
         timeVal = 0
     end
 end
+
+
+
+--touchPart 를 터치하면 숨겨진 Bridge 가 보여지고 5초후 사라짐
+
+local bridge = game.Workspace.BridgePart
+local touchPart = script.Parent
+
+function showBridge()
+    bridge.CanCollide = true
+    bridge.Transparency = 0
+
+    wait(5)
+
+    bridge.CanCollide = false
+    bridge.Transparency = 1
+
+end
+
+touchPart.Touched:Connect(showBridge)
