@@ -132,3 +132,14 @@ local function changeBody(otherPart)
 end
 
 bodySize.Touched:Connect(changeBody)
+
+
+--파트에 닿으면 캐릭터 파괴
+
+local trap = script.Parent
+
+local function TrapPong(hit)
+    hit:Destroy()
+end
+
+trap.Touched:Connect(TrapPong)
