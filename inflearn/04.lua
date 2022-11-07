@@ -108,3 +108,27 @@ function showBridge()
 end
 
 touchPart.Touched:Connect(showBridge)
+
+
+-- 캐릭터 몸 크기 조정 기능 가진 함수 만들기
+
+local bodySize = script.Parent
+
+local function changeBody(otherPart)
+    local character = otherPart.Parent
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+    if humanoid then
+        -- 플레이어 외형 조정
+        local descriptionClone = humanoid:GetAppliedDescription()
+        descriptionClone.HeadScale = 1 --머리크기
+        descriptionClone.HeightScale = 3 -- 키 조정
+        descriptionClone.DepthScale = 1 --몸통두께
+        descriptionClone.WidthScale = 1 -- 몸통너비
+
+        -- 수정한 외모 적용하기
+        humanoid:ApplyDescription(descriptionClone)
+    end
+end
+
+bodySize.Touched:Connect(changeBody)
