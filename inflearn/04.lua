@@ -143,3 +143,19 @@ local function TrapPong(hit)
 end
 
 trap.Touched:Connect(TrapPong)
+
+
+-- 파트에 닿으면 사망!
+
+local trapPart = script.Parent
+
+local function trap(otherPart)
+    local character = otherPart.Parent
+    local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+
+    if humanoid then
+        humanoid.Health = 0
+    end
+end
+
+trapPart.Touched:Connect(trap)
