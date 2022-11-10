@@ -3,6 +3,9 @@
 GameStarted = game.ReplicatedStorage.GameStarted
 GameMessage = game.ReplicatedStorage.GameMessage
 
+-- spawnpoint 를 가져옴
+local SpawnPoint = game.Workspace.Fight.Spawnpoints:GetChildren()
+
 local function UpdateLobby()
     while GameStarted.Value == false do
         local players = game.Players:GetChildren()
@@ -25,6 +28,16 @@ local function UpdateLobby()
     end
 end
 
+-- GameStarted 가 true 로 변경되면 캐릭터들을 spawnpoint 로 이동시킴
+GameStarted.Changed:Connect(function()
+    if GameStarted.Value == true then
+        for i, player in pairs(game.Players:GetChildren()) do
+            local character = player.Character
+            local position = SpawnPoint[i].CFrame
+            character.HumanoidRootPart.CFrame = position
+        end
+    end
+end)
 UpdateLobby()
 
 
