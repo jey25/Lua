@@ -28,6 +28,16 @@ local function UpdateLobby()
     end
 end
 
+--FightPlate 에서 카운트 30초 시작
+local function UpdateFightplate()
+    for i = 30, 1, -1 do
+        GameMessage.Value = i .. "초가 남았습니다."
+        wait(1)
+    end
+
+    GameStarted.Value = false
+end
+
 -- GameStarted 가 true 로 변경되면 캐릭터들을 spawnpoint 로 이동시킴
 GameStarted.Changed:Connect(function()
     if GameStarted.Value == true then
@@ -36,8 +46,19 @@ GameStarted.Changed:Connect(function()
             local position = SpawnPoint[i].CFrame
             character.HumanoidRootPart.CFrame = position
         end
+
+        UpdateFightplate()
+    else
+        for i, player in pairs(game.Players:GetChildren()) do
+            local character = player.Character
+            local position = game.Workspace.Lobby.SpawnLocation.CFrame
+            character.HumanoidRootPart.CFrame = position
+        end
+
+        UpdateLobby()
     end
 end)
+
 UpdateLobby()
 
 
