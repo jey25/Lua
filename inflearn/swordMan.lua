@@ -30,7 +30,7 @@ end
 
 --FightPlate 에서 카운트 30초 시작
 local function UpdateFightplate()
-    for i = 30, 1, -1 do
+    for i = 10, 1, -1 do
         GameMessage.Value = i .. "초가 남았습니다."
         wait(1)
     end
@@ -44,7 +44,14 @@ GameStarted.Changed:Connect(function()
         for i, player in pairs(game.Players:GetChildren()) do
             local character = player.Character
             local position = SpawnPoint[i].CFrame
+            position = position + Vector3.new(0, 10, 0)
             character.HumanoidRootPart.CFrame = position
+
+            --검 지급
+            local tool = game.ReplicatedStorage.ClassicSword:Clone()
+            tool.Parent = player.Backpack
+            character.Humanoid:EquipTool(tool)
+
         end
 
         UpdateFightplate()
@@ -52,7 +59,16 @@ GameStarted.Changed:Connect(function()
         for i, player in pairs(game.Players:GetChildren()) do
             local character = player.Character
             local position = game.Workspace.Lobby.SpawnLocation.CFrame
+            position = position + Vector3.new(0, 10, 0)
             character.HumanoidRootPart.CFrame = position
+
+            --검 회수
+            for _, obj in pairs(character:GetChildren()) do
+                if obj:IsA("Tool") then
+                    obj:Destroy()
+                end
+            end
+
         end
 
         UpdateLobby()
