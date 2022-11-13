@@ -69,6 +69,12 @@ GameStarted.Changed:Connect(function()
                 end
             end
 
+            for _, obj in pairs(player.Backpack:GetChildren()) do
+                if obj:IsA("Tool") then
+                    obj:Destroy()
+                end
+            end
+
         end
 
         UpdateLobby()
