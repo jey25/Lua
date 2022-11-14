@@ -79,6 +79,7 @@ GameStarted.Changed:Connect(function()
 
         UpdateLobby()
     end
+
 end)
 
 UpdateLobby()
