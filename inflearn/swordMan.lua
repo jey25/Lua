@@ -94,3 +94,11 @@ local GameState = script.Parent.GameState
 GameMessage.Changed:Connect(function()
     GameState.Text = GameMessage.Value
 end)
+
+--swordScript
+local function Attack()
+    local anim = Instance.new("StringValue")
+    anim.Name = "toolanim"
+    anim.Value = "Slash"
+    anim.Parent = script.Parent
+end
