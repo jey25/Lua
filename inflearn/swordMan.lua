@@ -96,9 +96,40 @@ GameMessage.Changed:Connect(function()
 end)
 
 --swordScript
+local Enemy = nil
+local CanAttack = false
+
 local function Attack()
+    Enemy = nil
+
     local anim = Instance.new("StringValue")
     anim.Name = "toolanim"
     anim.Value = "Slash"
     anim.Parent = script.Parent
+
+    CanAttack = true
+
+    wait(1.0)
+
+    CanAttack = false
+
 end
+
+local function OnTouched(touchedPart)
+    local humanoid = touchedPart.Parent:FindFirstChild("Humanoid")
+
+    if not humanoid then
+        return
+    end
+
+    if Enemy == nil and CanAttack then
+
+        Enemy = humanoid
+        humanoid:TakeDamage(30)
+
+    end
+
+end
+
+script.Parent.Activated:Connect(Attack)
+script.Parent.Handle.Touched:Connect(OnTouched)
