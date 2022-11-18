@@ -109,7 +109,7 @@ local function Attack()
 
     CanAttack = true
 
-    wait(1.0)
+    wait(2.0)
 
     CanAttack = false
 
