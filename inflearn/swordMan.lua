@@ -85,7 +85,7 @@ end)
 UpdateLobby()
 
 
--- ScreenGui 에서 ReplicatedStorage 의 GameMessage 값을 가져오는 스크립트
+-- ScreenGui 에서 ReplicatedStorage 의 GameMessage값을 가져오는 스크립트
 
 local GameMessage = game.ReplicatedStorage.GameMessage
 local GameState = script.Parent.GameState
@@ -128,7 +128,6 @@ local function OnTouched(touchedPart)
         humanoid:TakeDamage(30)
 
     end
-
 end
 
 script.Parent.Activated:Connect(Attack)
