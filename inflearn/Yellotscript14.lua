@@ -6,7 +6,21 @@ game.Players.PlayerAdded:Connect(function(plr)
     leaderstats.Parent = plr
 
     local money = Instance.new("IntValue")
-    money.Name = "money"
+    money.Name = "kill"
     money.Value = 0
     money.Parent = leaderstats
+
+    plr.CharacterAdded:Connect(function (char)
+        char.Humanoid.Died:Connect(function ()
+            local creator = char.Humanoid:FindFirstChild("creator")
+
+            if creator then
+                local killplr = creator.Value
+
+                if killplr then
+                    killplr.leaderstats.kill.Value += 1
+                end
+            end
+        end)
+    end)
 end)
