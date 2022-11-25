@@ -36,3 +36,11 @@ game.Players.PlayerRemoving:Connect(function(plr) --플레이어가 나갔을 �
         datastore:SetAsync(plr.UserId, plr.leaderstats.Money.Value) -- Money 데이터 저장
     end)
 end)
+
+
+--블록 무한 회전
+
+while true do
+    wait()
+    script.Parent.CFrame = script.Parent.CFrame * CFrame.fromEulerAnglesXYZ(0.1, 0, 0)
+end
