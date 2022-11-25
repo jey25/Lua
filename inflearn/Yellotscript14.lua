@@ -9,6 +9,7 @@ game.Players.PlayerAdded:Connect(function(plr)
     money.Name = "kill"
     money.Value = 0
     money.Parent = leaderstats
+    
 
     plr.CharacterAdded:Connect(function (char)
         char.Humanoid.Died:Connect(function ()
