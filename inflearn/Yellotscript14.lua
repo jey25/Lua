@@ -44,3 +44,54 @@ while true do
     wait()
     script.Parent.CFrame = script.Parent.CFrame * CFrame.fromEulerAnglesXYZ(0.1, 0, 0)
 end
+
+
+
+--캐릭터 네임 태그 설정
+------------------------ 기초 설정 (지우지 마세요)
+
+local clone = game.ReplicatedStorage:WaitForChild("NameTag"):Clone()
+clone.Parent = script.Parent.Head
+script.Parent = clone
+
+local plr = game.Players:GetPlayerFromCharacter(script.Parent.Parent.Parent)
+script.Parent.Parent.Parent:WaitForChild("Humanoid").DisplayDistanceType = "None"
+
+------------------------ 체력바
+
+local hpbar = script.Parent.Frame
+
+script.Parent.Parent.Parent:WaitForChild("Humanoid"):GetPropertyChangedSignal("Health"):Connect(function()
+    local Maxhp = script.Parent.Parent.Parent.Humanoid.MaxHealth
+    local hp = script.Parent.Parent.Parent.Humanoid.Health
+
+    local v = hp / Maxhp
+
+    hpbar.Frame:TweenSize((UDim2.new(v, 0, 1, 0)), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.15)
+end)
+
+------------------------ 이름 태그 표시
+
+script.Parent.name.Text = plr.Name
+
+------------------------ 제작자, 부제작자, 플레이어 태그 표시
+
+local creator = "meka5146"
+local creator2 = "..."
+
+if plr.Name == creator then
+    script.Parent.player.Text = "[제작자]"
+    script.UIGradient.Parent = script.Parent.player
+elseif plr.Name == creator2 then
+    script.Parent.player.Text = "[부제작자]"
+    script.UIGradient.Parent = script.Parent.player
+elseif plr.Name ~= creator and plr.Name ~= creator2 then
+    script.Parent.player.Text = "[플레이어]"
+end
+
+------------------------ 팀 컬러, 이름 표시
+
+script.Parent.team.Text = plr.Team.Name
+script.Parent.team.TextColor = plr.TeamColor
+
+------------------------
