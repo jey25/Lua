@@ -52,6 +52,7 @@ end
 
 local clone = game.ReplicatedStorage:WaitForChild("NameTag"):Clone()
 clone.Parent = script.Parent.Head
+
 script.Parent = clone
 
 local plr = game.Players:GetPlayerFromCharacter(script.Parent.Parent.Parent)
