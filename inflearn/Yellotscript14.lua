@@ -51,6 +51,7 @@ end
 ------------------------ 기초 설정 (지우지 마세요)
 
 local clone = game.ReplicatedStorage:WaitForChild("NameTag"):Clone()
+
 clone.Parent = script.Parent.Head
 
 script.Parent = clone
