@@ -65,6 +65,7 @@ local hpbar = script.Parent.Frame
 script.Parent.Parent.Parent:WaitForChild("Humanoid"):GetPropertyChangedSignal
 
 ("Health"):Connect(function()
+
     local Maxhp = script.Parent.Parent.Parent.Humanoid.MaxHealth
 
     local hp = script.Parent.Parent.Parent.Humanoid.Health
