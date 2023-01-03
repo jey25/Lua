@@ -410,6 +410,7 @@ end
 local function onCharacterAdded(character)
     setCollisionGroupRecursive(character)
 
+
     character.DescendantAdded:Connect(setCollisionGroup)
     character.DescendantRemoving:Connect(resetCollisionGroup)
 end
