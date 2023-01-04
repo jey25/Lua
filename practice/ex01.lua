@@ -634,3 +634,19 @@ function MouseLockController:EnableMouseLock(enable: boolean)
 end
 
 return MouseLockController
+
+
+--ban Chat 설정
+local plr = game.Players.LocalPlayer --플레이어 구하기
+local event = game.ReplicatedStorage:WaitForChild("BanEvent") --리모트 이벤트 구하기
+local banChat = {}
+
+plr.Chatted:Connect(function(chat) --플레이어 채팅 감지
+ for i = 1, #banChat do --단어 감지를 위한 반복문
+  local findChat = chat:find(banChat[i]) --banchat에 적혀있는 단어가 들어가 있는지 감지
+
+  if findChat then --금지어가 감지되면
+   event:FireServer(banChat[i]) --리모트 이벤트로 메세지를 보낸다
+  end
+ end
+end) --끝
