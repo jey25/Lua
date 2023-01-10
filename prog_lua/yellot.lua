@@ -24,3 +24,7 @@
 -- first(30, 40)
 
 
+-- 컨베이어 파트 설정
+while wait() do
+    --script.Parent.Velocity = Vector3.new(5, 0, 0)
+end
