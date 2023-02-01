@@ -53,6 +53,7 @@ local Sound = Instance.new("Sound", script)
 
 Sound.Volume = 0.5 -- 볼륨
 
+
 musics = { "rbxassetid://1845385270", -- 음악 목록(아이디)
     "rbxassetid://1840265649",
     "rbxassetid://1846459727"
