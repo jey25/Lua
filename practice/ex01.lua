@@ -677,6 +677,10 @@ game.ReplicatedStorage.BanEvent.OnServerEvent:Connect(function(plr, chat) --리�
 	plr:Kick("금지어[ "..chat.." ]을(를) 사용하여 밴 당했습니다.") --밴(정확히는 킥(데이터가 저장되어 밴이랑 같음))
 end)
 
+-- 컨베이어 파트
+while wait() do
+	script.Parent.Velocity = Vector3.new(-20, 0, 0)
+end
 
 -- mouselockcontroller
 
