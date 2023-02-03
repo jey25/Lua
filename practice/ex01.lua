@@ -652,6 +652,22 @@ plr.Chatted:Connect(function(chat) --플레이어 채팅 감지
  end
 end) --끝
 
+-- 서버스크립트:
+local datastore = game:GetService("DataStoreService") --데이터 저장 서비스
+local data = datastore:GetDataStore("banplayer") --데이터 저장소 생성
+
+game.Players.PlayerAdded:Connect(function(plr) --플레이어가 접속했을 때
+ local ban
+
+ local s, e = pcall(function() --데이터 불러오기 실패할때를 대비해 오류방지
+  ban = data:GetAsync(plr.UserId.."Player") --밴 데이터 확인
+ end)
+
+ if ban == true then --데이터가 있으면 밴 (없으면 넘김)
+  plr:Kick("당신은 밴입니다.")
+ end
+end) --끝
+
 
 -- mouselockcontroller
 
