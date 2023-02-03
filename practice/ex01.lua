@@ -669,6 +669,15 @@ game.Players.PlayerAdded:Connect(function(plr) --플레이어가 접속했을 �
 end) --끝
 
 
+game.ReplicatedStorage.BanEvent.OnServerEvent:Connect(function(plr, chat) --리모트 이벤트에서 메세지가 왔을 때
+	local s, e = pcall(function() --데이터 저장을 실패할 때 대비해 오류방지
+		data:SetAsync(plr.UserId.."Player", true) --밴 데이터 저장
+	end)
+
+	plr:Kick("금지어[ "..chat.." ]을(를) 사용하여 밴 당했습니다.") --밴(정확히는 킥(데이터가 저장되어 밴이랑 같음))
+end)
+
+
 -- mouselockcontroller
 
 --[[
