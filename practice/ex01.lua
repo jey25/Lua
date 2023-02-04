@@ -697,6 +697,17 @@ while wait(0.1) do -- 0.1초에 한번씩 반복
 	script.Parent.Text = "Coin : "..game.Players.LocalPlayer.leaderstats.Points.Value -- "Coin" 에 자신의 리더보드 이름적기
 end -- 끝(다시반복)
 
+-- 상점의 Buy 버튼에 넣어주는 Local Script
+local Price = 100
+local Item = script.Parent.Parent.Parent.ItemName.Text
+
+local Event = game.ReplicatedStorage:WaitForChild("ItemBuy")
+
+script.Parent.MouseButton1Click:Connect(function()
+	Event:FireServer(Item, Price)
+	script.Parent.Parent.Visible = false
+end)
+
 -- mouselockcontroller
 
 --[[
