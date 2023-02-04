@@ -692,6 +692,10 @@ script.Parent.MouseButton1Click:Connect(function()
 	)
 end)
 
+-- 상점의 리더보드 텍스트
+while wait(0.1) do -- 0.1초에 한번씩 반복
+	script.Parent.Text = "Coin : "..game.Players.LocalPlayer.leaderstats.Points.Value -- "Coin" 에 자신의 리더보드 이름적기
+end -- 끝(다시반복)
 
 -- mouselockcontroller
 
