@@ -682,6 +682,17 @@ while wait() do
 	script.Parent.Velocity = Vector3.new(-20, 0, 0)
 end
 
+-- 상점의 X 버튼 Script
+script.Parent.MouseButton1Click:Connect(function()
+	script.Parent.Parent:TweenPosition(
+		UDim2.new(0.205, 0,1.1, 0),
+		"Out",
+		"Quad",
+		0.5	
+	)
+end)
+
+
 -- mouselockcontroller
 
 --[[
