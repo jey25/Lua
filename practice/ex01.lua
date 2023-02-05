@@ -698,7 +698,7 @@ while wait(0.1) do -- 0.1초에 한번씩 반복
 end -- 끝(다시반복)
 
 -- 상점의 Buy 버튼에 넣어주는 Local Script
-local Price = 100
+local Price = 500
 local Item = script.Parent.Parent.Parent.ItemName.Text
 
 local Event = game.ReplicatedStorage:WaitForChild("ItemBuy")
