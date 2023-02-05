@@ -708,6 +708,23 @@ script.Parent.MouseButton1Click:Connect(function()
 	script.Parent.Parent.Visible = false
 end)
 
+
+
+--피 회복 스크립트
+local yellot = script.Parent 
+local function Health(part)
+ local parent = part.Parent
+ if game.Players:GetPlayerFromCharacter(parent) then
+  parent.Humanoid.Health = parent.Humanoid.Health + 100
+  wait(1)
+ end
+end
+
+yellot.Touched:connect(Health)
+--스크립트 끝
+
+
+
 -- mouselockcontroller
 
 --[[
