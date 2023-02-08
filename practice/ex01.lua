@@ -948,3 +948,17 @@ script.Parent.Handle.Sword.Touched:Connect(function(hit)
     end
    end)
    --스크립트 끝
+
+   --애니메이션 스크립트
+local f = false
+
+script.Parent.Activated:Connect(function()
+ if not f then
+  f = true
+  local YAnimation = game.Players.LocalPlayer.Character.Humanoid:LoadAnimation(script.Parent.Animation)
+  YAnimation:Play()
+  wait(0.7)
+  f = false
+ end
+end)
+--스크립트끝
