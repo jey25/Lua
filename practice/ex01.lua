@@ -652,6 +652,9 @@ plr.Chatted:Connect(function(chat) --플레이어 채팅 감지
  end
 end) --끝
 
+
+
+
 -- 서버스크립트:
 local datastore = game:GetService("DataStoreService") --데이터 저장 서비스
 local data = datastore:GetDataStore("banplayer") --데이터 저장소 생성
