@@ -952,6 +952,7 @@ script.Parent.Handle.Sword.Touched:Connect(function(hit)
    --애니메이션 스크립트
 local f = false
 
+
 script.Parent.Activated:Connect(function()
  if not f then
   f = true
