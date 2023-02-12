@@ -953,6 +953,7 @@ script.Parent.Handle.Sword.Touched:Connect(function(hit)
 local f = false
 
 script.Parent.Activated:Connect(function()
+    
  if not f then
   f = true
   local YAnimation = game.Players.LocalPlayer.Character.Humanoid:LoadAnimation(script.Parent.Animation)
