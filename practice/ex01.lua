@@ -951,7 +951,7 @@ script.Parent.Handle.Sword.Touched:Connect(function(hit)
    --애니메이션 스크립트
 local f = false
 
-script.Parent.Activated:Connect(function()
+script.Parent.Activated:Connect (function()
 
  if not f then
   f = true
@@ -959,6 +959,7 @@ script.Parent.Activated:Connect(function()
   YAnimation:Play()
   wait(0.7)
   f = false
+  
  end
 end)
 --스크립트끝
