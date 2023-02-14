@@ -970,4 +970,12 @@ game.InsertService:LoadAsset(id).Parent = game.Lighting
 
 local Humanoid = script.Parent:WaitForChild("Humanoid")
 Humanoid:LoadAnimation(script.Parent.Animation):Play()
-스크립트 끝
+-- 스크립트 끝
+
+
+--탈수 없는 회전 블럭 스크립트
+while true do 
+    wait()
+    script.Parent.CFrame = script.Parent.CFrame * CFrame.fromEulerAnglesXYZ(0.1,0,0)
+    end 
+--스크립트끝
