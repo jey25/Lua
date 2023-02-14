@@ -959,7 +959,15 @@ script.Parent.Activated:Connect (function()
   YAnimation:Play()
   wait(0.7)
   f = false
-  
+
  end
 end)
 --스크립트끝
+
+-- 동상 춤추기 스크립트
+local id = 000000000
+game.InsertService:LoadAsset(id).Parent = game.Lighting
+
+local Humanoid = script.Parent:WaitForChild("Humanoid")
+Humanoid:LoadAnimation(script.Parent.Animation):Play()
+스크립트 끝
