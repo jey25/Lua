@@ -942,6 +942,7 @@ return MouseLockController
 
 --데미지 스크립트
 script.Parent.Handle.Sword.Touched:Connect(function(hit)
+    
     local h = hit.Parent:FindFirstChild("Humanoid")
     if h then
      h:TakeDamage(50)
