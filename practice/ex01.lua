@@ -864,7 +864,9 @@ function MouseLockController:OnBoundKeysObjectChanged(newValue: string)
 	self:BindContextActions()
 end
 
+
 --[[ Local Functions ]]--
+
 function MouseLockController:OnMouseLockToggled()
 	self.isMouseLocked = not self.isMouseLocked
 
@@ -905,13 +907,16 @@ function MouseLockController:BindContextActions()
 	end, false, MOUSELOCK_ACTION_PRIORITY, unpack(self.boundKeys))
 end
 
+
 function MouseLockController:UnbindContextActions()
 	ContextActionService:UnbindAction(CONTEXT_ACTION_NAME)
 end
 
+
 function MouseLockController:IsMouseLocked(): boolean
 	return self.enabled and self.isMouseLocked
 end
+
 
 function MouseLockController:EnableMouseLock(enable: boolean)
 	if enable ~= self.enabled then
