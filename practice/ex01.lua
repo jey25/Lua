@@ -840,9 +840,13 @@ end
 
 function MouseLockController:UpdateMouseLockAvailability()
 	local devAllowsMouseLock = PlayersService.LocalPlayer.DevEnableMouseLock
+
 	local devMovementModeIsScriptable = PlayersService.LocalPlayer.DevComputerMovementMode == Enum.DevComputerMovementMode.Scriptable
+
 	local userHasMouseLockModeEnabled = GameSettings.ControlMode == Enum.ControlMode.MouseLockSwitch
+
 	local userHasClickToMoveEnabled =  GameSettings.ComputerMovementMode == Enum.ComputerMovementMode.ClickToMove
+	
 	local MouseLockAvailable = devAllowsMouseLock and userHasMouseLockModeEnabled and not userHasClickToMoveEnabled and not devMovementModeIsScriptable
 
 	if MouseLockAvailable~=self.enabled then
