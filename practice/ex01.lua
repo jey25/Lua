@@ -1258,3 +1258,20 @@ Players.PlayerAdded:Connect(onPlayerAdded)
 
 -- 스크립트 끝
 
+
+-- 게임에 적용되어 있는 Service 들을 볼수 있는 Script
+local services = {
+	
+}
+
+for _, service in ipairs(game:GetChildren()) do
+	local success, result = pcall(function()
+		table.insert(services, service.Name)
+	end)
+end
+
+table.sort(services)
+
+for _, service in ipairs(services) do
+	print(service)
+end
