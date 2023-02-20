@@ -1275,3 +1275,88 @@ table.sort(services)
 for _, service in ipairs(services) do
 	print(service)
 end
+
+-- 로블록스 서비스 목록
+
+--AdService - AdService는 게임 수익 창출을 위한 모바일 비디오 광고를 게임에 넣을수 있었던 서비스. 현재는 사용할수 없는 기능
+--AnalyticsService - 게임내 각종 통계를 확인 가능 PlayFab 프로그램에 등록된 개발자만 사용가능/ 게임 통계를 간단하게 확인 하는 방법은 로블록스 게임 설정에서 개발통계에서 확인
+--AssetService - 로블록스에 저장되어 있는 여러가지 정보들을 가져오는 기능 
+--★BadgeService -  배지와 관련된 정보 및 기능을 제공. 플랫폼 전체에서 플레이어의 업적과 활동을 인식하는데 사용. 플레이어에게 배지를 수여하면 인벤토리에 추가되고 프로필 페이지에 표시
+--ChangeHistoryService- 플러그인이 변경 사항을 실행 취소 및 다시 실행하고 장소가 변경될 때 웨이포인트를 생성하는 방법을 제공
+--★Chat - LocalScript이며 기본 챗 및 버블챗 기능
+--ClusterPacketCache - 클러스터 패킷을 캐시하기 위한 내부 서비스입니다. 이 서비스가 있는 경우에만 제공
+--★CollectionService - 태그가 있는 인스턴스 의 CollectionService그룹(컬렉션)을 관리합니다. 
+--ConfigureServerService - 구성 서버 서비스
+--ContentProvider - 
+--[[서비스의 주요 용도 게임에 미리 로드하는 것. Decal또는 같은 새 자산 Sound이 게임에서 사용되면 Roblox는 
+Roblox 서버에서 이와 관련된 콘텐츠를 로드합니다. 어떤 경우에는 콘텐츠가 게임에 로드되기 전에 지연이 발생할 수 있으므로 개발자에게 바람직하지 않을 수 있습니다.]]
+--ContextActionService - 게임이 사용자 입력을 상황별 작업 또는 특정 조건이나 기간 동안에만 활성화되는 작업에 바인딩할 수 있도록 하는 게임 서비스
+--CookiesService - Roblox에서 분석 목적으로 HTTP 쿠키를 제어하는 ​​데 사용합니다.Roblox의 백엔드 서버에서만 사용할 수 있으므로 어떤 형태나 형태의 개발자도 사용할 수 없습니다
+--★DataStoreService - 
+--[[플레이어의 인벤토리 또는 스킬 포인트에 있는 항목과 같이 세션 간에 유지되어야 하는 데이터를 저장할 수 있습니다 . 
+    저장소는 경험별로 공유 되므로 다른 서버의 장소를 포함하여 경험의 모든 장소에서 동일한 데이터에 액세스하고 변경데이터 저장소는
+   게임 서버에서만 액세스할 수 있으므로 에서 사용하는 또는 내에서만 사용]]
+--★Debris - 이 서비스를 사용하면 개발자가 메서드를 사용하여 코드를 생성하지 않고 개체 제거를 예약
+--FilteredSelection - 
+--★FriendService - 게임 내에서 친구 요청을 전송, 취소, 수락 및 거부하는 데 사용되는 서비스. PlayerListScript에서 리더보드와 함께 친구 요청을 보내는 데 사용
+--★GamePassService - 게임 패스
+--Geometry - 개발자 사용 불가능한 내부 서비스
+--★GuiService - 개발자가 GuiObject게임패드 내비게이터에서 현재 선택하고 있는 것을 제어할 수 있게 해주는 서비스
+--HttpRbxApiService - 관리자 가 사용하는 버전입니다 .일반 서비스와 달리 이 서비스는 roblox.com에 GET/POST 요청을 보낼 수 있습니다.
+--HttpService - 이 서비스를 사용하면 분석, 데이터 저장, 원격 서버 구성, 오류 보고, 고급 계산 또는 실시간 통신과 같은 Roblox 외부 웹 서비스와 게임을 통합할 수 있습니다.
+--InsertService - 
+--[[자산을 로드하려면 자산을 로드하는 게임 작성자(사용자 또는 그룹일 수 있음)가 자산에 액세스할 수 있어야 합니다. 이러한 제한으로 인해
+   InsertService는 민감한 데이터, 일반적으로 에 사용할 API 또는 비밀 키를 로드하는 데 유용]]
+--Instance - 
+--[[클래스 계층 구조의 모든 클래스에 대한 기본 클래스입니다. Roblox 엔진이 정의하는 다른 모든 클래스는 Instance의 모든 멤버를 상속합니다. 
+   Instance 개체를 직접 생성할 수 없습니다.]]
+--JointsService - 표면 연결에 의해 생성된 관절을 저장하는 서비스입니다. 또한 표면 대 표면 접촉을 시각화하고 표면을 함께 결합하는 데 사용할 수 있는 API가 있습니다.
+--LanguageService - 나라별 언어 선택 기능
+--★Lighting - 게임의 환경 조명을 제어
+--LocalizationService - 자동 번역 서비스
+--LogService - 출력된 텍스트를 읽을 수 있는 서비스
+--★MarketplaceService - 게임 내 거래를 담당하는 게임 서비스- 수익을 내기 위한 첫번째 단계
+--NetworkServer - 
+--[[NetworkServer는 NetworkReplicator게임의 모든 것을 저장하고 모든 연결을 처리합니다. 
+   Start ServerNetworkPeer:SetOutgoingKBPSLimit 를 사용하는 동안 대기 시간을 모방하는 데 사용]]
+--NotificationService - 알림을 예약할 수 있는 미완성 서비스입니다. 현재 구현되지 않으며 활성화할 수 없습니다.
+--PermissionsService - 권한 서비스
+--PhysicsService - 
+--[[PhysicsService는 다른 충돌 그룹에 할당된 부분과 충돌할 수도 있고 충돌하지 않을 수도 있는 
+   부분 집합을 정의하는 충돌 그룹 작업을 위한 기능이 있는 게임 서비스입니다. 를 사용하여 부품을 충돌 그룹에 할당]]
+--★Players - 
+--[[Roblox 게임 서버에 연결된 클라이언트에 대한 개체만 포함되어 있습니다. 
+   또한 장소의 구성(예: 말풍선 채팅 또는 기본 채팅)에 대한 정보도 포함합니다. 캐릭터 외모, 친구 및 아바타 썸네일과 같이 서버에 연결되지 않은 플레이어에 대한 정보]]
+--PointsService - 현재 사용할수 없음
+--PolicyService - 여러 국가의 다양한 국가 규정을 준수할 수 있는 게임플레이 구성 요소를 구축하는 데 도움
+--ProcessInstancePhysicsService - 
+--★ProximityPromptService -  ProximityPrompt전역 방식으로 개체와 상호 작용할 수 있습니다. 개별 ProximityPrompt 개체보다 이 서비스의 이벤트를 수신하는 것이 더 편리할 수 있습니다.
+--★ReplicatedFirst - 로딩  GUI를 사용하는데 좋고 한번 뜨면 다시 뜨지 않음 속도가 빠름
+--★ReplicatedStorage - 서버와 연결된 게임 클라이언트 모두에서 사용할 수 있는 개체에 대한 일반 컨테이너 서비스
+--★Run Service - 
+--[[게임이나 스크립트가 실행되는 컨텍스트를 관리할 뿐만 아니라 시간 관리를 위한 메서드와 이벤트가 포함되어 있습니다. IsClient, IsServer, , 같은 메서드 IsStudio는 어떤
+   컨텍스트 코드가 실행되고 있는지 확인하는 데 도움이 될 수 있습니다. 이러한 메서드는 클라이언트 및 서버 스크립트 모두에 필요할 수 있는 ModuleScript에 유용합니다.
+   또한 IsStudio스튜디오 내 테스트를 위한 특수 동작을 추가하는 데 사용할 수  있습니다.
+   Stepped또한 RunService에는 코드가 , Heartbeat및 와 같은 Roblox의 프레임별 루프를 준수할 수 있도록 하는 이벤트가 있습니다 RenderStepped.
+   작업 스케줄러모든 경우에 사용할 적절한 이벤트를 선택하는 것이 중요하므로 정보에 입각한 결정을 내리기 위해 읽어야 합니다.]]
+--ScriptContext - 모든 기본 스크립트를 통제 가능 속성을 사용하여 일반 보안 액세스가 있는 스레드에서 모든 스크립트를 비활성화할 수 있음
+--Selection - 선택 항목을 엑세스및 제어 스튜디오 내에서 사용가능
+--★ServerScriptService - 서버 전용 및 기타 스크립팅 관련 자산에 Script대한 서비스
+--★ServerStorage - 서버에서만 콘텐츠에 액세스할 수 있음
+--SocialService - 친구 초대기능, 쪽지 기능 외 
+--★SoundService - 여러가지 사운드 설정 기능
+--SpawnerService - 개발자 사용 불가능한 서비스 (플레이어 스폰포인트의 여러가지 기본설정)
+--★StarterGui - 플레이어가 게임에 접속 후 다양한 GUI를 화면에 띄울수 있게 해주는 서비스
+--★StarterPack - 시작시에 플레이어에게 아이템을 지급
+--★StarterPlayer - 개체의 속성 기본값을 설정할 수 있는 서비스
+--★Stats - 게임내 여러가지 정보 제공
+--★Teams - 팀을 구성하는 기능
+--★Teleport Service - 플레이어가 원하는 게임으로 이동 시켜주는 기능	
+--TestService - 내부적으로 엔진에서 분석 테스트를 실행하는 데 사용하는 서비스입니다.게임 내에서 바로 정교한 테스트를 작성할 수 있습니다.
+--TextService - 게임에서 텍스트 표시를 내부적으로 처리하는 서비스
+--TouchInputService - 모바일 장치의 터치 입력을 담당하는 내부 서비스
+--★TweenService - 다양한 Roblox 개체에 대한 애니메이션을 만드는 데 사용할 수 있습니다. 거의 모든 숫자 속성은 TweenService를 사용하여 트위닝
+--VRService - 가상 현실(VR) 간의 상호 작용을 처리하는 서비스
+--VirtualInputManager - 개발자 사용 불가능한 내부 서비스
+--VoiceChatService - 음성 챗 서비스
+--★Workspace - 3D 모델이 랜더링 될 모든 객체가 존재
