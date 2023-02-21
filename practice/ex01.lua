@@ -1360,3 +1360,28 @@ Roblox 서버에서 이와 관련된 콘텐츠를 로드합니다. 어떤 경우
 --VirtualInputManager - 개발자 사용 불가능한 내부 서비스
 --VoiceChatService - 음성 챗 서비스
 --★Workspace - 3D 모델이 랜더링 될 모든 객체가 존재
+
+
+-- 데이터가 저장되는 머니, 킬 리더보드 만들기
+local datastore = game:GetService("DataStoreService"):GetDataStore("Playerstats")
+
+game.Players.PlayerAdded:Connect(function(plr)
+	local leaderstats = Instance.new("IntValue")
+	leaderstats.Name = "leaderstats"
+	leaderstats.Parent = plr
+
+	local money = Instance.new("IntValue")
+	money.Name = "Money"
+	money.Value = 0
+
+	local data = datastore:GetAsync(plr.UserId)
+	if data then
+		money.Value = data
+	end
+end)
+
+game.Players.PlayerRemoving:Connect(function (plr) -- 플레이어가 나갔을 때
+	local s, e = pcall(function() --가끔 데이터 저장에 실패하는 경우 스크립트를 중단하지 않게
+		datastore:SetAsync(plr.UserId, plr.leaderstats.Money.Value) -- Money 데이터 저장
+	end)
+end)
