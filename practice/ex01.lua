@@ -1371,6 +1371,7 @@ game.Players.PlayerAdded:Connect(function(plr)
 	leaderstats.Parent = plr
 
 	local money = Instance.new("IntValue")
+	
 	money.Name = "Money"
 	money.Value = 0
 
