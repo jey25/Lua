@@ -14,8 +14,6 @@ end)
 
 
 -- 시간에 따라 조명 켜기
-
-
 local timeControl = game.Lighting --timeControl 변수에 조명(Lighting) 속성 담기
 local timeVal = 12 --timeVal 변수에 12 담기
 
@@ -1371,7 +1369,7 @@ game.Players.PlayerAdded:Connect(function(plr)
 	leaderstats.Parent = plr
 
 	local money = Instance.new("IntValue")
-	
+
 	money.Name = "Money"
 	money.Value = 0
 
