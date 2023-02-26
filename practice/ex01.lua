@@ -1411,3 +1411,33 @@ script.Parent.EDoor.ProximityPrompt.Triggered:Connect(function() --E키를 끝�
   value = false --변수를 false로 바꾸기
  end
 end) --끝
+
+
+----------------------------------------------------------------------------------------------------------------------------------
+game.Workspace.EPart.ProximityPrompt.Triggered:Connect(function(plr)
+	script.Parent.Visible = true --GUI를 보이게
+   
+	script.Parent:TweenPosition( --GUI 애니메이션 설정 / 시작
+	 UDim2.new(0.258, 0,0.278, 0), --올라오는 위치
+	 "Out", --애니메이션 스타일
+	 "Back", --Linear, Sine, Back, Quad, Quart, Quint, Bounce, Elastic 애니메이션중 골라 쓰세요!
+	 0.5, --GUI가 올라오는 시간
+	 false --애니메이션 끝
+	)
+   
+	wait(0.5) --기다림
+   end) 
+   ------------------------------------------------------------------------------------------------------------------------------------
+   script.Parent.MouseButton1Click:Connect(function()
+	script.Parent.Parent:TweenPosition( --GUI 애니메이션 설정 / 시작
+	 UDim2.new(0.258, 0,1.2, 0), --내려가는 위치
+	 "Out", --애니메이션 스타일
+	 "Back", --Linear, Sine, Back, Quad, Quart, Quint, Bounce, Elastic 애니메이션중 골라 쓰세요!
+	 1.5, --GUI가 올라오는 시간
+	 false --애니메이션 끝
+	)
+   
+	wait(1.5) --기다림
+   
+	script.Parent.Parent.Visible = false --GUI를 보이지 않게
+   end)
