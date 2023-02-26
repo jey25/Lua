@@ -1383,3 +1383,31 @@ game.Players.PlayerRemoving:Connect(function (plr) -- 플레이어가 나갔을 
 		datastore:SetAsync(plr.UserId, plr.leaderstats.Money.Value) -- Money 데이터 저장
 	end)
 end)
+
+
+--ProximityPrompt 로 문열기 설정
+local value = false --변수 지정
+
+script.Parent.EDoor.ProximityPrompt.Triggered:Connect(function() --E키를 끝까지 누르면
+ if not value then --변수가 false 이면
+  script.Parent.EDoor.ProximityPrompt.ActionText = "close" --프롬프트 텍스트 바꾸기
+
+  for i = 1, 15 do --15번 반복
+   script.Parent:SetPrimaryPartCFrame( --모델의 중심 파트의 Cframe을
+    script.Parent.DoorPart.CFrame * CFrame.Angles(0, math.rad(-10), 0) -- 이렇게 바꾸기
+   )
+   wait() --기다림 (대략 0.03초정도 기다림)
+  end --끝
+  value = true --변수를 true로 바꾸기
+ else --변수가 true 면
+  script.Parent.EDoor.ProximityPrompt.ActionText = "open" --프롬프트 텍스트 바꾸기
+
+  for i = 1, 15 do --15번 반복
+   script.Parent:SetPrimaryPartCFrame( --모델의 중심 파트의 Cframe을
+    script.Parent.DoorPart.CFrame * CFrame.Angles(0, math.rad(10), 0) -- 이렇게 바꾸기
+   )
+   wait() --기다림 (대략 0.03초정도 기다림)
+  end --끝
+  value = false --변수를 false로 바꾸기
+ end
+end) --끝
