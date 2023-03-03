@@ -10,6 +10,7 @@ script.Parent.Transparency = 0.5
 script.Parent.Anchored = false
 script.Parent.Material = Enum.Material.Brick
 script.Parent.BackSurface = Enum.SurfaceType.Smooth
+
 workspace.Cube.BrickColor = BrickColor.new("New Yeller")
 workspace.Cube.BrickColor = BrickColor.Random()
 workspace.Cube.BrickColor = BrickColor.red()
