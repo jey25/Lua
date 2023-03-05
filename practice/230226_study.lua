@@ -35,3 +35,8 @@ end
 if true and (true or true) then
  print("aaaaaaaaaaaaa")
 end
+
+workspace.Part.Size = Vector3.new(8, 2, 4)
+workspace.Part.Size = Vector3.new(4, 1, 2) * 2
+workspace.Part.Size = workspace.Part.Size * 2
+workspace.Part.Size = workspace.Part.Size + Vector3.new(0, 1, 0)
