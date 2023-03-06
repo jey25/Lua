@@ -58,7 +58,30 @@ while wait(1) do
     print("oooooooooooooooo")
 end
 
-
+if true then
+    a = 1
+   end
+   print(a)
+   --------
+   local a
+   if true then
+    a = 1
+   end
+   print(a)
+   -------
+   local a
+   if true then
+    local a = 1
+    print(a) -- 1 뜸
+   end
+   print(a) -- nil 뜸
+   -------
+   local a = 2
+   if true then
+    local a = 1
+    print(a)
+   end
+   print(a)
 
 
 
