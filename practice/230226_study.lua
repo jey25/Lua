@@ -40,3 +40,16 @@ workspace.Part.Size = Vector3.new(8, 2, 4)
 workspace.Part.Size = Vector3.new(4, 1, 2) * 2
 workspace.Part.Size = workspace.Part.Size * 2
 workspace.Part.Size = workspace.Part.Size + Vector3.new(0, 1, 0)
+
+repeat
+    wait(.5)
+until workspace.Car.PrimaryPart
+
+if workspace.Car.PrimaryPart then
+    print("aaaaaaaaaaaa")
+end
+
+repeat
+    workspace.Baseplate.Size = workspace.Baseplate.Size + Vector3.new(0,.5,0)
+    wait(.5)
+until   workspace.Baseplate.Size.Y == 30
