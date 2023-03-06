@@ -53,3 +53,13 @@ repeat
     workspace.Baseplate.Size = workspace.Baseplate.Size + Vector3.new(0,.5,0)
     wait(.5)
 until   workspace.Baseplate.Size.Y == 30
+
+while wait(1) do
+    print("oooooooooooooooo")
+end
+
+
+
+
+
+
