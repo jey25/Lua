@@ -83,6 +83,15 @@ if true then
    end
    print(a)
 
+   
+for i = 1, 7 do
+	print(i, "번째 반복입니다.")
+end
+
+for i = 0, 10, 1 do
+	wait(0.1)
+	print(i/10)
+end
 
 
 
