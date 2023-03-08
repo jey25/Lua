@@ -112,3 +112,13 @@ local mass = part.Mass
 print(mass)
 
 
+wait(5)
+script.Parent:Destroy()
+
+for i=1, 50 do
+	local part = game.ServerStorage.Part
+	local clone = part:Clone()
+	clone.Parent = workspace
+	clone.BrickColor = BrickColor.Blue()
+	wait()
+end
