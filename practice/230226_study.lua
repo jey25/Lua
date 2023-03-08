@@ -105,3 +105,10 @@ for i=1, 50 do
 end
 
 
+local part = workspace.Part
+part:Destroy()
+
+local mass = part.Mass
+print(mass)
+
+
