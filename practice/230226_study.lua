@@ -83,7 +83,7 @@ if true then
    end
    print(a)
 
-   
+
 for i = 1, 7 do
 	print(i, "번째 반복입니다.")
 end
@@ -93,5 +93,15 @@ for i = 0, 10, 1 do
 	print(i/10)
 end
 
+
+for i=1, 50 do
+	local part = Instance.new("Part", workspace)
+	part.Position = workspace.ColorPart.Position
+	part.BrickColor = BrickColor.Random()
+	part.Shape = Enum.PartType.Ball
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	wait()
+end
 
 
