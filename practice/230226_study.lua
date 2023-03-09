@@ -122,3 +122,16 @@ for i=1, 50 do
 	clone.BrickColor = BrickColor.Blue()
 	wait()
 end
+
+local function ClonePart()
+	local part = game.ServerStorage.Part
+	local clone = part:Clone()
+	clone.Parent = workspace
+	clone.BrickColor = BrickColor.Blue()
+	wait()
+end
+
+for i=1, 50 do
+	ClonePart()
+	wait()
+end
