@@ -179,3 +179,9 @@ function ChangeColor(hit)
 end
 
 part.Touched:Connect(ChangeColor)
+
+
+
+
+
+
