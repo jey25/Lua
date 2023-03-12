@@ -163,3 +163,6 @@ function ChangeColor()
 end
 
 part.Touched:Connect(ChangeColor)
+
+local part = workspace:FindFirstChild("touchedtest")
+print(part)
