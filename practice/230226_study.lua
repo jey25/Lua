@@ -182,6 +182,8 @@ part.Touched:Connect(ChangeColor)
 
 
 
-
+local part = workspace:FindFirstChild("touchedtest", true)
+local pare2 = game.ServerStorage:FindFirstChildWhichIsA("BasePart")
+print(part)
 
 
