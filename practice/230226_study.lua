@@ -148,3 +148,18 @@ for i=1, 50 do
 	clone.BrickColor = BrickColor.Random()
 	wait()
 end
+
+local part = script.Parent
+
+part.Touched:Wait()
+part.BrickColor = BrickColor.Random()
+
+
+
+local part = script.Parent
+
+function ChangeColor()
+	part.BrickColor = BrickColor.Random()
+end
+
+part.Touched:Connect(ChangeColor)
