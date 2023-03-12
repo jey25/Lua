@@ -166,3 +166,16 @@ part.Touched:Connect(ChangeColor)
 
 local part = workspace:FindFirstChild("touchedtest")
 print(part)
+
+local part = script.Parent
+
+
+--닿은 파트가 humanoid 인 경우에만 part 컬러 변경
+function ChangeColor(hit)
+	local humanoid = hit.Parent:FindFirstChild("Humanoid")
+	if humanoid then
+		part.BrickColor = BrickColor.Random()
+	end
+end
+
+part.Touched:Connect(ChangeColor)
