@@ -187,3 +187,50 @@ local pare2 = game.ServerStorage:FindFirstChildWhichIsA("BasePart")
 print(part)
 
 
+local b = 1
+b += 1
+print(b)
+
+
+-- kill part 원리 
+local part = script.Parent
+
+local function kill(hit)
+	local humanoid = hit.Parent:FindFirstChild("Humanoid")
+	if humanoid then
+		humanoid.Health = 0
+        -- 원래 체력에서 5씩 감소하는 데미지 파트
+        -- humanoid.Health -= 5\
+        -- 포쓰필드가 있을때는 데미지를 주지 않는 TakeDamage함수 (같은 기능)
+        -- humanoid:TakeDamage(5)
+	end
+end
+
+part.Touched:Connect(kill)
+
+
+--함수를 바로 Connect 함수 안에 넣어서 실행하기
+local part = script.Parent
+
+part.Touched:Connect(function(hit)
+		local humanoid = hit.Parent:FindFirstChild("Humanoid")
+		if humanoid then
+			part.BrickColor = BrickColor.Random()
+		end
+	end)
+
+
+--함수를 바로 Connect 함수 안에 넣어서 실행하기
+local part = script.Parent
+--Enabled 함수를 넣어서 1초에 한번씩만 데미지를 주게 하기
+local Enabled = true
+
+part.Touched:Connect(function(hit)
+		local humanoid = hit.Parent:FindFirstChild("Humanoid")
+	if humanoid and Enabled then
+		Enabled = false
+		humanoid.Health -= 5
+		wait(1)
+		Enabled = true
+		end
+	end)
