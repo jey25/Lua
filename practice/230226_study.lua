@@ -235,3 +235,12 @@ part.Touched:Connect(function(hit)
 		Enabled = true
 		end
 	end)
+
+
+workspace.Model:MoveTo(Vector3.new(104, 2.5, 69))
+
+
+local car = game.ServerStorage.Model
+local clone = car:Clone()
+clone.Parent = workspace
+clone:MoveTo(Vector3.new(104, 2.5, 69))
