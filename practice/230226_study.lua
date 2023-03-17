@@ -222,6 +222,7 @@ part.Touched:Connect(function(hit)
 
 --함수를 바로 Connect 함수 안에 넣어서 실행하기
 local part = script.Parent
+
 --Enabled 함수를 넣어서 1초에 한번씩만 데미지를 주게 하기
 local Enabled = true
 
