@@ -244,3 +244,6 @@ local car = game.ServerStorage.Model
 local clone = car:Clone()
 clone.Parent = workspace
 clone:MoveTo(Vector3.new(104, 2.5, 69))
+
+
+print(workspace["0319"])
