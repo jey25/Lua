@@ -248,3 +248,13 @@ clone:MoveTo(Vector3.new(104, 2.5, 69))
 
 print(workspace["0319"])
 workspace.testpart.BrickColor = BrickColor.Random()
+workspace.testpart.Size = workspace.testpart.Size * 2
+
+while wait(1) do
+	print("aaaaaa")
+end
+
+model = workspace.testpart
+
+model.BrickColor = BrickColor.Blue()
+model.Transparency = 0.5
