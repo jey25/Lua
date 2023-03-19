@@ -247,3 +247,4 @@ clone:MoveTo(Vector3.new(104, 2.5, 69))
 
 
 print(workspace["0319"])
+workspace.testpart.BrickColor = BrickColor.Random()
