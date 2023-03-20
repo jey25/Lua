@@ -268,3 +268,11 @@ for i =1 , 50 do
 	Instance.new("Part", workspace)
 	wait()
 end
+
+
+for i =1 , 50 do
+	local part = Instance.new("Part", workspace)
+	part.Position = workspace.testpart.Position
+	part.BrickColor = BrickColor.Random()
+	wait()
+end
