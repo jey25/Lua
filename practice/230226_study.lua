@@ -258,3 +258,8 @@ model = workspace.testpart
 
 model.BrickColor = BrickColor.Blue()
 model.Transparency = 0.5
+
+for i=10 , 0, -1 do
+	wait(0.1)
+	print(i)
+end
