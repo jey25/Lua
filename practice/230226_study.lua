@@ -263,3 +263,8 @@ for i=10 , 0, -1 do
 	wait(0.1)
 	print(i)
 end
+
+for i =1 , 50 do
+	Instance.new("Part", workspace)
+	wait()
+end
