@@ -290,3 +290,13 @@ for i = 1 , 50 do
 	wait()
 end
 
+function clonePart()
+	local part = game.ServerStorage.testpart
+	local clone = part:Clone()
+	clone.Parent = workspace
+end
+
+for i =1 , 50 do
+	clonePart()
+	wait()
+end
