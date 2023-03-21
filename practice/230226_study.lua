@@ -312,3 +312,11 @@ for i =1 , 50 do
 	clone.BrickColor = BrickColor.Random()
 	wait()
 end
+
+local part = script.Parent
+
+function changeColor()
+	part.BrickColor = BrickColor.Random()
+end
+
+part.Touched:Connect(changeColor)
