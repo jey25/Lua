@@ -282,6 +282,10 @@ end
 wait(2)
 script.Parent:Destroy()
 
-local part = game.ServerStorage.testpart
-local clone = part:Clone()
-clone.Parent = workspace
+for i = 1 , 50 do
+	local part = game.ServerStorage.testpart
+	local clone = part:Clone()
+	clone.Parent = workspace
+	wait()
+end
+
