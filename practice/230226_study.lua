@@ -300,3 +300,15 @@ for i =1 , 50 do
 	clonePart()
 	wait()
 end
+
+local function clonePart(part, location)
+	local clone = part:Clone()
+	clone.Parent = location
+	return clone
+end
+
+for i =1 , 50 do
+	local clone = clonePart(game.ServerStorage.testpart, workspace)
+	clone.BrickColor = BrickColor.Random()
+	wait()
+end
