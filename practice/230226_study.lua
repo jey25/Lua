@@ -277,3 +277,7 @@ for i =1 , 50 do
 	part.Shape = Enum.PartType.Balla
 	wait()
 end
+
+
+wait(2)
+script.Parent:Destroy()
