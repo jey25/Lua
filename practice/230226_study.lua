@@ -286,6 +286,7 @@ for i = 1 , 50 do
 	local part = game.ServerStorage.testpart
 	local clone = part:Clone()
 	clone.Parent = workspace
+	clone.BrickColor = BrickColor.Black()
 	wait()
 end
 
