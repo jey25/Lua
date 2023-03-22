@@ -342,3 +342,12 @@ for i = 1, 50 do
 	--clone.BrickColor = BrickColor.Random() --확인용 색 변화
 	wait()
 end
+
+-- 닿으면 파트가 복사됨
+script.Parent.Touched:Connect(function(plr)
+	local humanoid = plr.Parent:FindFirstChild("Humanoid")
+	if humanoid then
+		local clone = script.Parent:Clone()
+		clone.Parent = workspace
+	end
+end)
