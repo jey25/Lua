@@ -351,3 +351,16 @@ script.Parent.Touched:Connect(function(plr)
 		clone.Parent = workspace
 	end
 end)
+
+
+
+local part = script.Parent
+
+function changeColor(hit)
+	local humanoid = hit.Parent:FindFirstChild("Humanoid")
+	if humanoid then
+		part.BrickColor = BrickColor.Random()
+	end
+end
+
+part.Touched:Connect(changeColor)
