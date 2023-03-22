@@ -327,3 +327,18 @@ script.Parent.Touched:Connect(function(hit)
 		script.Parent:Destroy()
 	end
 end)
+
+local part = script.Parent
+local hit = part.Touched:Wait()
+
+local function copy(part, location)
+	local clone = part:Clone()
+	clone.Parent = location
+	return clone
+end
+
+for i = 1, 50 do
+	local clone = copy(hit, workspace)
+	--clone.BrickColor = BrickColor.Random() --확인용 색 변화
+	wait()
+end
