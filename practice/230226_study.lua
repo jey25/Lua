@@ -363,4 +363,14 @@ function changeColor(hit)
 	end
 end
 
+local part = script.Parent
+
+function player(hit)
+	local humanoid = hit.parent:FindFirstChild("Head")
+	if humanoid then
+		humanoid:Destroy()
+	end
+end
+
+part.Touched:Connect(player)
 part.Touched:Connect(changeColor)
