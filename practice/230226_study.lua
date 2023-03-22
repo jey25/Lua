@@ -320,3 +320,10 @@ function changeColor()
 end
 
 part.Touched:Connect(changeColor)
+
+script.Parent.Touched:Connect(function(hit)
+	local humanoid = hit.Parent:FindFirstChild("Humanoid")
+	if humanoid then
+		script.Parent:Destroy()
+	end
+end)
