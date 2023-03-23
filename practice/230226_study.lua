@@ -375,6 +375,7 @@ end
 part.Touched:Connect(player)
 part.Touched:Connect(changeColor)
 
+
 local part = script.Parent
 
 function kill(hit)
