@@ -374,3 +374,14 @@ end
 
 part.Touched:Connect(player)
 part.Touched:Connect(changeColor)
+
+local part = script.Parent
+
+function kill(hit)
+	local humanoid = hit.Parent:FindFirstChild("Humanoid")
+	if humanoid then
+		humanoid.Health = 0
+	end
+end
+
+part.Touched:Connect(kill)
