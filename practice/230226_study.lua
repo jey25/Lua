@@ -417,4 +417,10 @@ part.Touched:Connect(function(hit)
 	hit.Parent:MoveTo(Vector3.new(5, 10, 5))
 end)
 
+--네임에 해당하는 캐릭터 강제 퇴장
+game.Players.PlayerAdded:Connect(function(plr)
+	if plr.Name == "Name" then
+		plr.Kick()
+	end
+end)
 
