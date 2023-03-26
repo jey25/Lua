@@ -404,3 +404,8 @@ end)
 
 
 workspace.x6m:MoveTo(Vector3.new(1,0.5,-12))
+
+local car = game.ServerStorage.x6m
+local clone = car:Clone()
+clone:MoveTo(Vector3.new(1, 0.5, -12))
+clone.Parent = workspace
