@@ -390,7 +390,7 @@ part.Touched:Connect(kill)
 
 
 local part = script.Parent
-local Enabled = true
+local Enabled = true   --조건문을 통해 함수 연속 실행 방지
 
 part.Touched:Connect(function(hit)
 	local humanoid = hit.Parent:FindFirstChild("Humanoid")
