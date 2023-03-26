@@ -387,3 +387,17 @@ function kill(hit)
 end
 
 part.Touched:Connect(kill)
+
+
+local part = script.Parent
+local Enabled = true
+
+part.Touched:Connect(function(hit)
+	local humanoid = hit.Parent:FindFirstChild("Humanoid")
+	if humanoid and Enabled then
+		Enabled = false
+		humanoid.Health -= 5
+		wait(1)
+		Enabled = true
+	end
+end)
