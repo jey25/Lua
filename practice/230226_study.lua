@@ -424,6 +424,7 @@ game.Players.PlayerAdded:Connect(function(plr)
 	end
 end)
 
+
 game.Players.PlayerAdded:Connect(function(plr) --서버에 새 플레이어가 접속했을 때
 	plr.CharacterAdded:Connect(function(chr) -- 플레이어의 캐릭터가 스폰되었을 때
 	end)
