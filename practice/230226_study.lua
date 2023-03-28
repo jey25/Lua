@@ -430,7 +430,6 @@ game.Players.PlayerAdded:Connect(function(plr) --서버에 새 플레이어가 �
 	end)
 end)
 
-
 game.Players.PlayerAdded:Connect(function(plr)
 	plr.CharacterAdded:Connect(function(chr)
 		chr.ChildAdded(function(cd)
