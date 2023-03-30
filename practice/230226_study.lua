@@ -456,3 +456,13 @@ end)
 --5초동안 Baseplate 를 기다린다
 lcoal part = workspace:WaitForChild("Baseplate", 5)
 part.BrickColor = BrickColor.new("Really red")
+
+
+local part = workspace:WaitForChild("Part")
+local surfaceGui = part:WaitForChild("SurfaceGui")
+local TextLabel = surfaceGui:WaitForChild("TextLabel")
+
+local player  = game.Players.LocalPlayer
+local playerName = player.Name
+
+TextLabel.Text = playerName.."님 하이!"
