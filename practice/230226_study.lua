@@ -441,3 +441,14 @@ game.Players.PlayerAdded:Connect(function(plr)
 		end)
 	end)
 end)
+
+local localplayer = game.Players.LocalPlayer
+
+game.Players.PlayerAdded:Connect(function(plr)
+	
+end)
+
+local part = workspace.Baseplate
+part.Touched:Connect(function(hit)
+	local plr = game.Players:GetPlayerFromCharacter(hit.Parent)
+end)
