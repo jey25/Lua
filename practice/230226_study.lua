@@ -482,3 +482,17 @@ local binder = game.ServerStorage.binder
 binder.Event:Connect(function(humanoid)
 	humanoid.Health = 0
 end)
+
+
+
+-- remote Event
+
+local contextActionSerice = game:GetService("ContextActionService")
+
+function RPressed(actionName, inputState, inputObject)
+	if inputState == Enum.UserInputState.Begin then
+		
+	end
+end
+
+contextActionSerice:BindAction("RPress", RPressed, true, Enum.KeyCode)
