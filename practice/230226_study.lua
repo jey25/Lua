@@ -466,3 +466,19 @@ local player  = game.Players.LocalPlayer
 local playerName = player.Name
 
 TextLabel.Text = playerName.."님 하이!"
+
+
+-- 스크립트 A
+local binder = game.ServerStorage.binder
+script.Parent.Touched:Connect(function(hit)
+	local humanoid = hit.Parent:FindFirstChild("Humanoid")
+	if humanoid then
+		binder:Fire(humanoid)
+	end
+end)
+
+-- 스크립트 B
+local binder = game.ServerStorage.binder
+binder.Event:Connect(function(humanoid)
+	humanoid.Health = 0
+end)
