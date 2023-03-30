@@ -452,3 +452,7 @@ local part = workspace.Baseplate
 part.Touched:Connect(function(hit)
 	local plr = game.Players:GetPlayerFromCharacter(hit.Parent)
 end)
+
+--5초동안 Baseplate 를 기다린다
+lcoal part = workspace:WaitForChild("Baseplate", 5)
+part.BrickColor = BrickColor.new("Really red")
