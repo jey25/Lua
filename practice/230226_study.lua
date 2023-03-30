@@ -495,4 +495,4 @@ function RPressed(actionName, inputState, inputObject)
 	end
 end
 
-contextActionSerice:BindAction("RPress", RPressed, true, Enum.KeyCode)
+contextActionSerice:BindAction("RPress", RPressed, true, Enum.KeyCode.R)
