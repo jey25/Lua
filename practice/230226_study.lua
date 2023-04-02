@@ -484,6 +484,7 @@ binder.Event:Connect(function(humanoid)
 end)
 
 
+
 -- remote Event
 
 local contextActionSerice = game:GetService("ContextActionService")
@@ -495,3 +496,10 @@ function RPressed(actionName, inputState, inputObject)
 end
 
 contextActionSerice:BindAction("RPress", RPressed, true, Enum.KeyCode.R)
+
+
+game.Players.PlayerAdded:Connect(function(plr)
+	plr.CharacterAdded:Connect(function(chr)
+		
+	end)
+end)
