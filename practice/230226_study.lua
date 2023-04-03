@@ -534,3 +534,13 @@ remoteEvent.OnServerEvent:Connect(function(plr, Key)
 		workspace.Part.BrickColor = BrickColor.Gray()
 	end
 end)
+
+--CFrame 은 회전도까지 반영한다
+workspace.Part.Position = Vector3.new(0,0,0)
+workspace.Part.CFrame = CFrame.new(0,0,0)
+
+workspace.Part1.Position = workspace.Part2.Position
+workspace.Part1.CFrame = workspace.Part2.CFrame
+
+workspace.Model:MoveTo(workspace.Part1.Position)
+workspace.Model:PivotTo(workspace.Part1.CFrame)
