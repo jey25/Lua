@@ -544,3 +544,13 @@ workspace.Part1.CFrame = workspace.Part2.CFrame
 
 workspace.Model:MoveTo(workspace.Part1.Position)
 workspace.Model:PivotTo(workspace.Part1.CFrame)
+
+
+
+game.Players
+game.Lighting
+
+game:GetService("Players") -- 플레이어 서비스 
+game:GetService("MarketplaceService") --수익 창출 관련 서비스
+game:GetService("ContextActionService") -- 마우스 키보드 입력 서비스 
+game:GetService("Debris") --게임에서 발생하는 파편 관련 제어
