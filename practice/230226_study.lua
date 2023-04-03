@@ -523,3 +523,14 @@ end
 
 contextActionService:BindAction("RPress", RPressed, true, Enum.KeyCode.R)
 contextActionService:BindAction("GPress", GPressed, true, Enum.KeyCode.G)
+
+-- remoteEvent 받는 workspace script
+local remoteEvent = game.ReplicatedStorage.ColorChange
+
+remoteEvent.OnServerEvent:Connect(function(plr, Key)
+	if Key == "R" then
+		workspace.Part.BrickColor = BrickColor.Red()
+	elseif Key  == "G" then
+		workspace.Part.BrickColor = BrickColor.Gray()
+	end
+end)
