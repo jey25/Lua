@@ -553,3 +553,6 @@ game:GetService("Players") -- 플레이어 서비스
 game:GetService("MarketplaceService") --수익 창출 관련 서비스
 game:GetService("ContextActionService") -- 마우스 키보드 입력 서비스 
 game:GetService("Debris") --게임에서 발생하는 파편 관련 제어
+
+local part = workspace:FindFirstChild("Part") or Instance.new("Part", workspace)
+part.BrickColor = BrickColor.new("Really black")
