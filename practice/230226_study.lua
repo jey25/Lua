@@ -546,7 +546,6 @@ workspace.Model:MoveTo(workspace.Part1.Position)
 workspace.Model:PivotTo(workspace.Part1.CFrame)
 
 
-
 game.Players
 game.Lighting
 
