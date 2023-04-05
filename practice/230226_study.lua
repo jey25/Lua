@@ -555,10 +555,20 @@ game:GetService("ContextActionService") -- 마우스 키보드 입력 서비스
 game:GetService("Debris") --게임에서 발생하는 파편 관련 제어
 
 
+local debris = game:GetService("Debris") --게임에서 발생하는 파편 관련 제어
+debris:AddItem(workspace.Part)
+
+
 -- or 함수의 사용
 local part = workspace:FindFirstChild("Part") or Instance.new("Part", workspace)
 part.BrickColor = BrickColor.new("Really black")
 
 
-local debris = game:GetService("Debris") --게임에서 발생하는 파편 관련 제어
-debris:AddItem(workspace.Part)
+local 변수 = 조건 and a or b
+local masilgeo = nuna == 'cola' and nuna or na
+
+if nuna == "cola" then
+	masilgeo = nuna
+else
+	masilgeo = na
+end
