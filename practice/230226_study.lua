@@ -572,3 +572,12 @@ if nuna == "cola" then
 else
 	masilgeo = na
 end
+
+while true do
+	wait(0.5)
+	workspace.Part.BrickColor = BrickColor.Random()
+	if workspace.Part.BrickColor == BrickColor.new("Really red") then
+		break
+	end
+end
+
