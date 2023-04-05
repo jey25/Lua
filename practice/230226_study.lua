@@ -590,6 +590,7 @@ part.Touched:Connect(function (hit)
 end)
 
 
-
+workspace.Part.CFrame = CFrame.new(5,5,5) * CFrame.Angles(math.rad(30), 0, 0)
+workspace.Part.CFrame = workspace.Part.CFrame * CFrame.Angles(math.rad(30), 0, 0)
 
 
