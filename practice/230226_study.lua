@@ -558,3 +558,7 @@ game:GetService("Debris") --게임에서 발생하는 파편 관련 제어
 -- or 함수의 사용
 local part = workspace:FindFirstChild("Part") or Instance.new("Part", workspace)
 part.BrickColor = BrickColor.new("Really black")
+
+
+local debris = game:GetService("Debris") --게임에서 발생하는 파편 관련 제어
+debris:AddItem(workspace.Part)
