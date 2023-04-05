@@ -581,3 +581,15 @@ while true do
 	end
 end
 
+-- 텔레포트 파트
+local part = script.Parent
+part.Touched:Connect(function (hit)
+	if hit.Parent:FindFirstChild("Humanoid") then
+		hit.Parent:PivotTo(hit.Parent:GetPivot() * CFrame.new(0,0,20))
+	end
+end)
+
+
+
+
+
