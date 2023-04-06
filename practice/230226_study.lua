@@ -603,3 +603,10 @@ end
 
 --소수 표현
 local n = math.random(10,20)/10
+
+math.huge() --무한정 큰수
+math.max() --큰수
+math.min() --작은수
+math.round() --반올림
+math.ceil() --올림
+math.floor() --내림
