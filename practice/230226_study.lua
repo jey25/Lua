@@ -594,3 +594,10 @@ workspace.Part.CFrame = CFrame.new(5,5,5) * CFrame.Angles(math.rad(30), 0, 0)
 workspace.Part.CFrame = workspace.Part.CFrame * CFrame.Angles(math.rad(30), 0, 0)
 
 
+
+print(math.random(1,5))
+
+if math.random(1,5) == 1 then
+	print("50% 의 확률")
+end
+
