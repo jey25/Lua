@@ -601,3 +601,5 @@ if math.random(1,5) == 1 then
 	print("50% 의 확률")
 end
 
+--소수 표현
+local n = math.random(10,20)/10
