@@ -652,4 +652,5 @@ end
 local model = script.Parent
 local parts = {model.Part1, model.Part2, model.Part3}
 local num = math.random(1,3)
+print(num)
 parts[num].CanCollide = false
