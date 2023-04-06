@@ -613,8 +613,43 @@ math.floor() --내림
 
 
 
-local array = {123, "string", true}
+local array = {123, "string", true,
+	workspace.Baseplate.BrickColor
+}
 
+array[2] = nil
 print(#array)
 table.insert(array, 2, 4355)
 table.insert(array, 5555)
+table.remove(array, 2)
+
+
+--배열 안에 배열
+local array = {1234}
+local array2 = {array}
+print(array2[1][1])
+
+
+--배열 안에 함수
+local array = {function()
+	print("aaaaa")
+end}
+array[1]()
+
+
+--배열 안에 수를 랜덤하게
+local array = {1234, "string", true}
+print(array[math.random(1, #array)])
+
+
+--배열 안에 수를 하나씩 꺼내기
+local array = {1234, "string", true}
+for i =1, #array do
+	array[i]
+end
+
+-- 3개의 part 중 하나의 CanCollide 를 랜덤하게 Off
+local model = script.Parent
+local parts = {model.Part1, model.Part2, model.Part3}
+local num = math.random(1,3)
+parts[num].CanCollide = false
