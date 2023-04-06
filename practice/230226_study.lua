@@ -612,5 +612,9 @@ math.ceil() --올림
 math.floor() --내림
 
 
+
 local array = {123, "string", true}
-print(array[2])
+
+print(#array)
+table.insert(array, 2, 4355)
+table.insert(array, 5555)
