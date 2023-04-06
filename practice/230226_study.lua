@@ -651,6 +651,9 @@ end
 -- 3개의 part 중 하나의 CanCollide 를 랜덤하게 Off
 local model = script.Parent
 local parts = {model.Part1, model.Part2, model.Part3}
+parts[1].CanCollide = false
+parts[2].CanCollide = false
+parts[3].CanCollide = false
 local num = math.random(1,3)
 print(num)
-parts[num].CanCollide = false
+parts[num].CanCollide = true
