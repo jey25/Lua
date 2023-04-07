@@ -618,23 +618,23 @@ local array = {123, "string", true,
 }
 
 array[2] = nil
-print(#array)
-table.insert(array, 2, 4355)
-table.insert(array, 5555)
-table.remove(array, 2)
+print(#array) --배열의 갯수
+table.insert(array, 2, 4355) -- 배열의 특정 위치에 값을 넣는다
+table.insert(array, 5555) -- 배열의 끝에 값을 넣는다
+table.remove(array, 2) -- 배열의 특정 위치의 값을 지운다
 
 
 --배열 안에 배열
 local array = {1234}
 local array2 = {array}
-print(array2[1][1])
+print(array2[1][1]) --1234 출력
 
 
 --배열 안에 함수
 local array = {function()
 	print("aaaaa")
 end}
-array[1]()
+array[1]()  -- 배열 안에 들어있는 첫번째 함수 실행
 
 
 --배열 안에 수를 랜덤하게
@@ -658,3 +658,22 @@ local num = math.random(1,3)
 print(num)
 parts[num].CanCollide = true
 
+local model = script.Parent
+local parts = model:GetChildren() -- 모델 안의 모든 것을 배열에 넣어줌
+local parts = model:GetDescendants() -- 모델 안의 2중으로 넣어진 오브젝트까지 찾아서 배열에 넣어줌
+local parts = game.Players:GetPlayers()
+
+-- 배열 안에서 파트만 찾아서 캔 콜라이더를 꺼준다
+for i=1, #parts do
+	if parts[i]:IsA("BasePart") then
+		parts[i].CanCollide = false
+	end
+end
+
+-- parts[i] 가 아닌 ipairs 를 통해 v 로 간단하게 표현 (자주 쓴다)
+for i, v in ipairs(parts) do
+	if v:IsA("BasePart") then
+		v.CanCollide = false
+		v.BrickColor = BrickColor.Random()
+	end
+end
