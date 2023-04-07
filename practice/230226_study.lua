@@ -657,3 +657,4 @@ parts[3].CanCollide = false
 local num = math.random(1,3)
 print(num)
 parts[num].CanCollide = true
+
