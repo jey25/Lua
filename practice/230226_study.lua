@@ -695,3 +695,24 @@ script.Parent.Touched:Connect(function(hit)
 		end
 	end
 end)
+
+
+
+local dictionary = {
+	aaa = "red",
+	bb  = "blue",
+	c = "green",
+}
+
+local array = {"red", "blue", "green"}
+
+
+local mixed = {"red", "blue", "green",
+	aaa = "red",
+	bb = "blue",
+	c = "green",
+}
+
+for i, v in pairs(mixed) do
+	print(i, v)
+end
