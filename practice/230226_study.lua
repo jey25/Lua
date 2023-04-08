@@ -677,3 +677,21 @@ for i, v in ipairs(parts) do
 		v.BrickColor = BrickColor.Random()
 	end
 end
+
+
+local players = game.Players
+
+script.Parent.Touched:Connect(function(hit)
+	local character = hit.Parent
+	local plr = players:GetPlayerFromCharacter(character)
+	if plr then
+		for i, v in ipairs(players:GetPlayers())do
+			if v.Character then
+				local humanoid = v.Character:FindFirstChild("Humanoid")
+				if humanoid then
+					humanoid.Health = 0
+				end
+			end
+		end
+	end
+end)
