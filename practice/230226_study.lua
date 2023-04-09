@@ -722,6 +722,7 @@ local numValue = workspace.Num
 numValue.Value = 19
 
 
+-- NPC 의 Head 가 나를 계속 바라보게 만든다
 local npcHead = workspace:WaitForChild("Head")
 local MyHead = script.Parent:WaitForChild("Head")
 
