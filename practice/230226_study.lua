@@ -720,3 +720,11 @@ end
 
 local numValue = workspace.Num
 numValue.Value = 19
+
+
+local npcHead = workspace:WaitForChild("Head")
+local MyHead = script.Parent:WaitForChild("Head")
+
+while wait() do
+	npcHead.CFrame = CFrame.lookAt(npcHead.Position, MyHead.Position)	
+end
