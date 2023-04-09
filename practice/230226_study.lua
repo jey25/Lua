@@ -716,3 +716,7 @@ local mixed = {"red", "blue", "green",
 for i, v in pairs(mixed) do
 	print(i, v)
 end
+
+
+local numValue = workspace.Num
+numValue.Value = 19
