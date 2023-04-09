@@ -729,3 +729,13 @@ local MyHead = script.Parent:WaitForChild("Head")
 while wait() do
 	npcHead.CFrame = CFrame.lookAt(npcHead.Position, MyHead.Position)	
 end
+
+
+
+local RunService = game:GetService("RunService")
+
+function update()
+	
+end
+
+RunService.RenderStepped:Connect(update)
