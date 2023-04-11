@@ -730,6 +730,7 @@ while wait() do
 	npcHead.CFrame = CFrame.lookAt(npcHead.Position, MyHead.Position)	
 end
 
+
 local RunService = game:GetService("RunService")
 
 function update()
