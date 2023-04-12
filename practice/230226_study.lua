@@ -738,3 +738,18 @@ function update()
 end
 
 RunService.RenderStepped:Connect(update)
+
+
+--  중급 복습
+
+-- 쿨타임 주기
+
+local Enabled = true
+if humanoid and Enabled then
+	Enabled = false
+	humanoid.Health -= 5
+	wait(1)
+	Enabled = true
+end
+
+
