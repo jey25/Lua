@@ -752,4 +752,24 @@ if humanoid and Enabled then
 	Enabled = true
 end
 
+--로컬 플레이어 구하기
+local localPlayer = game.Players.LocalPlayer
 
+--접속한 플레이어
+game.Players.PlayerAdded:Connect(function(plr)
+	
+end)
+
+--버튼을 클릭한 플레이어
+local part = workspace.Baseplate
+part.ClickDetector.MouseClick:Connect(function(plr)
+	
+end)
+
+
+--파트를 밟은 플레이어
+--플레이어가 안밟으면 
+local part = workspace.Baseplate
+part.Touched:Connect(function(hit)
+	local plr = game.Players:GetPlayerFromCharacter(hit.Parent)
+end)
