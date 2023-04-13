@@ -773,3 +773,9 @@ local part = workspace.Baseplate
 part.Touched:Connect(function(hit)
 	local plr = game.Players:GetPlayerFromCharacter(hit.Parent)
 end)
+
+-- 모델의 앞에 part 를 하나 만들어 따라다니도록
+local part = Instance.new("Part", workspace)
+while wait() do
+	part.CFrame = script.Parent:GetPivot() * CFrame.new(0,0,-10)
+end
