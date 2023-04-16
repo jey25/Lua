@@ -779,3 +779,14 @@ local part = Instance.new("Part", workspace)
 while wait() do
 	part.CFrame = script.Parent:GetPivot() * CFrame.new(0,0,-10)
 end
+
+
+local Player = game.Players.LocalPlayer
+local Char = Player.Character or player.CharacterAdded:Wait()
+script.Parent:WaitForChild("TextLabel").Text = Char:WaitForChild("Humanoid").Health
+
+while wait(0.1) do
+	local HP = ((Char.Humanoid.Health / Char.Humanoid.MaxHealth))
+	script.Parent.Size = UDim2.new(HP, 0,1,0)
+	script.Parent.TextLabel.Text = math.floor(Char.Humanoid.Health).."/"..math.floor
+end
