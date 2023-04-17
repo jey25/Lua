@@ -803,3 +803,9 @@ end)
 
 
 workspace.Part.CFrame = CFrame.new(workspace.Part.CFrame.Position) * CFrame.Angles(math.rad(30),0,0)
+
+local n = math.random(1,5)
+
+if n == 1 or n == 2 then
+	print("40% 확률")
+end
