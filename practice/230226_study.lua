@@ -791,3 +791,14 @@ while wait(0.1) do
 	script.Parent.Size = UDim2.new(HP, 0,1,0)
 	script.Parent.TextLabel.Text = math.floor(Char.Humanoid.Health).."/"..math.floor
 end
+
+
+-- 텔레포트 파트 복습
+local part = script.Parent
+part.Touched:Connect(function(hit)
+	if hit.Parent:FindFirstChild("Humanoid") then
+		hit.Parent:PivotTo(hit.Parent:GetPivot() * CFrame.new(0,0,20))
+	end
+end)
+
+
