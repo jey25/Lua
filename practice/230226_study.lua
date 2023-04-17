@@ -802,3 +802,4 @@ part.Touched:Connect(function(hit)
 end)
 
 
+workspace.Part.CFrame = CFrame.new(workspace.Part.CFrame.Position) * CFrame.Angles(math.rad(30),0,0)
