@@ -810,3 +810,12 @@ local n = math.random(1,5)
 if n == 1 or n == 2 then
 	print("40% 확률")
 end
+
+
+local array = {1234, "string", true}
+print(array[1])
+
+local array = {}
+array[1] = 1234
+array[2] = "String"
+array[3] = true
