@@ -786,6 +786,7 @@ local Char = Player.Character or player.CharacterAdded:Wait()
 script.Parent:WaitForChild("TextLabel").Text = Char:WaitForChild("Humanoid").Health
 
 
+
 while wait(0.1) do
 	local HP = ((Char.Humanoid.Health / Char.Humanoid.MaxHealth))
 	script.Parent.Size = UDim2.new(HP, 0,1,0)
