@@ -828,3 +828,5 @@ parts[3] .CanCollide = false
 
 local num = math.random(1,3)
 parts[num].CanCollide = true
+
+model:GetChildren()
