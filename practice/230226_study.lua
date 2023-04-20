@@ -859,3 +859,11 @@ function update()
 end
 
 RunService.RenderStepped:Connect(update)
+
+
+local part = Instance.new("Part", workspace)
+
+local RunService = game:GetService("RunService")
+RunService.RenderStepped:Connect(function(step)
+	part.CFrame = script.Parent:GetPivot() * CFrame.new(0,0, -10)
+end)
