@@ -887,3 +887,14 @@ function update(step)
 end
 
 RunService.RenderStepped:Connect(update)
+
+
+local part = Instance.new("Part", workspace)
+
+part.Anchored = true
+part.CanCollide = false
+
+local RunService = game:GetService("RunService")
+RunService.RenderStepped:Connect(function(step)
+	part.CFrame = CFrame.new((script.Parent:GetPivot() * CFrame.new(0,0, -10)).Position) * (part.CFrame * CFrame.Angles(0, math.rad(180) * step, 0)).Rotation 
+end)
