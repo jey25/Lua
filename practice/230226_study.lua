@@ -861,9 +861,12 @@ end
 RunService.RenderStepped:Connect(update)
 
 
+-- 흔들리지 않는 편안함
 local part = Instance.new("Part", workspace)
 
 local RunService = game:GetService("RunService")
 RunService.RenderStepped:Connect(function(step)
 	part.CFrame = script.Parent:GetPivot() * CFrame.new(0,0, -10)
 end)
+
+
