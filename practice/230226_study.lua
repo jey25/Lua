@@ -877,3 +877,13 @@ function update(step)
 end
 
 RunService.RenderStepped:Connect(update)
+
+-- 로컬 스크립트로 worlspace 의 파트를 회전
+local part = workspace:WaitForChild("Part")
+local RunService = game:GetService("RunService")
+
+function update(step)
+	part.CFrame *= CFrame.Angles(0, math.rad(180) * step, 0)
+end
+
+RunService.RenderStepped:Connect(update)
