@@ -870,3 +870,10 @@ RunService.RenderStepped:Connect(function(step)
 end)
 
 
+local RunService = game:GetService("RunService")
+
+function update(step)
+	script.Parent.Rotation += 60 * step
+end
+
+RunService.RenderStepped:Connect(update)
