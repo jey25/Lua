@@ -848,3 +848,14 @@ for i, v in ipairs(parts) do
 		v.BrickColor = BrickColor.Random()
 	end
 end
+
+
+
+
+local RunService = game:GetService("RunService")
+
+function update()
+	script.Parent.Rotation += 1
+end
+
+RunService.RenderStepped:Connect(update)
