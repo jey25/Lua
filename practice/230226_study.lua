@@ -898,3 +898,26 @@ local RunService = game:GetService("RunService")
 RunService.RenderStepped:Connect(function(step)
 	part.CFrame = CFrame.new((script.Parent:GetPivot() * CFrame.new(0,0, -10)).Position) * (part.CFrame * CFrame.Angles(0, math.rad(180) * step, 0)).Rotation 
 end)
+
+
+local part = script.Parent
+
+local isTouched = false
+
+local function fade()
+	if not isTouched then
+		isTouched = true
+		for i = 0, 10, 1 do
+			part.Transparency = i/10
+			wait(0.1)
+		end
+		part.CanCollide = false
+		wait(3)
+		part.CanCollide = true
+		part.Transparency = 0
+		isTouched = false
+	end
+end
+
+part.Touched:Connect(fade)
+
