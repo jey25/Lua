@@ -921,3 +921,49 @@ end
 
 part.Touched:Connect(fade)
 
+
+
+
+local Players = game:GetService("Players")
+
+local function onCharacterAdded(character, player)
+	player:SetAttribute("IsAlive", true)
+	local humanoid = character:WaitForChild("Humanoid")
+	humanoid.Died:Connect(function()
+		local points = player.leaderstats.Points
+		points.Value = 0
+		player:SetAttribute("IsAlive", false)
+	end)
+end
+
+local function onPlayerAdded(player)
+	local leaderstats = Instance.new("Folder")
+	leaderstats.Name = "leaderstats"
+	leaderstats.Parent = player
+	
+	local points = Instance.new("IntValue")
+	points.Name = "Points"
+	points.Value = 0
+	points.Parent = leaderstats
+	
+	player:SetAttribute("IsAlive", false)
+	
+	player.CharacterAdded:Connect(function(character)
+		onCharacterAdded(character, player)
+	end)
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+
+while true do
+	wait(1)
+	local playerlist = Players:GetPlayers()
+	for currentPlayer = 1, #playerlist do
+		local player = playerlist[currentPlayer]
+		--만약 SetAttribute 값 IsAlive 가 True 이면 그때만 포인트를 증가시킨다
+		if player:GetAttribute("IsAlive") then
+			local points = player.leaderstats.Points
+			points.Value = points.Value + 1
+		end
+	end
+end
