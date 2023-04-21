@@ -967,3 +967,35 @@ while true do
 		end
 	end
 end
+
+
+
+local MAX_HEALTH = 100
+local ENABLED_TRANSPARENCY = 0.4
+local DISABLED_TRANSPARENCY = 0.9
+local COOLDOWN = 5
+
+
+local healthPickupFolder = workspace:WaitForChild("HealthPickups")
+local healthPickups = healthPickupFolder:GetChildren()
+
+local function onTouchHealthPickup(hit, v)
+	if v:GetAttribute("Enabled") then
+		local humanoid = hit.Parent:FindFirstChildWhichIsA("Humanoid")
+		if humanoid then
+			humanoid.Health = MAX_HEALTH
+			v.Transparency = DISABLED_TRANSPARENCY
+			v:SetAttribute("Enabled", false)
+			task.wait(COOLDOWN)
+			v.Transparency = ENABLED_TRANSPARENCY
+			v:SetAttribute("Enabled", true)
+		end 
+	end
+end
+
+for i, v in ipairs(healthPickups) do
+	v:SetAttribute("Enabled", true)
+	v.Touched:Connect(function(hit)
+		onTouchHealthPickup(hit, v)
+	end)
+end
