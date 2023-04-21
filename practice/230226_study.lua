@@ -1001,3 +1001,14 @@ for i, v in ipairs(healthPickups) do
 end
 
 
+-- 모듈 스크립트 기본
+local KillPartHandler = {}
+
+function KillPartHandler.KillCharacterFromPart(hit)
+	local humanoid = hit.Parent:FindFirstChild("Humanoid")
+	if humanoid then
+		humanoid.Health = 0
+	end
+end
+
+return KillPartHandler
