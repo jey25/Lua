@@ -1015,3 +1015,11 @@ function KillPartHandler.KillCharacterFromPart(hit)
 end
 
 return KillPartHandler
+
+
+-- 모듈 스크립트를 불러서 쓰기
+local KillPartHandler = require(workspace.KillPartHandler)
+
+script.Parent.Touched:Connect(function(hit)
+	KillPartHandler.KillCharacterFromPart(hit)
+end)
