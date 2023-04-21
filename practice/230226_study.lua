@@ -1004,9 +1004,12 @@ end
 -- 모듈 스크립트 기본
 local KillPartHandler = {}
 
+--kill 파트 기능을 켜고 끌 수 있게 변수를 추가했다
+KillPartHandler.Enabled = true
+
 function KillPartHandler.KillCharacterFromPart(hit)
 	local humanoid = hit.Parent:FindFirstChild("Humanoid")
-	if humanoid then
+	if humanoid and KillPartHandler.Enabled then
 		humanoid.Health = 0
 	end
 end
