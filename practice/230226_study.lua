@@ -1025,3 +1025,17 @@ script.Parent.Touched:Connect(function(hit)
 end)
 
 
+local module = {}
+
+
+local RunService = game:GetService("RunService")
+
+RunService:IsStudio()
+if RunService:IsServer() then
+	--서버
+else
+	--클라이언트
+end
+
+
+return module
