@@ -1039,3 +1039,9 @@ end
 
 
 return module
+
+
+--magnitude 는 두 Vector3 사이의 절대값 거리를 구할 수 있다
+local pos = workspace.red.Position - workspace.blue.Position
+
+print(pos.Magnitude)
