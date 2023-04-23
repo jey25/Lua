@@ -1023,3 +1023,5 @@ local KillPartHandler = require(workspace.KillPartHandler)
 script.Parent.Touched:Connect(function(hit)
 	KillPartHandler.KillCharacterFromPart(hit)
 end)
+
+
