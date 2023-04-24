@@ -125,3 +125,7 @@ end
 
 
 
+print("gogo")
+print(2 + 2 *2 <= 7)
+
+-- Property 에서 Reflectance 가 1이면 브릭컬러가 적용이 안됨
