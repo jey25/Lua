@@ -99,3 +99,27 @@ while true do
 	wait(2.5)
 	lavaControl()	
 end
+
+
+local part = script.Parent
+local targetScale = Vector3.new(1.5, 1, 30) -- 목표 스케일
+local shrinkDuration = 2 -- 줄어들기 애니메이션에 걸리는 시간 (초)
+local expandDuration = 3 -- 늘어나기 애니메이션에 걸리는 시간 (초)
+local waitTime = 1 -- 줄어들고 난 후 대기 시간 (초)
+
+local originalScale = part.Size
+
+while true do
+	-- 첫 번째 Tween: 파트를 일정 길이까지 줄이는 Tween 생성
+	local shrinkTween = game:GetService("TweenService"):Create(part, TweenInfo.new(shrinkDuration, Enum.EasingStyle.Linear), {Size = targetScale})
+	shrinkTween:Play()
+	shrinkTween.Completed:Wait() -- 첫 번째 Tween이 완료될 때까지 대기
+
+	wait(1) -- 일정 시간 대기
+
+	-- 두 번째 Tween: 파트를 원래 크기로 되돌리는 Tween 생성
+	local expandTween = game:GetService("TweenService"):Create(part, TweenInfo.new(expandDuration, Enum.EasingStyle.Linear), {Size = originalScale})
+	expandTween:Play()
+	expandTween.Completed:Wait()
+
+end
