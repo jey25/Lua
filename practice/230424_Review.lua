@@ -21,3 +21,27 @@ while true do
 		end
 	end
 end
+
+local friction = 0.5 -- 마찰력 값을 조절합니다.
+local debounce = false
+
+function onTouched(hit)
+    if debounce then return end
+    debounce = true
+    local humanoid = hit.Parent:FindFirstChild("Humanoid")
+    if humanoid then
+        local floor = workspace.Terrain:FindPartOnRay(Ray.new(hit.Position, Vector3.new(0, -1, 0)), humanoid.Parent)
+        if floor and floor == script.Parent then
+            humanoid.PlatformStand = true
+            wait()
+            humanoid.PlatformStand = false
+            humanoid.Sit = true
+            wait()
+            humanoid.Sit = false
+            humanoid.WalkSpeed = humanoid.WalkSpeed * (1 - friction)
+        end
+    end
+    debounce = false
+end
+
+script.Parent.Touched:Connect(onTouched)
