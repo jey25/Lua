@@ -69,26 +69,33 @@ part.Touched:Connect(function(hit)
 end)
 
 
--- 이동시킬 part를 찾아서 변수에 저장합니다.
-local part = workspace.PartName
+-- 무한이동 킬 파트
 
--- 이동할 위치와 원래 위치를 지정합니다.
-local newPosition = Vector3.new(x, y, z)
-local originalPosition = part.Position
+function lavaControl()
+	local lava = script.Parent
+	-- 이동할 위치와 원래 위치를 지정합니다.
+	local newPosition = Vector3.new(-105, 90.25, 847.75)
+	local originalPosition = lava.Position
 
--- part를 서서히 이동시키는 TweenService 인스턴스를 생성합니다.
--- Duration 은 이동에 걸리는 시간 입력
-local tweenService = game:GetService("TweenService")
-local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local tween = tweenService:Create(part, tweenInfo, {Position = newPosition})
+	-- part를 서서히 이동시키는 TweenService 인스턴스를 생성합니다.
+	-- Duration 은 이동에 걸리는 시간 입력
+	local tweenService = game:GetService("TweenService")
+	local tweenInfo = TweenInfo.new(3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local tween = tweenService:Create(lava, tweenInfo, {Position = newPosition})
 
--- part를 서서히 이동시키는 Tween을 시작합니다.
-tween:Play()
+	-- part가 이동한 후, 다시 원래 위치로 서서히 돌아오는 TweenService 인스턴스를 생성합니다.
+	local returnTweenInfo = TweenInfo.new(3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local returnTween = tweenService:Create(lava, returnTweenInfo, {Position = originalPosition})
 
--- part가 이동한 후, 다시 원래 위치로 서서히 돌아오는 TweenService 인스턴스를 생성합니다.
-local returnTweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local returnTween = tweenService:Create(part, returnTweenInfo, {Position = originalPosition})
+	-- part를 서서히 이동시키는 Tween을 시작합니다.
+	tween:Play()
 
--- part가 이동한 후, 다시 원래 위치로 서서히 돌아오는 Tween을 시작합니다.
-wait(duration) -- part가 이동하는 동안 대기합니다.
-returnTween:Play()
+	wait(3) -- part가 이동하는 동안 대기합니다.
+	returnTween:Play()
+	
+end
+
+while true do
+	wait(2.5)
+	lavaControl()	
+end
