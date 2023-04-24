@@ -45,3 +45,26 @@ function onTouched(hit)
 end
 
 script.Parent.Touched:Connect(onTouched)
+
+
+-- Part 에 닿은 것이 Humanoid 일 때만 블럭이 3초간 사라짐
+
+local part = script.Parent
+
+local isTouched = false
+
+part.Touched:Connect(function(hit)
+	local humanoid = hit.Parent:FindFirstChild("Humanoid")
+	if not isTouched and humanoid then
+		isTouched = true
+		for i = 0, 10, 1 do
+			part.Transparency = i/10
+			wait(0.1)
+		end
+		part.CanCollide = false
+		wait(3)
+		part.CanCollide = true
+		part.Transparency = 0
+		isTouched = false
+	end
+end)
