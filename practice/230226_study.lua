@@ -820,15 +820,6 @@ array[1] = 1234
 array[2] = "String"
 array[3] = true
 
-local model = script.Parent
-local parts = {model.Part1, model.Part2, model.Part3}
-parts[1] .CanCollide = false
-parts[2] .CanCollide = false
-parts[3] .CanCollide = false
-
-local num = math.random(1,3)
-parts[num].CanCollide = true
-
 
 local RunService = game:GetService("RunService")
 
@@ -879,7 +870,6 @@ end)
 
 
 local part = script.Parent
-
 local isTouched = false
 
 local function fade()
@@ -945,7 +935,6 @@ while true do
 		end
 	end
 end
-
 
 
 local MAX_HEALTH = 100
