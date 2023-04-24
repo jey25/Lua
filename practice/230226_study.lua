@@ -830,28 +830,6 @@ local num = math.random(1,3)
 parts[num].CanCollide = true
 
 
-
-model:GetChildren()
-
-local model = script.Parent
-local parts = model:GetChildren()
-
-for i=1, #parts do
-	if parts[i]:IsA("BasePart") == then
-		parts[i].CanCollide = false
-	end
-end
-
-for i, v in ipairs(parts) do
-	if v:IsA("BasePart") then
-		v.CanCollide = false
-		v.BrickColor = BrickColor.Random()
-	end
-end
-
-
-
-
 local RunService = game:GetService("RunService")
 
 function update()
@@ -1045,3 +1023,4 @@ return module
 local pos = workspace.red.Position - workspace.blue.Position
 
 print(pos.Magnitude)
+
