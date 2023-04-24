@@ -50,7 +50,6 @@ script.Parent.Touched:Connect(onTouched)
 -- Part 에 닿은 것이 Humanoid 일 때만 블럭이 3초간 사라짐
 
 local part = script.Parent
-
 local isTouched = false
 
 part.Touched:Connect(function(hit)
@@ -68,3 +67,18 @@ part.Touched:Connect(function(hit)
 		isTouched = false
 	end
 end)
+
+
+-- 이동시킬 part를 찾아서 변수에 저장합니다.
+local part = workspace.PartName
+
+-- 이동할 위치를 지정합니다.
+local newPosition = Vector3.new(x, y, z)
+
+-- part를 서서히 이동시키는 TweenService 인스턴스를 생성합니다.
+local tweenService = game:GetService("TweenService")
+local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local tween = tweenService:Create(part, tweenInfo, {Position = newPosition})
+
+-- Tween을 시작합니다.
+tween:Play()
