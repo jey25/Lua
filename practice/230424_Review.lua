@@ -121,5 +121,7 @@ while true do
 	local expandTween = game:GetService("TweenService"):Create(part, TweenInfo.new(expandDuration, Enum.EasingStyle.Linear), {Size = originalScale})
 	expandTween:Play()
 	expandTween.Completed:Wait()
-
 end
+
+
+
