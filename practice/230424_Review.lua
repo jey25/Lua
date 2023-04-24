@@ -76,6 +76,7 @@ local part = workspace.PartName
 local newPosition = Vector3.new(x, y, z)
 
 -- part를 서서히 이동시키는 TweenService 인스턴스를 생성합니다.
+-- Duration 은 이동에 걸리는 시간 입력
 local tweenService = game:GetService("TweenService")
 local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local tween = tweenService:Create(part, tweenInfo, {Position = newPosition})
