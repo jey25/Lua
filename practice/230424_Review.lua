@@ -129,3 +129,9 @@ print("gogo")
 print(2 + 2 *2 <= 7)
 
 -- Property 에서 Reflectance 가 1이면 브릭컬러가 적용이 안됨
+
+if workspace.Baseplate == nil then
+	print("Basepart False")
+else
+	print("BasePart True")
+end
