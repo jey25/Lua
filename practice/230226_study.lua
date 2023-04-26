@@ -163,13 +163,14 @@ end
 
 part.Touched:Connect(ChangeColor)
 
+
 local part = workspace:FindFirstChild("touchedtest")
 print(part)
 
-local part = script.Parent
-
 
 --닿은 파트가 humanoid 인 경우에만 part 컬러 변경
+local part = script.Parent
+
 function ChangeColor(hit)
 	local humanoid = hit.Parent:FindFirstChild("Humanoid")
 	if humanoid then
@@ -180,10 +181,10 @@ end
 part.Touched:Connect(ChangeColor)
 
 
-
-local part = workspace:FindFirstChild("touchedtest", true)
+local part = workspace:FindFirstChild("touchTest")
 local part2 = game.ServerStorage:FindFirstChildWhichIsA("BasePart")
 print(part)
+print(part2)
 
 
 local b = 1
