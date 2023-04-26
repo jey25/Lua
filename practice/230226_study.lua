@@ -182,7 +182,7 @@ part.Touched:Connect(ChangeColor)
 
 
 local part = workspace:FindFirstChild("touchedtest", true)
-local pare2 = game.ServerStorage:FindFirstChildWhichIsA("BasePart")
+local part2 = game.ServerStorage:FindFirstChildWhichIsA("BasePart")
 print(part)
 
 
@@ -453,7 +453,7 @@ part.Touched:Connect(function(hit)
 end)
 
 --5초동안 Baseplate 를 기다린다
-lcoal part = workspace:WaitForChild("Baseplate", 5)
+local part = workspace:WaitForChild("Baseplate", 5)
 part.BrickColor = BrickColor.new("Really red")
 
 
@@ -846,7 +846,7 @@ end
 
 RunService.RenderStepped:Connect(update)
 
--- 로컬 스크립트로 worlspace 의 파트를 회전
+-- 로컬 스크립트로 worldspace 의 파트를 회전
 local part = workspace:WaitForChild("Part")
 local RunService = game:GetService("RunService")
 
@@ -887,8 +887,6 @@ local function fade()
 end
 
 part.Touched:Connect(fade)
-
-
 
 
 local Players = game:GetService("Players")
