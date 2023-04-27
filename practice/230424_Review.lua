@@ -135,3 +135,48 @@ else
 end
 
 
+--로컬 스크립트 SHIFT 달리기
+
+local player = game.player.LocalPlayer
+local Player2 = player.Character
+local service = game:GetService("UserInputState")
+
+service.InputBegan:Connect(function(SHIFT)
+	if SHIFT.KeyCode == Enum.KeyCode.LeftShift then
+		Player2.Humanoid.WalkSpeed = 30
+	end
+end)
+
+service.InputEnded:Connect(function (Shift)
+	if Shift.KeyCode == Enum.KeyCode.LeftShift then
+		Player2.Humanoid.WalkSpeed = 16
+	end
+end)
+
+
+-- 2초 뒤 파트 제거
+wait(2)
+local part = script.Parent
+part:Destroy()
+
+--Serversstorage 안에 있는 파트 10개 클론
+for i=1, 10 do
+	local part = game.ServerStorage.Part
+	local clone = part:clone()
+	clone.Parent = workspace
+	clone.BrickColor = BrickColor.Black()
+	wait()
+end
+
+--함수
+local function ClonePart(part, location)
+	local clone = part:Clone()
+	clone.Parent = location
+	return clone
+end
+
+print("test")
+wait(2)
+
+local clone = ClonePart(game.ServerStorage.Part,  workspace)
+clone.BrickColor = BrickColor.Random()
