@@ -103,8 +103,8 @@ end
 
 local part = script.Parent
 local targetScale = Vector3.new(1.5, 1, 30) -- 목표 스케일
-local shrinkDuration = 2 -- 줄어들기 애니메이션에 걸리는 시간 (초)
-local expandDuration = 3 -- 늘어나기 애니메이션에 걸리는 시간 (초)
+local shrinkDuration = 3 -- 줄어들기 애니메이션에 걸리는 시간 (초)
+local expandDuration = 2 -- 늘어나기 애니메이션에 걸리는 시간 (초)
 local waitTime = 1 -- 줄어들고 난 후 대기 시간 (초)
 
 local originalScale = part.Size
@@ -133,3 +133,5 @@ if workspace.Baseplate == nil then
 else
 	print("Baseplate True")
 end
+
+
