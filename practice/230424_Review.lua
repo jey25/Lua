@@ -289,3 +289,58 @@ local trampoline = script.Parent
 --Y Position Velocity 값을 IntValue 값으로 설정
 trampoline.Velocity = Vector3.new(0, trampoline.Configuration.BounceSpeed.Value, 0)
 trampoline.SurfaceGui.Enabled = false
+
+
+--Shift 달리기 LocalScript
+
+------------------------------------------------------------
+-- 달리기
+------------------------------------------------------------
+local UserInput = game:GetService('UserInputService')
+local LocalPlayer = game:GetService("Players").LocalPlayer
+
+
+------------------------------------------------------------
+-- 변수
+------------------------------------------------------------
+local Humanoid = script.Parent:WaitForChild('Humanoid')
+
+local WalkSpeed = 16
+local RunSpeed = 30
+
+
+------------------------------------------------------------
+-- 플레이어 속도 조절
+------------------------------------------------------------
+local function ChangeSpeed(speed)
+	Humanoid.WalkSpeed = speed
+end
+
+
+------------------------------------------------------------
+-- 버튼 입력이 들어올 때.
+------------------------------------------------------------
+UserInput.InputBegan:Connect(function(input, gameProcessed)
+	if not gameProcessed then
+		if input.UserInputType == Enum.UserInputType.Keyboard then
+			if input.KeyCode == Enum.KeyCode.LeftShift then -- 입력한 키가 Shift 라면,
+				ChangeSpeed(RunSpeed)
+			end
+		end
+	end
+end)
+
+
+------------------------------------------------------------
+-- 버튼 입력이 끝날 때.
+------------------------------------------------------------
+UserInput.InputEnded:Connect(function(input, gameProcessed)
+	if not gameProcessed then
+		if input.UserInputType == Enum.UserInputType.Keyboard then
+			if input.KeyCode == Enum.KeyCode.LeftShift then -- 입력한 키가 Shift 라면,
+				ChangeSpeed(WalkSpeed)
+			end
+		end
+	end
+end)
+

@@ -581,11 +581,16 @@ while true do
 	end
 end
 
--- 텔레포트 파트
+-- 텔레포트 파트, Enabled 변수로 1초에 1회만 동작
 local part = script.Parent
-part.Touched:Connect(function (hit)
-	if hit.Parent:FindFirstChild("Humanoid") then
-		hit.Parent:PivotTo(hit.Parent:GetPivot() * CFrame.new(0,0,20))
+local Enabled = true
+
+part.Touched:Connect(function(hit)
+	if hit.Parent:FindFirstChild("Humanoid") and Enabled == true then
+		Enabled = false
+		hit.Parent:PivotTo(hit.Parent:GetPivot() * CFrame.new(0,0,-40))
+		wait(1)
+		Enabled = true
 	end
 end)
 
