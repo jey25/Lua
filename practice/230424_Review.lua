@@ -351,5 +351,27 @@ end)
 
 
 
+-- 위아래 움직이는 파트
+local model = script.Parent
+local pc = model.part.PrismaticConstraint
+
+while true do
+	if math.ceil((model.part.Position-model.anchor.Position).Magnitude) >= math.abs(pc.TargetPosition) then
+		pc.TargetPosition = -pc.TargetPosition
+        wait(1)
+    end
+    wait()
+end
 
 
+-- 좌우 움직이는 파트
+local model = script.Parent
+local pc = model.part.PrismaticConstraint
+
+while true do
+	if math.ceil((model.part.Position-model.anchor.Position).Magnitude) >= math.abs(pc.TargetPosition) then
+		pc.TargetPosition = -pc.TargetPosition
+        wait(1)
+    end
+    wait()
+end
