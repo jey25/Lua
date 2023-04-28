@@ -180,3 +180,4 @@ wait(2)
 
 local clone = ClonePart(game.ServerStorage.Part,  workspace)
 clone.BrickColor = BrickColor.Random()
+
