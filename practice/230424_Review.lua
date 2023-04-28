@@ -283,4 +283,9 @@ end)
 UpdateLobby()
 
 
+--점프 파트
+local trampoline = script.Parent
 
+--Y Position Velocity 값을 IntValue 값으로 설정
+trampoline.Velocity = Vector3.new(0, trampoline.Configuration.BounceSpeed.Value, 0)
+trampoline.SurfaceGui.Enabled = false
