@@ -375,3 +375,17 @@ while true do
     end
     wait()
 end
+
+
+-- 접속한 플레이어의 이름을 텍스트로 표현
+-- workspace 에 part - surfaceGui - Textlabel 생성
+-- starterPlayerScript > LocalScript
+
+local namePart = workspace:WaitForChild("namePart")
+local surfaceGui = namePart:WaitForChild("SurfaceGui")
+local textLabel = surfaceGui:WaitForChild("TextLabel")
+
+local player = game.Players.LocalPlayer
+local name = player.Name
+
+textLabel.Text = name.."Hi"
