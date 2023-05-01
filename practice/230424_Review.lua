@@ -389,3 +389,7 @@ local player = game.Players.LocalPlayer
 local name = player.Name
 
 textLabel.Text = name.."Hi"
+
+
+-- 파트를 이동시키며 회전까지 시킴
+workspace.Part.CFrame = CFrame.new(5,5,5) * CFrame.Angles(1,1,1)
