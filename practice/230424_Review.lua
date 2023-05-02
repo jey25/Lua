@@ -296,6 +296,7 @@ trampoline.Velocity = Vector3.new(0, trampoline.Configuration.BounceSpeed.Value,
 trampoline.SurfaceGui.Enabled = false
 
 
+
 --Shift 달리기 LocalScript
 
 ------------------------------------------------------------
