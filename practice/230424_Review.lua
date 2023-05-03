@@ -398,5 +398,27 @@ workspace.Part.CFrame = workspace.Part.CFrame * CFrame.Angles(math.rad(30), 0, 0
 
 
 
+-- 고급
+
+-- GUIService 하위의 image 에 Localscript 로 이미지 회전
+local runService = game:GetService("RunService")
+
+function update(step)
+	script.Parent.Rotation += step * 60
+end
+
+runService.RenderStepped:Connect(update)
+
+
+--localscript 로 RenderStepped 사용하여 파트 회전
+local part = workspace:WaitForChild("rotate")
+local runSerivce = game:GetService("RunService")
+
+function update(step)
+	part.CFrame *= CFrame.Angles(0,math.rad(180)*step ,0)
+end
+
+runSerivce.RenderStepped:Connect(update)
+
 
 
