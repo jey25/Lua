@@ -422,3 +422,26 @@ runSerivce.RenderStepped:Connect(update)
 
 
 
+--모듈 스크립트 기초 , 킬파트
+
+local killpart = {}
+
+killpart.Enabled = true
+
+function killpart.kill(hit)
+	local humanoid = hit.parent:FindFirstChild("Humanoid")
+	if humanoid and killpart.Enabled then
+		humanoid.Health = 0
+	end
+end
+
+return killpart
+
+
+local killpart = require(workspace.killpart)
+
+script.Parent.Touched:Connect(function(hit)
+	killpart.kill(hit)
+end)
+
+
