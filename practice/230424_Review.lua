@@ -445,3 +445,12 @@ script.Parent.Touched:Connect(function(hit)
 end)
 
 
+--Module Script 에 함수가 하나 있을 때 함수 이름 자체가 모듈 스크립트가 되는 경우
+function killpart(hit)
+	local humanoid = hit.parent:FindFirstChild("Humanoid")
+	if humanoid then
+		humanoid.Health = 0
+	end
+end
+
+return killpart
