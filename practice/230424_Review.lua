@@ -477,8 +477,13 @@ end
 --ChangeColor(workspace.Part2)
 --ChangeColor(workspace.Part3)
 
-local c1 = coroutine.create(ChangeColor)
-coroutine.resume(c1, workspace.Part1)
+
+--local c1 = coroutine.create(ChangeColor)
+--coroutine.resume(c1, workspace.Part1)
+
+--wrap 으로 쓰면 create, resume  안써도 됨
+local c3 = coroutine.wrap(ChangeColor)
+c3(workspace.Part1)
 
 local c2 = coroutine.create(ChangeColor)
 coroutine.resume(c2, workspace.Part2)
