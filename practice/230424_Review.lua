@@ -461,3 +461,27 @@ local pos = workspace.part2.Position - workspace.part1.Position
 
 print(pos.Magnitude)
 
+
+
+--coroutine 함수를 사용해 한 script 에서 여러개 코드 동시 실행
+
+local function ChangeColor(part)
+	for i=0, 100 do
+		wait()
+		part.BrickColor = BrickColor.Random()
+	end
+	return part
+end
+
+--ChangeColor(workspace.Part1)
+--ChangeColor(workspace.Part2)
+--ChangeColor(workspace.Part3)
+
+local c1 = coroutine.create(ChangeColor)
+coroutine.resume(c1, workspace.Part1)
+
+local c2 = coroutine.create(ChangeColor)
+coroutine.resume(c2, workspace.Part2)
+
+ChangeColor(workspace.Part3)
+
