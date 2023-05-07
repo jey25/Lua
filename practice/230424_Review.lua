@@ -454,3 +454,9 @@ function killpart(hit)
 end
 
 return killpart
+
+
+--part 간 거리를 구하는 Magnitude
+local pos = workspace.part2.Position - workspace.part1.Position
+
+print(pos.Magnitude)
