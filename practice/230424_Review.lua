@@ -490,3 +490,19 @@ coroutine.resume(c2, workspace.Part2)
 
 ChangeColor(workspace.Part3)
 
+
+--lerp 로 part1 을 redpart, bluepart 사이로 이동시킨다
+-- ServerscriptService 여야만 함
+local redpart = workspace.redpart
+local bluepart = workspace.bluepart
+
+local part1 = workspace.Part1
+
+part1.CFrame = redpart.CFrame:Lerp(bluepart.CFrame, 0.5)
+
+-- bluepart 를 따라다니는 part1 연출
+while wait() do
+	part1.CFrame = part1.CFrame:Lerp(bluepart.CFrame, 0.25)
+end
+
+
