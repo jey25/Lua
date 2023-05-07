@@ -460,3 +460,4 @@ return killpart
 local pos = workspace.part2.Position - workspace.part1.Position
 
 print(pos.Magnitude)
+
