@@ -201,7 +201,6 @@ end)
 
 
 --SwordMan Main Script
-
 --플레이어 인원수가 1명 이하면 대기, 1명 이상이면 10부터 카운트 후 1초가 되면 GameStarted value 값이 1로 변경
 
 GameStarted = game.ReplicatedStorage.GameStarted
@@ -222,12 +221,9 @@ local function UpdateLobby()
 				GameMessage.Value = "게임 시작까지 " .. i .. "초"
 				wait(1)
 			end
-			
 			GameStarted.Value = true
 			return
-				
 		end
-		
 		wait(1)
 	end
 end
@@ -399,7 +395,6 @@ workspace.Part.CFrame = workspace.Part.CFrame * CFrame.Angles(math.rad(30), 0, 0
 
 
 -- 고급
-
 -- GUIService 하위의 image 에 Localscript 로 이미지 회전
 local runService = game:GetService("RunService")
 
