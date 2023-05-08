@@ -506,3 +506,10 @@ while wait() do
 end
 
 
+--string.format 사용방법
+
+itemname = '사과'
+message = "아이템 %s 를 손에 넣었다!"
+
+print(string.format(message, itemname))
+
