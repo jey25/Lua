@@ -504,7 +504,68 @@ end
 --string.format 사용방법
 
 itemname = '사과'
-message = "아이템 %s 를 손에 넣었다!"
+message = "아이템 %s 를 %s 개 손에 넣었다!"
 
-print(string.format(message, itemname))
+print(string.format(message, itemname, 5))
+
+--마지막 글자 구하기
+print(string.sub(message, -3, -1))
+
+--마지막 글자 받침을 조사하고 을, 를 처리
+local function HasBatchim(munja)
+	local lastChar = string.sub(munja, -3,-1)
+	local charCode = utf8.codepoint(lastChar)
+	if charCode < 44032 or charCode > 55203 then 
+		warn(munja.."의"..lastChar..": 완성형 한글이 아님")
+		return nil
+	end
+	if (charCode - 44032) % 28 == 0 then
+		return false
+	else
+		return true
+	end
+end
+
+local function josa(munja)
+	if HasBatchim(munja) then
+		return "을"
+	else 
+		return "를"
+	end
+end
+
+function ShowMessage(itemName)
+	local message = "%s%s 손에 넣었다!"
+	print( string.format(message, itemName, josa(itemName)) )
+end
+
+ShowMessage("사화")
+ShowMessage("귤귤")
+ShowMessage("asdasdqㅂㅈ오면왐농ㄴㅇㅇㅇ")
+
+
+
+local number = 3.999999
+local itemName = "배"
+local  s = `{itemName} {number}개를 먹었습니다`
+
+local a= string.format("사과 %.2f개를 먹었습니다", number)
+print(a)
+
+
+--15부터 카운트 감소 , 10초 이하부터 소수점 두자리수 표현
+
+local timeLeft = 15
+while timeLeft > 0 do
+	local step = task.wait()
+	timeLeft -= step
+	
+	local t
+	if timeLeft >= 10 then
+		t = string.format("%i%%", timeLeft)
+	else
+		t = string.format("%.2f%%", timeLeft)
+	end
+	script.Parent.Text = `{t} 남았습니다` 
+end
 
