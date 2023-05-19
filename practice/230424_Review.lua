@@ -747,5 +747,36 @@ end
 ball.Touched:Connect(onTouched)
 
 
+-- 하늘에서 떨어지는 ball 컬러별 점수 설정
+local function createBall()
+	local ball = game.Workspace.Ball.Ball:Clone()
+	ball.Position = Vector3.new(math.random(-100, 100), 400, math.random(-100, 100))
+	ball.Anchored = false
+	
+	local score = Instance.new("IntValue")
+	score.Name = "Score"
+	score.Parent = ball	
+	
+	local lot = math.random(0, 105)
+	
+	if (lot < 50) then
+		ball.Score.Value = -10
+		ball.BrickColor = BrickColor.DarkGray()
+		
+	elseif (lot < 100) then
+		ball.Score.Value = 10
+		ball.BrickColor = BrickColor.Blue()
+
+	else
+		ball.Score.Value = 100
+		ball.BrickColor = BrickColor.Red()
+		
+	end
+	ball.Parent = game.Workspace.Ball
+end
 
 
+while true  do	
+	createBall()
+	wait(0.5)
+end
