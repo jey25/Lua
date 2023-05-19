@@ -731,15 +731,18 @@ local Enabled = true
 
 local function onTouched(object)
 	ball.BrickColor = BrickColor.Random()
-	
+
 	local player = game.Players:GetPlayerFromCharacter(object.Parent)
+	
 	if player and Enabled then
 		--print("score up")
 		Enabled = false
 		player.leaderstats.score.Value = player.leaderstats.score.Value + 100
+		-- 점수가 한번에 오르는 것을 방지하기 위해 1초 후 다시 실행되게끔 적용
+		wait(1)
+		Enabled = true
 	end
-	wait(1)
-	Enabled = true
 end
 
 ball.Touched:Connect(onTouched)
+
