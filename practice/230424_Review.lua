@@ -780,3 +780,24 @@ while true  do
 	createBall()
 	wait(0.5)
 end
+
+
+--공에 캐릭터가 닿았을 시 공은 사라지고 캐릭터 체력이 변화함
+local ball = script.Parent
+
+local function onTouched(object)
+	
+	local player = game.Players:GetPlayerFromCharacter(object.Parent)
+	
+	if player then
+		
+		player.leaderstats.HP.Value = player.leaderstats.HP.Value + ball.Score.Value
+		ball:Destroy()
+		
+		if player.leaderstats.HP.Value <= 0 then
+			player.Character.Humanoid.Health = 0
+		end
+	end
+end
+
+ball.Touched:Connect(onTouched)
