@@ -801,3 +801,17 @@ local function onTouched(object)
 end
 
 ball.Touched:Connect(onTouched)
+
+
+--remoteEvent 테스트
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local remoteTest = replicatedStorage:WaitForChild("RemoteTest")
+
+local function onCreatepart(player, partcolor, partPos)
+	local newPart = Instance.new("Part")
+	newPart.BrickColor = partcolor
+	newPart.Position = partPos
+	newPart.Parent = workspace
+end
+
+remoteTest.OnServerEvent:Connect(onCreatepart)
