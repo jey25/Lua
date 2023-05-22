@@ -569,7 +569,9 @@ while timeLeft > 0 do
 	script.Parent.Text = `{t} 남았습니다` 
 end
 
-<<<<<<< HEAD
+
+
+
 -- 토네이도 스크립트 
 local rs = game:GetService("RunService")
 
@@ -722,22 +724,166 @@ end
 
 
 --공에 닿았을 때 스코어 증가
+
 local ball = script.Parent
 local Enabled = true
 
 
 local function onTouched(object)
 	ball.BrickColor = BrickColor.Random()
-	
+
 	local player = game.Players:GetPlayerFromCharacter(object.Parent)
+	
 	if player and Enabled then
 		--print("score up")
 		Enabled = false
 		player.leaderstats.score.Value = player.leaderstats.score.Value + 100
+		-- 점수가 한번에 오르는 것을 방지하기 위해 1초 후 다시 실행되게끔 적용
+		wait(1)
+		Enabled = true
 	end
-	wait(1)
-	Enabled = true
 end
 
 ball.Touched:Connect(onTouched)
+
+
+-- 하늘에서 떨어지는 ball 컬러별 점수 설정
+local function createBall()
+	local ball = game.Workspace.Ball.Ball:Clone()
+	ball.Position = Vector3.new(math.random(-100, 100), 400, math.random(-100, 100))
+	ball.Anchored = false
+	
+	local score = Instance.new("IntValue")
+	score.Name = "Score"
+	score.Parent = ball	
+	
+	local lot = math.random(0, 105)
+	
+	if (lot < 50) then
+		ball.Score.Value = -10
+		ball.BrickColor = BrickColor.DarkGray()
+		
+	elseif (lot < 100) then
+		ball.Score.Value = 10
+		ball.BrickColor = BrickColor.Blue()
+
+	else
+		ball.Score.Value = 100
+		ball.BrickColor = BrickColor.Red()
+		
+	end
+	ball.Parent = game.Workspace.Ball
+end
+
+
+while true  do	
+	createBall()
+	wait(0.5)
+end
+
+
+--공에 캐릭터가 닿았을 시 공은 사라지고 캐릭터 체력이 변화함
+local ball = script.Parent
+
+local function onTouched(object)
+	
+	local player = game.Players:GetPlayerFromCharacter(object.Parent)
+	
+	if player then
+		
+		player.leaderstats.HP.Value = player.leaderstats.HP.Value + ball.Score.Value
+		ball:Destroy()
+		
+		if player.leaderstats.HP.Value <= 0 then
+			player.Character.Humanoid.Health = 0
+		end
+	end
+end
+
+ball.Touched:Connect(onTouched)
+
+
+--remoteEvent 테스트
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local remoteTest = replicatedStorage:WaitForChild("RemoteTest")
+
+local function onCreatepart(player, partcolor, partPos)
+	local newPart = Instance.new("Part")
+	newPart.BrickColor = partcolor
+	newPart.Position = partPos
+	newPart.Parent = workspace
+end
+
+remoteTest.OnServerEvent:Connect(onCreatepart)
+
+
+--서버에 데이터 저장하기 예제
+local dataStoreService = game:GetService("DataStoreService")
+local playerDataStore = dataStoreService:GetDataStore("PlayerDataStore")
+
+
+local function onPlayerjoin(player)
+	local leaderstats = Instance.new("Folder")
+	leaderstats.Name = "leaderstats"
+	leaderstats.Parent = player
+	
+	local hp = Instance.new("IntValue")
+	hp.Name = "HP"
+	hp.Value = 100
+	hp.Parent = leaderstats
+	
+	local cash = Instance.new("IntValue")
+	cash.Name = "Cash"
+	cash.Value = 0
+	cash.Parent = leaderstats
+	
+	local l_score
+	local success, errMsg = pcall(function()
+		l_score = playerDataStore:GetAsync(player.UserId)
+	end)
+	
+	if success then
+		cash.Value = l_score
+	else
+		warn("Failed to read score:"..errMsg)
+	end
+end
+
+game.Players.PlayerAdded:Connect(onPlayerjoin)
+
+
+game.Players.PlayerRemoving:Connect(function(player)
+	
+	local success, errMsg = pcall(function()
+		playerDataStore:SetAsync(player.UserId, player.leaderstats.Cash.Value)
+	end)
+	
+	if success then
+		print("Success to save score")
+	else
+		warn("Failed to read score:"..errMsg)
+	end
+	
+end)
+
+
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local remoteTest = replicatedStorage:WaitForChild("RemoteTest")
+
+local function onCreatepart(player, partcolor, partPos)
+	local newPart = Instance.new("Part")
+	newPart.BrickColor = partcolor
+	newPart.Position = partPos
+	newPart.Parent = workspace
+	
+	newPart.Touched:Connect(function(hit)
+		local player = hit.Parent:FindFirstChild("Humanoid")
+		if player then
+			player.Health -= 5
+		end
+	end)	
+	
+end
+
+remoteTest.OnServerEvent:Connect(onCreatepart)
 
