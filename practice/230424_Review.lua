@@ -569,3 +569,175 @@ while timeLeft > 0 do
 	script.Parent.Text = `{t} 남았습니다` 
 end
 
+<<<<<<< HEAD
+-- 토네이도 스크립트 
+local rs = game:GetService("RunService")
+
+local model = script.Parent
+local mMain = require(model.ModuleScript)
+local bridge = model.Bridge
+
+local distance = 80
+local damage = .25
+
+rs.Heartbeat:Connect(function()
+	--mMain:TargetFolder(workspace.Folder, distance)
+	--mMain:TargetFolder(workspace.Folder2, distance)
+	--mMain:TargetChar(distance)
+	--mMain:TargetPlayer(distance)
+end)
+
+bridge.TargetFolder.Event:Connect(function(part)
+	-- todo
+end)
+bridge.TargetChar.Event:Connect(function(char)
+	-- todo
+end)
+
+bridge.TargetPlayer.Event:Connect(function(char)
+	-- todo
+end)
+
+
+--토네이도 모듈 스크립트 
+
+local model = script.Parent
+local core = model.Core
+
+local mGrivity = require(script.Gravity)
+local bridge = model.Bridge
+
+local module = {}
+
+function module:TargetFolder(folder, distance)
+	for i, v in pairs(workspace:GetDescendants()) do
+		if v:IsDescendantOf(folder) then
+			if mGrivity:InPart(v, core, distance) then
+				mGrivity:Pull(v, core)
+				bridge.TargetFolder:Fire(v)	
+			end
+		end
+	end
+end
+
+function module:TargetChar(distance)
+	for i, v in pairs(workspace:GetDescendants()) do
+		local char = v.Parent
+		if char:FindFirstChild("Humanoid") then
+			if mGrivity:InPart(v, core, distance) then
+				mGrivity:Pull(v, core)
+				bridge.TargetChar:Fire(char)				
+			end
+		end
+	end
+end
+
+function module:TargetPlayer(distance)
+	for i, v in pairs(workspace:GetDescendants()) do
+		local char =  v.Parent
+		if game.Players:GetPlayerFromCharacter(char) then
+			if mGrivity:InPart(v, core, distance) then
+				mGrivity:Pull(v, core)
+				bridge.TargetPlayer:Fire(char)	
+			end
+		end
+	end
+end
+
+return module
+
+
+--StarterplayerScript > Localscript 로 캐릭터 컨트롤 On/off 조작
+
+local players = game:GetService("Players")
+local player = players.LocalPlayer
+local module = require(player:WaitForChild("PlayerScripts").PlayerModule)
+local control = module:GetControls()
+
+--control:Disable() -- 컨트롤 권한 끄기
+--control:Enable() -- 컨트롤 권한 켜기
+
+
+--캐릭터 앵커
+local players = game:GetService("Players")
+local player = players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+if not character.PrimaryPart then
+	character:GetPropertyChangedSignal("PrimaryPart"):Wait()
+end
+
+character.PrimaryPart.Anchored = true 
+
+
+--점수판 (leaderboard) 만들기 > serverscriptservice
+
+local function onPlayerjoin(player)
+	local leaderstats = Instance.new("Folder")
+	leaderstats.Name = "leaderstats"
+	leaderstats.Parent = player
+	
+	local score = Instance.new("IntValue")
+	score.Name = "score"
+	score.Value = 5
+	score.Parent = leaderstats
+	
+	local hp = Instance.new("IntValue")
+	hp.Name = "HP"
+	hp.Value = 100
+	hp.Parent = leaderstats
+	
+	wait(5)
+	player.leaderstats.score.Value = player.leaderstats.score.Value + 5
+	
+end
+
+game.Players.PlayerAdded:Connect(onPlayerjoin)
+
+
+-- rainBall
+local ball = script.Parent
+
+wait(1)
+
+local ball2 = ball:Clone()
+ball2.BrickColor = BrickColor.Random()
+ball2.Position = Vector3.new(math.random(-100, 100), 400, math.random(-100, 100))
+ball2.Parent = ball.Parent
+
+
+--createBall
+
+local function createBall()
+	local ball = Instance.new("Part", workspace)
+	ball.Shape = "Ball"
+	ball.Position = Vector3.new(math.random(-100, 100), 400, math.random(-100, 100))
+	ball.BrickColor = BrickColor.Random()
+end
+
+while true  do	
+	createBall()
+	wait(0.5)
+end
+
+
+--공에 닿았을 때 스코어 증가
+local ball = script.Parent
+local Enabled = true
+
+
+local function onTouched(object)
+	ball.BrickColor = BrickColor.Random()
+	
+	local player = game.Players:GetPlayerFromCharacter(object.Parent)
+	if player and Enabled then
+		--print("score up")
+		Enabled = false
+		player.leaderstats.score.Value = player.leaderstats.score.Value + 100
+	end
+	wait(1)
+	Enabled = true
+end
+
+ball.Touched:Connect(onTouched)
+
