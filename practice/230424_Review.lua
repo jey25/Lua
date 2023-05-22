@@ -816,3 +816,74 @@ end
 
 remoteTest.OnServerEvent:Connect(onCreatepart)
 
+
+--서버에 데이터 저장하기 예제
+local dataStoreService = game:GetService("DataStoreService")
+local playerDataStore = dataStoreService:GetDataStore("PlayerDataStore")
+
+
+local function onPlayerjoin(player)
+	local leaderstats = Instance.new("Folder")
+	leaderstats.Name = "leaderstats"
+	leaderstats.Parent = player
+	
+	local hp = Instance.new("IntValue")
+	hp.Name = "HP"
+	hp.Value = 100
+	hp.Parent = leaderstats
+	
+	local cash = Instance.new("IntValue")
+	cash.Name = "Cash"
+	cash.Value = 0
+	cash.Parent = leaderstats
+	
+	local l_score
+	local success, errMsg = pcall(function()
+		l_score = playerDataStore:GetAsync(player.UserId)
+	end)
+	
+	if success then
+		cash.Value = l_score
+	else
+		warn("Failed to read score:"..errMsg)
+	end
+end
+
+game.Players.PlayerAdded:Connect(onPlayerjoin)
+
+
+game.Players.PlayerRemoving:Connect(function(player)
+	
+	local success, errMsg = pcall(function()
+		playerDataStore:SetAsync(player.UserId, player.leaderstats.Cash.Value)
+	end)
+	
+	if success then
+		print("Success to save score")
+	else
+		warn("Failed to read score:"..errMsg)
+	end
+	
+end)
+
+
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local remoteTest = replicatedStorage:WaitForChild("RemoteTest")
+
+local function onCreatepart(player, partcolor, partPos)
+	local newPart = Instance.new("Part")
+	newPart.BrickColor = partcolor
+	newPart.Position = partPos
+	newPart.Parent = workspace
+	
+	newPart.Touched:Connect(function(hit)
+		local player = hit.Parent:FindFirstChild("Humanoid")
+		if player then
+			player.Health -= 5
+		end
+	end)	
+	
+end
+
+remoteTest.OnServerEvent:Connect(onCreatepart)
+
