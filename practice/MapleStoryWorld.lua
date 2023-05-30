@@ -39,6 +39,7 @@ void RequestBuyItem(integer shopID,integer itemID)
     end 
 }
 
+
 [Client]
 -- 사실 `ResponseBuyItem(integer itemID, string targetUserId = nil)`인 것이지만, UserId는 자동으로 붙기 때문에 생략함
 void ResponseBuyItem(integer itemID)
