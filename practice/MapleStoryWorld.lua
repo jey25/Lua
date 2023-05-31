@@ -15,7 +15,6 @@ elseif isServer == true then
 end
 }
 
-
 [ServerOnly]
 void CallPlaySoundEffect()
 {
