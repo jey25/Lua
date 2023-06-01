@@ -56,3 +56,24 @@ local function onTouched(hit)
 
 part.Touched:Connect(onTouched)
 
+
+-- 2023-06-01
+part.Touched:Wait()
+part.Touched:Connect()
+
+workspace:FindFirstChild("Part")
+-- 캐릭터 찾기
+Pawn?
+
+local part = script.Parent
+
+function changeName(hit)
+	local chr = hit.Parent:FindFirstChild("Pawn")
+	if chr then
+		print("Player")
+		part.Name = "Jang"
+	end	
+end
+
+
+
