@@ -61,6 +61,7 @@ part.Touched:Connect(onTouched)
 part.Touched:Wait()
 part.Touched:Connect()
 
+
 workspace:FindFirstChild("Part")
 -- 캐릭터 찾기
 Pawn?
