@@ -57,6 +57,7 @@ local function onTouched(hit)
 part.Touched:Connect(onTouched)
 
 
+
 -- 2023-06-01
 part.Touched:Wait()
 part.Touched:Connect()
