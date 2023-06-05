@@ -12,3 +12,5 @@ Now you are standing in the arena that you chose to be in, going all in, giving 
 You are already brave.
 You are already a hero.
 That's who you are.
+
+
