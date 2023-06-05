@@ -13,4 +13,15 @@ You are already brave.
 You are already a hero.
 That's who you are.
 
+Day2
 
+Let's reframe fear.
+When was the last time you stopped yourself from doing something bacause you were afraid?
+Let's be honest.
+We all have the fear of not being good enough, so sometimes we don't even bother to try.
+But what if you just choose to believe you are good enough?
+And What if fear means you are heading towards the right direction?
+The sensation you feel in your body is probadly telling you that you are stepping up your game.
+The reason why you are scared is because you were brave enough to put yourself out there.
+AS long as you are doing what's best for you, fear will always be there.
+So instead, let's say. "Come on fear. You are coming along."
