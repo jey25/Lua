@@ -26,3 +26,5 @@ The sensation you feel in your body is probadly telling you that you are steppin
 The reason why you are scared is because you were brave enough to put yourself out there.
 AS long as you are doing what's best for you, fear will always be there.
 So instead, let's say. "Come on fear. You are coming along."
+
+day3
