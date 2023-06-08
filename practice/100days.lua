@@ -27,7 +27,7 @@ The reason why you are scared is because you were brave enough to put yourself o
 AS long as you are doing what's best for you, fear will always be there.
 So instead, let's say. "Come on fear. You are coming along."
 
-day3
+Day3
 
 Do what scared you.
 Do you want to know how to overcome your fears? Just do it scared.
@@ -44,4 +44,3 @@ Then, you will not be scared of that anymore.
 You'll find another thing that makes you scared.
 The more you repeat this process, the more you can create an amazing life.
 
-    
