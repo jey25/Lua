@@ -78,6 +78,16 @@ function changeName(hit)
 end
 
 
+-- GUI Button 
+local button = script.Parent
+
+local function onButtonActivated()
+    print("Button activated!")
+    -- Perform expected button action(s) here
+
+end
+
+button.Activated:Connect(onButtonActivated)
 
 
 
