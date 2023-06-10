@@ -147,3 +147,9 @@ end
 ProximityPromptService.PromptTriggered:Connect(onPromptTriggered)
 ProximityPromptService.PromptButtonHoldBegan:Connect(onPromptHoldBegan)
 ProximityPromptService.PromptButtonHoldEnded:Connect(onPromptHoldEnded)
+
+
+local SoundService = game:GetService("SoundService")
+local backgroundMusic = SoundService.BackgroundMusic
+
+backgroundMusic:Play()
