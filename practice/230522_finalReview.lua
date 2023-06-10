@@ -122,4 +122,25 @@ end
 button.Activated:Connect(onButtonActivated)
 
 
+--proximity Prompt 상호작용
+local ProximityPromptService = game:GetService("ProximityPromptService")
 
+-- Detect when prompt is triggered
+local function onPromptTriggered(promptObject, player)
+
+end
+
+-- Detect when prompt hold begins
+local function onPromptHoldBegan(promptObject, player)
+
+end
+
+-- Detect when prompt hold ends
+local function onPromptHoldEnded(promptObject, player)
+
+end
+
+-- Connect prompt events to handling functions
+ProximityPromptService.PromptTriggered:Connect(onPromptTriggered)
+ProximityPromptService.PromptButtonHoldBegan:Connect(onPromptHoldBegan)
+ProximityPromptService.PromptButtonHoldEnded:Connect(onPromptHoldEnded)
