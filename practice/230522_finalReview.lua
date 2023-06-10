@@ -57,6 +57,7 @@ local function onTouched(hit)
 part.Touched:Connect(onTouched)
 
 
+
 -- 2023-06-01
 part.Touched:Wait()
 part.Touched:Connect()
@@ -107,6 +108,18 @@ BrickColor.Red
 7. 
 
 
+
+
+-- GUI Button 
+local button = script.Parent
+
+local function onButtonActivated()
+    print("Button activated!")
+    -- Perform expected button action(s) here
+
+end
+
+button.Activated:Connect(onButtonActivated)
 
 
 
