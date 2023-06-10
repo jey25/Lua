@@ -76,5 +76,37 @@ function changeName(hit)
 	end	
 end
 
+-- 0603 엔진 테스트
+1. workspace - script - print function - script error
+
+2. print(scritp.Parent) - workspace
+script.Parent.Parent.part
+workspace.part.script
+print(workspace.Parent)
+Services.workspace
+workspace.part.Name - 이름이 겹칠 때 상황 check
+객체의 이름이 규칙에 어긋날 때 상황 - 숫자, 띄어쓰기, 한글, 특수문자
+
+3. script 를 통한 속성 편집
+script.Parent.Name
+script.Parent.Size?
+잘못된 자료형을 입력했을 때의 처리
+
+4. script.Parent.Anchored = true, false
+script.Parent.Material = Enum.Material.Brick
+자동완성 되지 않는 항목들 목록 기록
+
+5. workspace.Camera
+workspace.Terrain
+workspace.PlayerSpawner
+
+6. workspace.part.BrickColor = BrickColor.new("New Yeller")
+BrickColor.Random()
+BrickColor.Red
+
+7. 
+
+
+
 
 
