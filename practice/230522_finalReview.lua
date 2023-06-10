@@ -153,3 +153,24 @@ local SoundService = game:GetService("SoundService")
 local backgroundMusic = SoundService.BackgroundMusic
 
 backgroundMusic:Play()
+
+
+local pickupObjects = game.Workspace.Collectables.Objects
+local objectsArray = pickupObjects:GetChildren()
+
+local function partTouched(otherPart, objectPart)
+    local whichCharacter = otherPart.Parent
+    local humanoid = whichCharacter:FindFirstChildWhichIsA("Humanoid")
+
+    if humanoid and objectPart.CanCollide == true then
+
+    end
+end
+
+-- Binds every object part to the touch function so it works on all parts
+for objectIndex = 1, #objectsArray do
+    local objectPart = objectsArray[objectIndex]
+    objectPart.Touched:Connect(function(otherPart)
+        partTouched(otherPart, objectPart)
+    end)
+end
