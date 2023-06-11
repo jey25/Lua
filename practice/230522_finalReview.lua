@@ -192,3 +192,21 @@ local function onTouch(otherPart)
 end
 
 collisionBox.Touched:Connect(onTouch)
+
+
+local trapObject = script.Parent
+local particleEmitter = trapObject:FindFirstChild("Explosion")
+
+local EMIT_AMOUNT= 100
+
+local function killPlayer(otherPart)
+    local character = otherPart.Parent
+    local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+
+    if humanoid then
+        humanoid.Health = 0
+        particleEmitter:Emit(EMIT_AMOUNT)
+    end
+end
+
+trapObject.Touched:Connect(killPlayer)
