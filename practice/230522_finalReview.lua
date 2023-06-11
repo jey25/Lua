@@ -174,3 +174,20 @@ for objectIndex = 1, #objectsArray do
         partTouched(otherPart, objectPart)
     end)
 end
+
+local laserTrap = script.Parent
+local collisionBox = laserTrap:FindFirstChild("CollisionBox")
+
+-- Hide the collision box
+collisionBox.Transparency = 1
+
+local function onTouch(otherPart)
+  local character = otherPart.Parent
+  local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+
+  if humanoid then
+    humanoid.Health = 0
+  end
+end
+
+collisionBox.Touched:Connect(onTouch)
