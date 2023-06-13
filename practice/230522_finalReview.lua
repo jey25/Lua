@@ -79,6 +79,7 @@ end
 
 
 -- 0603 엔진 테스트
+
 1. workspace - script - print function - script error
 
 2. print(scritp.Parent) - workspace
