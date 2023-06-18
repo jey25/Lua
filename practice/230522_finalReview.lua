@@ -107,7 +107,6 @@ workspace.PlayerSpawner
 BrickColor.Random()
 BrickColor.Red
 
-
 7. 로블록스 엔진 가이드를 불카누스로 재현해보기
 	- 모델링, 환경, 효과, 애니메이션 등
 	https://create.roblox.com/docs/tutorials
