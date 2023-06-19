@@ -257,4 +257,4 @@ script.Parent.BrickColor = BrickColor.Random()
 6. 기본적인 사칙연산
 +, - , *, / , %, ==, <=, >=, ~=, 
 
-
+7.elseif  then
