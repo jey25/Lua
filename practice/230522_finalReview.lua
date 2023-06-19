@@ -235,3 +235,11 @@ local function onPlayerAdded(player)
 end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
+
+
+-- 0619
+1. print 잘못 썼을 때 (문법 등) 에러 로그 띄워주는 부분
+2. 개체 이름이 동일할 것이 겹칠 때의 에러 처리
+3. 개체 이름 숫자로 시작, 띄어쓰기 있을 때, 한국어로 되어 있을 때, 특수문자로 시작할 때
+
+
