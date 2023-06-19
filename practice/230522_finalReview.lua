@@ -251,5 +251,7 @@ script.Parent.Name = "한글"
 
 script.Parent.Anchored = false
 script.Parent.Material = Enum.Material.Brick
+script.Parent.BackSurface = Enum.SurfaceType.Smooth
+script.Parent.BrickColor = BrickColor.Random()
 
 
