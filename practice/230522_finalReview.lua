@@ -243,3 +243,10 @@ Players.PlayerAdded:Connect(onPlayerAdded)
 3. 개체 이름 숫자로 시작, 띄어쓰기 있을 때, 한국어로 되어 있을 때, 특수문자로 시작할 때
 4. Part.Transparency 속성에 추가 요청하기
 
+script.Parent.Transparency = 0.5
+script.Parent.Name = "한글"
+
+5. 속성 변경 시 형식에 맞지 않는 값을 넣어줬을 때의 처리
+
+
+
