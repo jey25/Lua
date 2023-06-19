@@ -249,4 +249,7 @@ script.Parent.Name = "한글"
 5. 속성 변경 시 형식에 맞지 않는 값을 넣어줬을 때의 처리
 
 
+script.Parent.Anchored = false
+script.Parent.Material = Enum.Material.Brick
+
 
