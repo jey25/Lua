@@ -254,4 +254,7 @@ script.Parent.Material = Enum.Material.Brick
 script.Parent.BackSurface = Enum.SurfaceType.Smooth
 script.Parent.BrickColor = BrickColor.Random()
 
+6. 기본적인 사칙연산
++, - , *, / , %, ==, <=, >=, ~=, 
+
 
