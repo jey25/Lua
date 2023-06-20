@@ -257,3 +257,6 @@ script.Parent.BrickColor = BrickColor.Random()
 +, - , *, / , %, ==, <=, >=, ~=, 
 
 7.elseif  then
+
+-- part 사이즈 변경
+workspace.Part.Size = Vector3.new(10,5,20)
