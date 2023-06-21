@@ -259,4 +259,6 @@ script.Parent.BrickColor = BrickColor.Random()
 7.elseif  then
 
 -- part 사이즈 변경
-workspace.Part.Size = Vector3.new(10,5,20)
+8. workspace.Part.Size = Vector3.new(10,5,20)
+
+9. Script 에서의 for 반복문 출력
