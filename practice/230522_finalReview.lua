@@ -237,6 +237,7 @@ end
 Players.PlayerAdded:Connect(onPlayerAdded)
 
 
+
 -- 0619
 1. print 잘못 썼을 때 (문법 등) 에러 로그 띄워주는 부분
 2. 개체 이름이 동일할 것이 겹칠 때의 에러 처리
