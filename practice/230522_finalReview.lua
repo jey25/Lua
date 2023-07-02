@@ -266,6 +266,7 @@ script.Parent.BrickColor = BrickColor.Random()
 
 -- 10. workspace.Part.Position = workspace.Part.Position + Vector3.new(1, 0, 0)
 
+
 11. 파트 생성
 for i=1, 50 do
 	Instance.new("Part", workspace)
