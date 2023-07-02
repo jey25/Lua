@@ -273,6 +273,5 @@ for i=1, 50 do
 end
 
 12. 파트 파괴
-
 local part = workspace.Part
 part:Destroy()
