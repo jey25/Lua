@@ -274,5 +274,23 @@ for i=1, 50 do
 end
 
 -- 12. 파트 파괴
--- local part = workspace.Part
--- part:Destroy()
+local part = script.Parent
+wait(2)
+part:Destroy()
+
+-- 13. 파트 복사
+local part = game.ServerStorage.Part
+
+local clone = part:Clone()
+clone.Parent = workspace
+
+
+-- 14. 파트 복사
+for i=1, 10 do
+	local part = game.ServerStorage.Part
+
+	local clone = part:Clone()
+	clone.Parent = workspace
+	clone.BrickColor = BrickColor.Black()
+	wait()
+end	
