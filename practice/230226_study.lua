@@ -23,6 +23,7 @@ if workspace.Car.PrimaryPart then
   print("aaaaaaaaaaaaa")
  end
 end
+
 if workspace.Car.PrimaryPart and workspace.Car.PrimaryPart.Anchored  then
  print("aaaaaaaaaaaaa")
 end
