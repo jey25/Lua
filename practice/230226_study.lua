@@ -123,6 +123,7 @@ for i=1, 50 do
 	wait()
 end
 
+
 local function ClonePart()
 	local part = game.ServerStorage.Part
 	local clone = part:Clone()
