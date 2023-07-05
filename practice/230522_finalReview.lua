@@ -284,7 +284,6 @@ local part = game.ServerStorage.Part
 local clone = part:Clone()
 clone.Parent = workspace
 
-
 -- 14. 파트 복사
 for i=1, 10 do
 	local part = game.ServerStorage.Part
