@@ -293,3 +293,9 @@ for i=1, 10 do
 	clone.BrickColor = BrickColor.Black()
 	wait()
 end	
+
+15. Move to?
+
+moveforward()
+
+
