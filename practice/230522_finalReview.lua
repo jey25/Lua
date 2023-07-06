@@ -299,3 +299,20 @@ end
 moveforward()
 
 
+16. 서버 스크립트에서는 LocalPlayer 못 쓰는 부분
+
+
+17. 서버 스크립트에서는 GetPLayer 로 플레이어 구하기
+
+
+18. remoteEvent
+
+local remoteEvent = game.ReplicatedStorage:WaitForChild("RemoteEvent")
+
+remoteEvent:FireServer()
+
+local remoteEvent = game.ReplicatedStorage.RemoteEvent
+
+remoteEvent.OnServerEvent:Connect(function()
+	
+end)
