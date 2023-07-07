@@ -156,7 +156,6 @@ part.Touched:Wait()
 part.BrickColor = BrickColor.Random()
 
 
-
 local part = script.Parent
 
 function ChangeColor()
