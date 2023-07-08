@@ -308,11 +308,9 @@ moveforward()
 18. remoteEvent
 
 local remoteEvent = game.ReplicatedStorage:WaitForChild("RemoteEvent")
-
 remoteEvent:FireServer()
 
 local remoteEvent = game.ReplicatedStorage.RemoteEvent
-
 remoteEvent.OnServerEvent:Connect(function()
 	
 end)
