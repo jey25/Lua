@@ -314,3 +314,25 @@ local remoteEvent = game.ReplicatedStorage.RemoteEvent
 remoteEvent.OnServerEvent:Connect(function()
 	
 end)
+
+
+-- 19. starterGUI - ScreenGUI - Frame - Script, TextLabel 을 이용한 인트로 만들기
+local intro = script.Parent
+wait(2)
+
+local tween = game:GetService("TweenService")
+local timeToFade = 5
+local tweenInfo = TweenInfo.new(timeToFade)
+
+local goal = {}
+goal.BackgroundTransparency = 1
+local tween = tweenService:Create(intro, tweenInfo, goal)
+tween:Play()
+
+local text = {}
+text.TextTransparency = 1
+local tweenText = tweenService:Create(intro.TextLabel, tweenInfo, text)
+tweenText:Play()
+
+wait(timeToFade)
+intro:Destroy()
