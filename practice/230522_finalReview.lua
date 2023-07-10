@@ -337,3 +337,5 @@ tweenText:Play()
 
 wait(timeToFade)
 intro:Destroy()
+
+-- 20. Part - BillboardGUI - Text 로 짜는 머리 위에 팀 그룹 역할 표시
