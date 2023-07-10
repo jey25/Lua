@@ -317,6 +317,7 @@ end)
 
 
 -- 19. starterGUI - ScreenGUI - Frame - Script, TextLabel 을 이용한 인트로 만들기
+
 local intro = script.Parent
 wait(2)
 
