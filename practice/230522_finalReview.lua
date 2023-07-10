@@ -338,4 +338,29 @@ tweenText:Play()
 wait(timeToFade)
 intro:Destroy()
 
--- 20. Part - BillboardGUI - Text 로 짜는 머리 위에 팀 그룹 역할 표시
+-- 20. Part - BillboardGUI - Text 로 짜는 머리 위에 팀 그룹 역할 표시 (서버 스토리지)
+-- 모든 사이즈를 Scale 로 맞춰주는게 핵심
+
+
+
+local overheadDisplay = game:GetService("ServerStorage"):WaitForChild("BillboardGui")
+local GROUP_ID = 42 -- change your groupID
+local function addLabel(player)
+	player.CharacterAdded:Connect(function(character)
+		local playerDisplay = overheadDisplay:Clone()
+		playerDisplay.Name.Text = player.Name
+
+		if player.Team then
+			local TeamString = player.Team.Name
+			playerDisplay.Team.Text = TeamString
+		end
+
+		local RoleString = player:GetRoleInGroup(GROUP_ID)
+		playerDisplay.Role.Text = RoleString
+		
+		playerDisplay.Parent = game.workspace:WaitForChild(player.Name).Head
+		character.Humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	end)
+end
+
+game.Players.PlayerAdded:Connect(addLabel)
