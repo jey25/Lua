@@ -401,6 +401,19 @@ end
 
 -- 리더보드 스크립트 
 
+local Players = game:GetService("Players")
+
+
+local function onCharacterAdded(character, player)
+	player:SetAttribute("IsAlive", true)
+	local humanoid = character:WaitForChild("Humanoid")
+	humanoid.Died:Connect(function()
+		local points = player.leaderstats.Points
+		points.Value = 0
+		player:SetAttribute("IsAlive", false)
+	end)
+end
+
 local function onPlayerAdded(player)
 	
 	local leaderstats = Instance.new("Folder")
@@ -417,11 +430,24 @@ local function onPlayerAdded(player)
 	score.Value = 0
 	score.Parent = leaderstats
 	
-	--player:SetAttribute("IsAlive", false)
+	player:SetAttribute("IsAlive", false)
 	
-	--player.CharacterAdded:Connect(function(character)
-	--	onCharacterAdded(character, player)
-	--end)
+	player.CharacterAdded:Connect(function(character)
+		onCharacterAdded(character, player)
+	end)
 end
 
 game.Players.PlayerAdded:Connect(onPlayerAdded)
+
+while true do
+	wait(1)
+	local playerlist = Players:GetPlayers()
+	for currentPlayer = 1, #playerlist do
+		local player = playerlist[currentPlayer]
+		--만약 SetAttribute 값 IsAlive 가 True 이면 그때만 포인트를 증가시킨다
+		if player:GetAttribute("IsAlive") then
+			local points = player.leaderstats.Points
+			points.Value = points.Value + 1
+			end
+	end
+end
