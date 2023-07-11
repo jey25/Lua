@@ -364,3 +364,20 @@ local function addLabel(player)
 end
 
 game.Players.PlayerAdded:Connect(addLabel)
+
+
+local coin = script.Parent
+local coinSound = game.ServerStorage:FindFirstChild('coin')
+
+local function takeCoin(hit)
+	local humanoid = hit.Parent:FindFirstChild("Humanoid")
+	if humanoid then
+		coin:Destroy()
+		coinSound.Parent = workspace
+		coinSound:Play()
+		wait(2)
+		coinSound:Destroy()
+	end
+end
+
+coin.Touched:Connect(takeCoin)
