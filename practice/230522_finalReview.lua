@@ -366,6 +366,9 @@ end
 game.Players.PlayerAdded:Connect(addLabel)
 
 
+
+-- 코인 획득 스크립트
+
 local coin = script.Parent
 local coinSound = game.ServerStorage:FindFirstChild('coin')
 
@@ -378,6 +381,41 @@ local function takeCoin(hit)
 		wait(2)
 		coinSound:Destroy()
 	end
+	
+	local player = game.Players:GetPlayerFromCharacter(hit.Parent)
+	if player then
+		local score = player.leaderstats.Score.Value + 1
+		player.leaderstats.Score.Value = score
+	end
+	
 end
 
 coin.Touched:Connect(takeCoin)
+
+
+-- 리더보드 스크립트 
+
+local function onPlayerAdded(player)
+	
+	local leaderstats = Instance.new("Folder")
+	leaderstats.Name = "leaderstats"
+	leaderstats.Parent = player
+	
+	local points = Instance.new("IntValue")
+	points.Name = "Points"
+	points.Value = 0
+	points.Parent = leaderstats
+	
+	local score = Instance.new("IntValue")
+	score.Name = "Score"
+	score.Value = 0
+	score.Parent = leaderstats
+	
+	--player:SetAttribute("IsAlive", false)
+	
+	--player.CharacterAdded:Connect(function(character)
+	--	onCharacterAdded(character, player)
+	--end)
+end
+
+game.Players.PlayerAdded:Connect(onPlayerAdded)
