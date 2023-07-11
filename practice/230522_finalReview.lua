@@ -369,28 +369,34 @@ game.Players.PlayerAdded:Connect(addLabel)
 
 -- 코인 획득 스크립트
 
-local coin = script.Parent
 local coinSound = game.ServerStorage:FindFirstChild('coin')
 
-local function takeCoin(hit)
-	local humanoid = hit.Parent:FindFirstChild("Humanoid")
-	if humanoid then
-		coin:Destroy()
-		coinSound.Parent = workspace
-		coinSound:Play()
-		wait(2)
-		coinSound:Destroy()
+local folder = script.Parent
+local parts = folder:GetChildren()
+
+for i=1, #parts do
+	if parts[i]:IsA("BasePart") then
+		parts[i].Touched:Connect(function(hit)
+			local humanoid = hit.Parent:FindFirstChild("Humanoid")
+			if humanoid then
+				parts[i]:Destroy()
+				local audio = coinSound:Clone()
+				audio.Parent = workspace
+				audio:Play()
+				wait(.5)
+				audio:Destroy()
+			end
+
+			local player = game.Players:GetPlayerFromCharacter(hit.Parent)
+			
+			if player then
+				local score = player.leaderstats.Score.Value + 1
+				player.leaderstats.Score.Value = score
+			end
+		end)
 	end
-	
-	local player = game.Players:GetPlayerFromCharacter(hit.Parent)
-	if player then
-		local score = player.leaderstats.Score.Value + 1
-		player.leaderstats.Score.Value = score
-	end
-	
 end
 
-coin.Touched:Connect(takeCoin)
 
 
 -- 리더보드 스크립트 
