@@ -441,6 +441,7 @@ game.Players.PlayerAdded:Connect(onPlayerAdded)
 
 
 while true do
+	
 	wait(1)
 	local playerlist = Players:GetPlayers()
 	for currentPlayer = 1, #playerlist do
