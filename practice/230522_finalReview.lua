@@ -398,7 +398,6 @@ for i=1, #parts do
 end
 
 
-
 -- 리더보드 스크립트 
 
 local Players = game:GetService("Players")
@@ -441,7 +440,7 @@ game.Players.PlayerAdded:Connect(onPlayerAdded)
 
 
 while true do
-	
+
 	wait(1)
 	local playerlist = Players:GetPlayers()
 	for currentPlayer = 1, #playerlist do
