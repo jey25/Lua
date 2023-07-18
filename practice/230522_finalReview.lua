@@ -402,7 +402,6 @@ end
 
 local Players = game:GetService("Players")
 
-
 local function onCharacterAdded(character, player)
 	player:SetAttribute("IsAlive", true)
 	local humanoid = character:WaitForChild("Humanoid")
