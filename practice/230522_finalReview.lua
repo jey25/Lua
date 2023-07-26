@@ -397,7 +397,6 @@ for i=1, #parts do
 	end
 end
 
-
 -- 리더보드 스크립트 
 
 local Players = game:GetService("Players")
