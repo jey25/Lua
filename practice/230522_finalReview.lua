@@ -435,8 +435,8 @@ local function onPlayerAdded(player)
 	end)
 end
 
-game.Players.PlayerAdded:Connect(onPlayerAdded)
 
+game.Players.PlayerAdded:Connect(onPlayerAdded)
 
 while true do
 
