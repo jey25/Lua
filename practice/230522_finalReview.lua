@@ -412,6 +412,7 @@ local function onCharacterAdded(character, player)
 	end)
 end
 
+
 local function onPlayerAdded(player)
 	
 	local leaderstats = Instance.new("Folder")
