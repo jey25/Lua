@@ -50,6 +50,17 @@ local hit = part.Touched:wait()
 hit:Destroy()
 
 
+local Enabled = true
+part.Touched:Connect(function (hit)
+    local humanoid = humanoid = hit.Parent:FindFirstChild("Humanoid")
+    if humanoid and Enabled then
+        Enabled = false
+        humanoid.Health -= 5
+        wait(1)
+        Enabled = true
+    end
+end)
+
 
 
 
