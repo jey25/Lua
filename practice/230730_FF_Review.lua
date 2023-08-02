@@ -45,7 +45,6 @@ end
 
 part.Touched:Connect(changeColor)
 
-
 local hit = part.Touched:wait()
 hit:Destroy()
 
@@ -60,6 +59,8 @@ part.Touched:Connect(function (hit)
         Enabled = true
     end
 end)
+
+workspace.Model:MoveTo(Vector3.new(3,3,3))
 
 
 
