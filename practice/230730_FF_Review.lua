@@ -34,7 +34,6 @@ end)
 
 
 -- 모듈 스크립트는 서버, 클라이언트 각각 따로 돌아간다
-
 local part = script.Parent
 
 function ChangeColor(hit)
