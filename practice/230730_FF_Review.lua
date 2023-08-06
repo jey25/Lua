@@ -70,6 +70,12 @@ part.Changed:Connect(function (property)
     end
 end)
 
+game.Players.PlayerAdded:Connect(function (plr)
+    plr.CharacterAdded:Connect(function (chr)
+        chr.Humanoid        
+    end)    
+end)
+
 
 
 
