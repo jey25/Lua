@@ -63,6 +63,13 @@ end)
 workspace.Model:MoveTo(Vector3.new(3,3,3))
 
 
+local part = script.Parent
+
+part.Changed:Connect(function (property)
+    if property then
+    end
+end)
+
 
 
 
