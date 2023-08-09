@@ -11,7 +11,6 @@ end
 return module
 
 
-
 local KillPartHandler = {}
 
 KillPartHandler.Enabled = true
