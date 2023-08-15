@@ -76,6 +76,38 @@ game.Players.PlayerAdded:Connect(function (plr)
 end)
 
 
+-- RemoteEvent
+
+local contextActionService = game:GetService("ContextActionService")
+local RemoteEvent = game.ReplicatedStorage:WaitForChild("ColorEvent")
+
+function RPressed(actionName, inputState, inputObject)
+	if inputState == Enum.UserInputState.Begin then
+		RemoteEvent:FireServer("R")
+	end
+end
+
+function GPressed(actionName, inputState, inputObject)
+	if inputState == Enum.UserInputState.Begin then
+		RemoteEvent:FireServer("G")
+	end
+end
+
+contextActionService:BindAction("RPress", RPressed, true, Enum.KeyCode.R)
+contextActionService:BindAction("GPress", GPressed, true, Enum.KeyCode.G)
+
+
+local RemoteEvent = game.ReplicatedStorage.ColorEvent
+
+RemoteEvent.OnServerEvent:Connect(function(plr, key)
+	if key == "R" then
+		workspace.ColorPart.BrickColor = BrickColor.Red()
+	elseif key == "G" then
+		workspace.ColorPart.BrickColor = BrickColor.Green()
+	end
+end)
+
+
 
 
 
