@@ -96,6 +96,11 @@ end
 contextActionService:BindAction("RPress", RPressed, true, Enum.KeyCode.R)
 contextActionService:BindAction("GPress", GPressed, true, Enum.KeyCode.G)
 
+-- 서버에서 보낸 신호 클라이언트에서 받기 
+RemoteEvent.OnClientEvent:Connect(function(aaa)
+		
+end)
+
 
 local RemoteEvent = game.ReplicatedStorage.ColorEvent
 
@@ -106,6 +111,16 @@ RemoteEvent.OnServerEvent:Connect(function(plr, key)
 		workspace.ColorPart.BrickColor = BrickColor.Green()
 	end
 end)
+
+
+-- 서버에서 클라이언트로 신호 보내기
+workspace.ColorPart.Touched:Connect(function(hit)
+	local plr = game.Players:GetPlayerFromCharacter(hit.Parent)
+	if plr then
+		RemoteEvent:FireClient(plr, "aaa") --FireAllClient() 모든 클라이언트에 보내기
+	end
+end)
+
 
 
 
