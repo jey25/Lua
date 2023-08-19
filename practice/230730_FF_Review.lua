@@ -96,6 +96,7 @@ end
 contextActionService:BindAction("RPress", RPressed, true, Enum.KeyCode.R)
 contextActionService:BindAction("GPress", GPressed, true, Enum.KeyCode.G)
 
+
 -- 서버에서 보낸 신호 클라이언트에서 받기 
 RemoteEvent.OnClientEvent:Connect(function(aaa)
 		
