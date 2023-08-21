@@ -102,7 +102,6 @@ RemoteEvent.OnClientEvent:Connect(function(aaa)
 		
 end)
 
-
 local RemoteEvent = game.ReplicatedStorage.ColorEvent
 
 RemoteEvent.OnServerEvent:Connect(function(plr, key)
