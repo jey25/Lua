@@ -75,7 +75,6 @@ game.Players.PlayerAdded:Connect(function (plr)
     end)    
 end)
 
-
 -- RemoteEvent
 
 local contextActionService = game:GetService("ContextActionService")
