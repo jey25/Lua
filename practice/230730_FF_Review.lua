@@ -76,7 +76,6 @@ game.Players.PlayerAdded:Connect(function (plr)
 end)
 
 -- RemoteEvent
-
 local contextActionService = game:GetService("ContextActionService")
 local RemoteEvent = game.ReplicatedStorage:WaitForChild("ColorEvent")
 
