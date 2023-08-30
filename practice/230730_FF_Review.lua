@@ -77,7 +77,6 @@ end)
 
 
 
-
 -- RemoteEvent
 local contextActionService = game:GetService("ContextActionService")
 local RemoteEvent = game.ReplicatedStorage:WaitForChild("ColorEvent")
