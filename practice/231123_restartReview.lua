@@ -10,3 +10,15 @@ for i=1, 50 do
     clone.Parent = workspace
     wait()	
     end
+
+    
+local function ClonePart(part, location)
+    local clone = part:Clone()
+    clone.Parent = location
+    end
+
+
+for i=1, 50 do
+    ClonePart(game.ServerStorage.test01, workspace)
+    wait()
+end
