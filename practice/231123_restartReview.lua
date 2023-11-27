@@ -17,8 +17,8 @@ local function ClonePart(part, location)
     clone.Parent = location
     end
 
-
 for i=1, 50 do
     ClonePart(game.ServerStorage.test01, workspace)
     wait()
 end
+
