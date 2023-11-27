@@ -22,3 +22,18 @@ for i=1, 50 do
     wait()
 end
 
+-- true 를 넣어서 이중삼중 폴더 밑에 있는 개체까지 찾게 한다
+local part = workspace:FindFirstChild("Part", true)
+
+
+
+local part = script.Parent
+local function kill(hit)
+	local humanoid = hit.Parent:FindFirstChild("Humanoid")
+	if humanoid then
+		--humanoid.Health = 0   --kill part
+		humanoid.Health -= 5     --damage Part
+	end	
+end
+
+part.Touched:Connect(kill)
