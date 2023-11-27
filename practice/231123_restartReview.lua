@@ -37,3 +37,19 @@ local function kill(hit)
 end
 
 part.Touched:Connect(kill)
+
+
+-- 이벤트 쿨타임
+local part = script.Parent
+local Enabled = true
+
+part.Touched:Connect(function(hit)
+	local humanoid = hit.Parent:FindFirstChild("Humanoid")
+	if humanoid and Enabled then
+		Enabled = false
+		--humanoid.Health = 0   --kill part
+		humanoid.Health -= 5     --damage Part
+		wait(1)
+		Enabled = true
+	end
+end)
