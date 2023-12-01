@@ -53,3 +53,10 @@ part.Touched:Connect(function(hit)
 		Enabled = true
 	end
 end)
+
+
+game.Players.PlayerAdded:Connect(function(plr)
+	plr.CharacterAdded:Connect(function(chr)
+		
+	end)
+end)
