@@ -60,3 +60,25 @@ game.Players.PlayerAdded:Connect(function(plr)
 		
 	end)
 end)
+
+
+
+--로컬 스크립트에서 로컬 플레이어 구하기
+local localplayer = game.Players.LocalPlayer
+
+--접속한 플레이어 구하기
+game.Players.PlayerAdded:Connect(function(plr)
+	
+end)
+
+--클릭한 플레이어 구하기
+local part = workspace.Baseplate
+part.ClickDetector.MouseClick:Connect(function(plr)
+	
+end)
+
+--사물에 닿은 플레이어 구하기 
+local part = workspace.Baseplate
+part.Touched:Connect(function(hit)
+	local plr = game.Players:GetPlayerFromCharacter(hit.Parent)
+end)
