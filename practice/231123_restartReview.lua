@@ -84,3 +84,19 @@ part.Touched:Connect(function(hit)
 end)
 
 
+-- Part 에 하위의 A 스크립트에서 캐릭터가 밟았을 때 이벤트를 보내고 B 스크립트가 받아서 출력 
+local event = game.ServerStorage.babo
+
+local part = script.Parent
+part.Touched:Connect(function(hit)
+	local humanoid = hit.Parent:FindFirstChild("Humanoid")
+	if humanoid then
+		event:Fire()
+	end
+end)
+
+local event = game.ServerStorage.babo
+
+event.Event:Connect(function()
+	print("1111")
+end)
