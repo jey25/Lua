@@ -102,3 +102,24 @@ event.Event:Connect(function()
 end)
 
 
+--if 사용하지 않는 and or 조건문
+local nuna = "cola"
+local na = "water"
+
+local masil
+
+if nuna then
+	masil = nuna
+else
+	masil = na
+end
+
+print(masil)
+
+--간이 조건문
+local masil = nuna == "cola" and nuna or na
+local 변수 = 조건 and a or b
+
+--파트가 있으면 파트를, 없으면 새로 생성해서 part 에 넣어줌
+local part = workspace:FindFirstChild("Part") or Instance.new("Part", workspace)
+part.BrickColor = BrickColor.new("Really black")
