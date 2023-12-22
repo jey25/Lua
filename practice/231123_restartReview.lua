@@ -100,3 +100,5 @@ local event = game.ServerStorage.babo
 event.Event:Connect(function()
 	print("1111")
 end)
+
+
