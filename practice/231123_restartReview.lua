@@ -149,3 +149,11 @@ if math.random(1,2) == 1 then
 else
 	print("save")
 end
+
+
+-- 정수를 10으로 나눠 변수에 저장해서 40% 의 확률 구하기
+local n = math.random(10, 20)/10
+
+if n <= 1.4 then
+	print("40%")
+end
