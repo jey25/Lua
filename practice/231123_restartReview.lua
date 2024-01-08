@@ -138,3 +138,6 @@ end)
 
 --Angles 를 써서 회전시킬 때는 math.rad 함수를 사용한다
 workspace.Part.CFrame = CFrame.new(5,5,5) * CFrame.Angles(math.rad(30),1,1)
+
+-- 파트 30도씩 회전
+workspace.Part.CFrame = workspace.Part.CFrame * CFrame.Angles(math.rad(30),0,0)
