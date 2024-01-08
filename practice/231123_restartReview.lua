@@ -123,3 +123,14 @@ local 변수 = 조건 and a or b
 --파트가 있으면 파트를, 없으면 새로 생성해서 part 에 넣어줌
 local part = workspace:FindFirstChild("Part") or Instance.new("Part", workspace)
 part.BrickColor = BrickColor.new("Really black")
+
+
+-- 텔레포트 파트 만들기
+
+local part = script.Parent
+
+part.Touched:Connect(function(hit)
+	if hit.Parent:FindFirstChild("Humanoid") then
+		hit.Parent:PivotTo(hit.Parent:GetPivot() * CFrame.new(0, 0, 20))  -- 뒤로 20칸
+	end
+end)
