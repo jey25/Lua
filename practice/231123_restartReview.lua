@@ -134,3 +134,7 @@ part.Touched:Connect(function(hit)
 		hit.Parent:PivotTo(hit.Parent:GetPivot() * CFrame.new(0, 0, 20))  -- 뒤로 20칸
 	end
 end)
+
+
+--Angles 를 써서 회전시킬 때는 math.rad 함수를 사용한다
+workspace.Part.CFrame = CFrame.new(5,5,5) * CFrame.Angles(math.rad(30),1,1)
