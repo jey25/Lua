@@ -11,20 +11,21 @@ function love.load(...)
     player = {}
     player.x = love.graphics.getWidth()/2
     player.y = love.graphics.getHeight()/2
+    player.speed = 180
 end
 
 function love.update(dt)
     if love.keyboard.isDown("d") then
-        player.x = player.x + 1
+        player.x = player.x + player.speed * dt
     end
     if love.keyboard.isDown("a") then
-        player.x = player.x - 1
+        player.x = player.x - player.speed * dt
     end
     if love.keyboard.isDown("w") then
-        player.y = player.y - 1
+        player.y = player.y - player.speed* dt
     end
     if love.keyboard.isDown("s") then
-        player.y = player.y + 1
+        player.y = player.y + player.speed* dt
     end
 end
 
