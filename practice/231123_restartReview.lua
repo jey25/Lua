@@ -295,3 +295,74 @@ print(array)
 for i = 1,  #array do
 	array[i]
 end
+
+
+
+local model = script.Parent
+local parts = {model.Part1, model.Part2, model.Part3 }
+local num = math.random(1,3)
+
+print(num)
+parts[num].CanCollide = false
+
+
+local model = script.Parent
+local parts = {model.Part1, model.Part2, model.Part3 }
+parts[1].CanCollide = false
+parts[2].CanCollide = false
+parts[3].CanCollide = false
+
+local num = math.random(1,#parts)
+
+print(num)
+parts[num].CanCollide = true
+
+local parts = model:GetChildren()
+local parts = game.Players:GetPlayers()
+
+
+local model = script.Parent
+local parts = model:GetChildren()
+
+for i=1, #parts do
+	if parts[i]:IsA("BasePart") then
+		parts[i].CanCollide = false
+	end
+end
+
+for i, v in ipairs(parts) do
+	if v:IsA("BasePart") then
+		v.CanCollide = false
+	end
+end
+
+
+
+local players = game.Players
+
+script.Parent.Touched:Connect(function(hit)
+	local chr = hit.Parent
+	local plr = players:GetPlayerFromCharacter(chr)
+	if plr then
+		for i, v in ipairs(players:GetPlayers()) do
+			if v.Character then
+				local humanoid = v.Character:FindFirstChild("Humanoid")
+				if humanoid then
+					humanoid.Health = 0
+				end
+			end
+		end
+	end
+end)
+
+
+-- npc 의 머리가 플레이어를 계속 바라보게
+
+local npcHead = workspace:WaitForChild("Head")
+local myHead = script.Parent:WaitForChild("Head")
+
+while wait() do
+	npcHead.CFrame = CFrame.lookAt(npcHead.Position, myHead.Position)
+end
+
+
