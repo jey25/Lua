@@ -366,3 +366,11 @@ while wait() do
 end
 
 
+local RunService = game:GetService("RunService")
+
+-- step 을 이용하면 Frame 에 다른 차이를 없앨 수 있음
+function update(step)
+	script.Parent.Rotation += 60 * step
+end
+
+RunService.RenderStepped:Connect(update)
