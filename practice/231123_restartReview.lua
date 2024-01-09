@@ -277,3 +277,6 @@ game:GetService('ContextActionService'):BindAction('RunBind', Handler, true, Enu
 애니메이션 링크
 -------------------------------
 rbxassetid://1296146433
+
+
+
