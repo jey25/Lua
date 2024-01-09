@@ -280,3 +280,18 @@ rbxassetid://1296146433
 
 
 
+local array = {123, "string", true}
+
+print(#array)
+
+table.insert(array, 4355)  --마지막에 추가
+print(array)
+
+table.remove(array, 2)
+print(array)
+
+--print(array[5])
+
+for i = 1,  #array do
+	array[i]
+end
