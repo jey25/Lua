@@ -27,9 +27,11 @@ function love.update(dt)
     if love.keyboard.isDown("s") then
         player.y = player.y + player.speed* dt
     end
+    
+    tempRotation = tempRotation + 0.01
 end
 
 function love.draw()
     love.graphics.draw(sprites.background, 0, 0)
-    love.graphics.draw(sprites.player, player.x, player.y )
+    love.graphics.draw(sprites.player, player.x, player.y , tempRotation)
 end
