@@ -16,20 +16,28 @@ function love.load(...)
     zombies = {}
     bullets = {}
 
+    myFont = love.graphics.newFont(50)
+
+    gameState = 1
+    maxTime = 2
+    timer = maxTime
+
 end
 
 function love.update(dt)
-    if love.keyboard.isDown("d") then
-        player.x = player.x + player.speed * dt
-    end
-    if love.keyboard.isDown("a") then
-        player.x = player.x - player.speed * dt
-    end
-    if love.keyboard.isDown("w") then
-        player.y = player.y - player.speed* dt
-    end
-    if love.keyboard.isDown("s") then
-        player.y = player.y + player.speed* dt
+    if gameState == 2 then
+        if love.keyboard.isDown("d") then
+            player.x = player.x + player.speed * dt
+        end
+        if love.keyboard.isDown("a") then
+            player.x = player.x - player.speed * dt
+        end
+        if love.keyboard.isDown("w") then
+            player.y = player.y - player.speed* dt
+        end
+        if love.keyboard.isDown("s") then
+            player.y = player.y + player.speed* dt
+        end
     end
 
     for i, z in ipairs(zombies) do
@@ -39,6 +47,7 @@ function love.update(dt)
         if distanceBetween(z.x, z.y, player.x, player.y) < 30 then
             for i, z in ipairs(zombies) do
                 zombies[i] = nil
+                gameState = 1
             end
         end
     end
@@ -77,11 +86,26 @@ function love.update(dt)
             table.remove(bullets, i)
         end
     end
+
+    if gameState == 2 then
+        timer = timer - dt
+        if timer <= 0 then
+            spawnZombie()
+            maxTime = 0.95 * maxTime
+            timer = maxTime
+        end
+    end
 end
 
 
 function love.draw()
     love.graphics.draw(sprites.background, 0, 0)
+
+    if gameState == 1 then
+        love.graphics.setFont(myFont)
+        love.graphics.printf("Click Anywhere to Begin!", 0, 50, love.graphics.getWidth(), "center")
+    end
+
     love.graphics.draw(sprites.player, player.x, player.y, playerMouseAngle(), nil, nil, sprites.player:getWidth()/2, sprites.player:getHeight()/2)
 
     for i , z in ipairs(zombies) do
@@ -102,8 +126,10 @@ function love.keypressed(key)
 end
 
 function love.mousepressed(x, y, button)
-    if button  == 1 then
+    if button  == 1 and gameState == 2 then
         spawnBullet()
+    elseif button == 1 and gameState == 1 then
+        gameState = 2
     end
 end
 
