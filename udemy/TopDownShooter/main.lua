@@ -1,6 +1,8 @@
 
 
 function love.load(...)
+    math.random( os.time() )
+
     sprites = {}
 
     sprites.background = love.graphics.newImage('sprite/background.png')
@@ -20,22 +22,23 @@ function love.load(...)
 
     gameState = 1
     maxTime = 2
+    score = 0
     timer = maxTime
 
 end
 
 function love.update(dt)
     if gameState == 2 then
-        if love.keyboard.isDown("d") then
+        if love.keyboard.isDown("d") and player.x < love.graphics.getWidth() then
             player.x = player.x + player.speed * dt
         end
-        if love.keyboard.isDown("a") then
+        if love.keyboard.isDown("a") and player.x > 0 then
             player.x = player.x - player.speed * dt
         end
-        if love.keyboard.isDown("w") then
+        if love.keyboard.isDown("w") and player.y > 0 then
             player.y = player.y - player.speed* dt
         end
-        if love.keyboard.isDown("s") then
+        if love.keyboard.isDown("s") and player.y < love.graphics.getHeight() then
             player.y = player.y + player.speed* dt
         end
     end
@@ -48,6 +51,8 @@ function love.update(dt)
             for i, z in ipairs(zombies) do
                 zombies[i] = nil
                 gameState = 1
+                player.x = love.graphics.getWidth()/2
+                player.y = love.graphics.getHeight()/2
             end
         end
     end
@@ -69,6 +74,7 @@ function love.update(dt)
             if distanceBetween(z.x, z.y, b.x, b.y) < 20 then
                 z.dead = true
                 b.dead = true
+                score = score + 1
             end
         end
     end
@@ -106,6 +112,8 @@ function love.draw()
         love.graphics.printf("Click Anywhere to Begin!", 0, 50, love.graphics.getWidth(), "center")
     end
 
+    love.graphics.printf("Score: " .. score, 0, love.graphics.getHeight()-100, love.graphics.getWidth(), "center")
+
     love.graphics.draw(sprites.player, player.x, player.y, playerMouseAngle(), nil, nil, sprites.player:getWidth()/2, sprites.player:getHeight()/2)
 
     for i , z in ipairs(zombies) do
@@ -130,6 +138,9 @@ function love.mousepressed(x, y, button)
         spawnBullet()
     elseif button == 1 and gameState == 1 then
         gameState = 2
+        maxTime = 2
+        timer = maxTime
+        score = 0
     end
 end
 
