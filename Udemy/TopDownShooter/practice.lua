@@ -1,6 +1,5 @@
 school = {name = nil, id= nil, "grade", isHigh = "No", locale = "seoul", "gildong"}
 
-
 name = "elli"
 id = 4
 
