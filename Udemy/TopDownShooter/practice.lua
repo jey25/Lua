@@ -6,7 +6,6 @@ id = 4
 school.name = name
 school.id = id
 
-
 print(school.name)
 print(school.id)
 print(school.locale)
