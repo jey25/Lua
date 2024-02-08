@@ -3,7 +3,6 @@ school = {name = nil, id= nil, "grade", isHigh = "No", locale = "seoul", "gildon
 name = "elli"
 id = 4
 
-
 school.name = name
 school.id = id
 
