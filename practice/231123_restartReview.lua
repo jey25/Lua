@@ -61,8 +61,6 @@ game.Players.PlayerAdded:Connect(function(plr)
 	end)
 end)
 
-
-
 --로컬 스크립트에서 로컬 플레이어 구하기
 local localplayer = game.Players.LocalPlayer
 
