@@ -4,7 +4,6 @@ name = "elli"
 id = 4
 
 
-
 school.name = name
 school.id = id
 
