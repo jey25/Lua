@@ -70,7 +70,6 @@ game.Players.PlayerAdded:Connect(function(plr)
 	
 end)
 
-
 --클릭한 플레이어 구하기
 local part = workspace.Baseplate
 part.ClickDetector.MouseClick:Connect(function(plr)
