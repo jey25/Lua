@@ -82,7 +82,6 @@ part.Touched:Connect(function(hit)
 	local plr = game.Players:GetPlayerFromCharacter(hit.Parent)
 end)
 
-
 -- Part 에 하위의 A 스크립트에서 캐릭터가 밟았을 때 이벤트를 보내고 B 스크립트가 받아서 출력 
 local event = game.ServerStorage.babo
 
