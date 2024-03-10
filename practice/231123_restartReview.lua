@@ -76,6 +76,7 @@ part.ClickDetector.MouseClick:Connect(function(plr)
 	
 end)
 
+
 --사물에 닿은 플레이어 구하기 
 local part = workspace.Baseplate
 part.Touched:Connect(function(hit)
