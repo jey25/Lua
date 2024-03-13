@@ -14,6 +14,8 @@ function love.update(dt)
 
 end
 
+
+
 function love.draw()
     love.graphics.setColor(1, 0, 0)
     love.graphics.circle("fill", target.x, target.y, target.radius)
