@@ -1,5 +1,16 @@
 
-message = "lua is awesome"
+message = 0
+
+function increaseMesseage(i)
+    message= message + i
+end
+
+function double(j)
+    j = j * 2
+    return j
+end
+
+message = double(12)
 
 function love.draw()
     love.graphics.setFont(love.graphics.newFont(50))
