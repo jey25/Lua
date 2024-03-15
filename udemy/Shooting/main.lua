@@ -14,8 +14,6 @@ end
 
 
 
-
-
 -- function love.load()
 --     target = {}
 --     target.x = 300
