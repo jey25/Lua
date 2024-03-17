@@ -25,6 +25,21 @@ function love.draw()
 
 end 
 
+function love.mousepressed(x,y, button, istouch, presses)
+    if button == 1 then
+        local mouseToTarget = distanceBetween(x, y, target.x, target.y)
+        if mouseToTarget < target.radius then
+            score = score + 1
+            target.x = math.random(0, love.graphics.getWidth())
+            target.y = math.random(0, love.graphics.getHeight())
+        end
+    end
+end
+
+function distanceBetween(x1, y1, x2, y2)
+    return math.sqrt((x2-x1)^2 + (y2-y1)^2)
+end
+
 
 -- function love.load()
 --     target = {}
