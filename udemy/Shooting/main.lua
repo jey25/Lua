@@ -10,12 +10,20 @@ function love.load()
     timer = 10
 
     gameFont = love.graphics.newFont(40)
+
+    sprites = {}
+    sprites.sky = love.graphics.newImage('sprites/sky.png')
+    sprites.target = love.graphics.newImage('sprites/target.png')
+    sprites.crosshairs = love.graphics.newImage('sprites/crosshairs.png')
+
+    love.mouse.setVisible(false)
 end
 
-function love.update()
+function love.update(dt)
     if timer > 0 then
         timer = timer - dt
     end
+
     if timer < 0 then  
         timer = 0
     end
@@ -28,6 +36,9 @@ function love.draw()
     love.graphics.setColor(1,1,1)
     love.graphics.setFont(gameFont)
     love.graphics.print(score, 0, 0)
+    love.graphics.print(math.ceil(timer), 300, 0)
+
+    love.graphics.draw(sprites.crosshairs, love.mouse.getX()-20, love.mouse.getY()-20)
 
 end 
 
