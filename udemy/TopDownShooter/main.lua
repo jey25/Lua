@@ -1,3 +1,10 @@
+
+-- 20240422 Mission
+-- 1. Player 부상 상태로 생명 하나 더 부여
+-- 2. 부상 상태일 때 이동속도 증가
+-- 3. 부상 상태일 때 플레이어 빨간색 처리
+
+
 function love.load()
     math.randomseed(os.time())
 
@@ -19,6 +26,7 @@ function love.load()
 
     gameState = 1
     maxTime = 2
+    score = 0
     timer = maxTime
 end
 
@@ -69,6 +77,7 @@ function love.update(dt)
             if distanceBetween(z.x, z.y, b.x, b.y) < 20 then
                 z.dead = true
                 b.dead = true
+                score = score + 1
             end
         end
     end
@@ -101,6 +110,8 @@ end
 function love.draw()
     love.graphics.draw(sprites.background, 0, 0)
 
+    love.graphics.printf("Score : "..score , 0, love.graphics.getHeight()-100, love.graphics.getWidth(), "center")
+
     if gameState == 1 then
         love.graphics.setFont(myFont)
         love.graphics.printf("Click to begin!", 0, 50, love.graphics.getWidth(), "center")
@@ -129,6 +140,7 @@ function love.mousepressed(x, y, button)
     elseif button == 1 and gameState == 1 then
         gameState = 2
         maxTime = 2
+        score = 0
         timer = maxTime
     end
 end
