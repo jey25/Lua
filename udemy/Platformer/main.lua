@@ -25,6 +25,8 @@ function love.load( ... )
     player.speed = 200
     player.animation = animations.idle
     player.isMoving = false
+    player.direction = 1
+    player.grounded = true
 
     platform = world:newRectangleCollider(250, 400, 300, 100, {collision_class = 'Platform'})
     platform:setType('static')
@@ -39,15 +41,24 @@ function love.update(dt)
     world:update(dt)
 
     if player.body then
+        local colliders = world:queryRectangleArea(player:getX() - 20, player:getY() + 50, 40, 2, {'Platform'})
+        if #colliders > 0 then
+            player.grounded = true
+        else
+            player.grounded = false
+        end
+
         player.isMoving = false
         local px, py = player:getPosition()
         if love.keyboard.isDown('right') then
             player:setX(px + player.speed* dt)
             player.isMoving = true
+            player.direction = 1
         end
         if love.keyboard.isDown('left') then
             player:setX(px - player.speed* dt)
             player.isMoving = true
+            player.direction = -1
         end
 
         if player:enter('Danger') then
@@ -55,10 +66,14 @@ function love.update(dt)
         end
     end
 
-    if player.isMoving == true then
-        player.animation = animations.run
+    if player.grounded then
+        if player.isMoving == true then
+            player.animation = animations.run
+        else
+            player.animation = animations.idle
+        end
     else
-        player.animation = animation.idle
+        player.animation = animations.jump
     end
 
     player.animation:update(dt)
@@ -69,13 +84,12 @@ function love.draw()
     world:draw()
 
     local px, py = player:getPosition()
-    player.animation:draw(sprites.playerSheet, px, py, nil, 0.25, nil, 130, 300)
+    player.animation:draw(sprites.playerSheet, px, py, nil, 0.25 * player.direction, 0.25, 130, 300)
 end
 
 function love.keypressed( key )
     if key == 'up' then
-        local colliders = world:queryRectangleArea(player:getX() - 20, player:getY() + 50, 40, 2, {'Platform'})
-        if #colliders > 0 then
+        if player.grounded then
             player:applyLinearImpulse(0, -4000)
         end
     end
