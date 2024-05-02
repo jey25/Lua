@@ -148,11 +148,13 @@ function love.draw()
     end
 end
 
+
 function love.keypressed(key)
     if key == "space" then
         spawnZombie()
     end
 end
+
 
 function love.mousepressed(x, y, button)
     if button == 1 and gameState == 2 then
@@ -165,6 +167,7 @@ function love.mousepressed(x, y, button)
     end
 end
 
+
 function playerMouseAngle()
     return math.atan2(player.y - love.mouse.getY(), player.x - love.mouse.getX()) + math.pi
 end
@@ -173,6 +176,7 @@ end
 function zombiePlayerAngle(enemy)
     return math.atan2(player.y - enemy.y, player.x - enemy.x)
 end
+
 
 function spawnZombie()
     local zombie = {}
