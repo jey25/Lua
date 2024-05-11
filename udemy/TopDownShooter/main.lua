@@ -149,6 +149,7 @@ function love.draw()
 end
 
 
+
 function love.keypressed(key)
     if key == "space" then
         spawnZombie()
@@ -176,6 +177,7 @@ end
 function zombiePlayerAngle(enemy)
     return math.atan2(player.y - enemy.y, player.x - enemy.x)
 end
+
 
 function spawnZombie()
     local zombie = {}
