@@ -149,7 +149,6 @@ function love.draw()
 end
 
 
-
 function love.keypressed(key)
     if key == "space" then
         spawnZombie()
