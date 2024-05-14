@@ -1,7 +1,10 @@
 
 function love.load( ... )
+    love.window.setMode(1000, 768)
+
     wf = require("libraries/windfield") 
     anim8 = require("libraries/anim8/anim8") 
+    sti = require("libraries/Simple-Tiled-Implementation-master/sti")
     world = wf.newWorld(0, 800, false)
 
     sprites = {}
@@ -15,7 +18,6 @@ function love.load( ... )
     animations.run = anim8.newAnimation(grid('1-15', 3), 0.05)
 
     world:setQueryDebugDrawing(true)
-
     world:addCollisionClass('Platform')
     world:addCollisionClass('Player' --[[{ignores = {'Platform'}}]])
     world:addCollisionClass('Danger')
@@ -33,12 +35,14 @@ end
 
 function love.update(dt)
     world:update(dt)
+    gameMap:update(dt)
     PlayerUpdate(dt)
 end
 
 
 function love.draw()
     world:draw()
+    gameMap:drawLayer()
     DrawPlayer()
 end
 
@@ -57,4 +61,8 @@ function love.mousepressed( x, y, button )
             c:destroy()
         end
     end
+end
+
+function loadMap( ... )
+    gameMap = sti("maps/level1.lua")
 end
