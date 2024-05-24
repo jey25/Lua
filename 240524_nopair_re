@@ -1,0 +1,60 @@
+local part = script.Parent
+
+--local function ChangeColor(hit)
+--	local humanoid = hit.parent:FindFirstChild("Humanoid", true)
+--	if humanoid then
+--		part.BrickColor = BrickColor.Random()
+--	end
+--end
+
+--part.Touched:Connect(ChangeColor)
+
+
+--local function Kill(hit)
+--	local humanoid = hit.parent:FindFirstChild("Humanoid", true)
+--	if humanoid then
+--		humanoid:TakeDamage(5)
+--	end
+--end
+
+--part.Touched:Connect(Kill)
+
+
+--local enabled = true
+
+--part.Touched:Connect(function(hit)
+--	local humanoid = hit.parent:FindFirstChild("Humanoid", true)
+--		if humanoid and enabled then
+--			enabled = false
+--			humanoid.Health -= 5
+--			wait(1)
+--			enabled = true
+--		end
+--end)
+
+
+
+-- local car = game.ServerStorage.Jeep
+-- local clone = car:Clone()
+
+-- clone.Parent = workspace
+-- clone:MoveTo(Vector3.new(-0.5, 0.5, -18))
+
+
+-- part:GetPropertyChangedSignal("Position"):Connect(function()
+	
+-- end)
+
+
+-- game.Players.PlayerAdded:Connect(function(plr)
+-- 	if plr.Name == "jang" then
+-- 		plr:Kick()
+-- 	end
+-- end)
+
+
+-- game.Players.PlayerAdded:Connect(function(plr)
+-- 	plr.CharacterAdded:Connect(function(chr)
+-- 		chr.Humanoid = 
+-- 	end)
+-- end)
