@@ -58,3 +58,13 @@ local part = script.Parent
 -- 		chr.Humanoid = 
 -- 	end)
 -- end)
+
+
+local part = workspace:WaitForChild("Name")
+local surfaceGUI = part:WaitForChild("SurfaceGui")
+local textLabel = surfaceGUI:WaitForChild("TextLabel")
+
+local player = game.Players.LocalPlayer
+local playerName = player.Name
+
+textLabel.Text = playerName .. "님 안녕하세요!"
