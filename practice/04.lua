@@ -160,3 +160,19 @@ trapPart.Touched:Connect(trap)
 
 -- 2024-05-30
 
+-- A
+local event = game.ServerStorage.babo
+
+script.Parent.Touched:Connect(function(hit)
+	local humanoid = hit.Parent:FindFirstChild("Humanoid")
+	if humanoid then
+		event:Fire()
+	end
+end)
+
+-- B
+local event = game.ServerStorage.babo
+
+event.Event:Connect(function()
+	print("Touch")
+end)
