@@ -92,7 +92,6 @@ end
 
 
 --touchPart 를 터치하면 숨겨진 Bridge 가 보여지고 5초후 사라짐
-
 local bridge = game.Workspace.BridgePart
 local touchPart = script.Parent
 
@@ -111,7 +110,6 @@ touchPart.Touched:Connect(showBridge)
 
 
 -- 캐릭터 몸 크기 조정 기능 가진 함수 만들기
-
 local bodySize = script.Parent
 
 local function changeBody(otherPart)
@@ -135,7 +133,6 @@ bodySize.Touched:Connect(changeBody)
 
 
 --파트에 닿으면 캐릭터 파괴
-
 local trap = script.Parent
 
 local function TrapPong(hit)
@@ -146,7 +143,6 @@ trap.Touched:Connect(TrapPong)
 
 
 -- 파트에 닿으면 사망!
-
 local trapPart = script.Parent
 
 local function trap(otherPart)
@@ -160,4 +156,7 @@ end
 
 trapPart.Touched:Connect(trap)
 
+
+
+-- 2024-05-30
 
