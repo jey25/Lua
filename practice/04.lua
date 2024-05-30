@@ -159,3 +159,4 @@ local function trap(otherPart)
 end
 
 trapPart.Touched:Connect(trap)
+
