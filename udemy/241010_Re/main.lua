@@ -1,9 +1,10 @@
-message = 5
-message2 = 10
-output = message + message2
+message = 0
+
+for i=1, 3, 1 do
+    message = message + 10
+end
 
 function love.draw()
     love.graphics.setFont(love.graphics.newFont(60))
-    love.graphics.print(output)
-    love.graphics.print(type(output))
+    love.graphics.print(message)
 end
