@@ -1,7 +1,7 @@
 message = 0
 
-for i=1, 3, 1 do
-    message = message + 10
+if message < 10 then
+    message = message + 5
 end
 
 function love.draw()
