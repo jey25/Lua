@@ -48,7 +48,6 @@ function PlayerUpdate(dt)
     player.animation:update(dt)
 end
 
-
 function DrawPlayer()
     local px, py = player:getPosition()
     player.animation:draw(sprites.playerSheet, px, py, nil, 0.25 * player.direction, 0.25, 130, 300)

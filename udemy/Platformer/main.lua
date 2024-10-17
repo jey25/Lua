@@ -3,9 +3,10 @@ function love.load( ... )
     love.window.setMode(1000, 768)
 
     wf = require("libraries/windfield") 
+    world = wf.newWorld(0, 800, false)
+
     anim8 = require("libraries/anim8/anim8") 
     sti = require("libraries/Simple-Tiled-Implementation-master/sti")
-    world = wf.newWorld(0, 800, false)
 
     -- 캐릭터 이미지 불러오기 및 Animation 세팅
     sprites = {}
@@ -19,12 +20,12 @@ function love.load( ... )
     animations.jump = anim8.newAnimation(grid('1-7', 2), 0.05)
     animations.run = anim8.newAnimation(grid('1-15', 3), 0.05)
 
-
     world:setQueryDebugDrawing(true)
     world:addCollisionClass('Platform')
     world:addCollisionClass('Player' --[[, {ignores = {'Platform'}}]])
     world:addCollisionClass('Danger')
 
+    -- 동일 경로에 위치한 player.lua 파일을 require
     require('player')
 
     platform = world:newRectangleCollider(250, 400, 300, 100, {collision_class = 'Platform'})
@@ -33,8 +34,9 @@ function love.load( ... )
     dangerZone = world:newRectangleCollider(0, 550, 800, 50, {collision_class = 'Danger'})
     dangerZone:setType('static')
 
-end
+    loadMap()
 
+end
 
 function love.update(dt)
     world:update(dt)
@@ -42,10 +44,9 @@ function love.update(dt)
     PlayerUpdate(dt)
 end
 
-
 function love.draw()
+    gameMap:drawLayer(gameMap.layers["Tile Layer 1"])
     world:draw()
-    gameMap:drawLayer()
     DrawPlayer()
 end
 
@@ -66,6 +67,6 @@ function love.mousepressed( x, y, button )
     end
 end
 
-function loadMap( ... )
+function loadMap()
     gameMap = sti("maps/level1.lua")
 end
