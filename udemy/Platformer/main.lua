@@ -28,11 +28,10 @@ function love.load( ... )
     -- 동일 경로에 위치한 player.lua 파일을 require
     require('player')
 
-    platform = world:newRectangleCollider(250, 400, 300, 100, {collision_class = 'Platform'})
-    platform:setType('static')
-
     dangerZone = world:newRectangleCollider(0, 550, 800, 50, {collision_class = 'Danger'})
     dangerZone:setType('static')
+
+    Platforms = {}
 
     loadMap()
 
@@ -46,7 +45,7 @@ end
 
 function love.draw()
     gameMap:drawLayer(gameMap.layers["Tile Layer 1"])
-    world:draw()
+    -- world:draw()
     DrawPlayer()
 end
 
@@ -67,6 +66,18 @@ function love.mousepressed( x, y, button )
     end
 end
 
+function spawnPlatform(x, y, width, height)
+    if width > 0 and height > 0 then
+        local platform = world:newRectangleCollider(x, y, width, height, {collision_class = 'Platform'})
+        platform:setType('static')
+        table.insert( Platforms, platform)
+    end
+end
+
 function loadMap()
     gameMap = sti("maps/level1.lua")
+    for i, obj in pairs(gameMap.layers["Platforms"].objects) do
+        spawnPlatform(obj.x, obj.y, obj.width, obj.height)
+    end
+
 end
