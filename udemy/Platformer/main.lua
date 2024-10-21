@@ -5,8 +5,12 @@ function love.load( ... )
     wf = require("libraries/windfield") 
     world = wf.newWorld(0, 800, false)
 
-    anim8 = require("libraries/anim8/anim8") 
+    anim8 = require("libraries/anim8/anim8")
     sti = require("libraries/Simple-Tiled-Implementation-master/sti")
+
+    -- 카메라 코드
+    cameraFile = require("hump/camera") 
+    cam = cameraFile()
 
     -- 캐릭터 이미지 불러오기 및 Animation 세팅
     sprites = {}
@@ -41,12 +45,17 @@ function love.update(dt)
     world:update(dt)
     gameMap:update(dt)
     PlayerUpdate(dt)
+
+    local px, py = player:getPosition()
+    cam:lookAt(px, love.graphics.getHeight()/2)
 end
 
 function love.draw()
-    gameMap:drawLayer(gameMap.layers["Tile Layer 1"])
-    -- world:draw()
-    DrawPlayer()
+    cam:attach()
+        gameMap:drawLayer(gameMap.layers["Tile Layer 1"])
+        -- world:draw()
+        DrawPlayer()
+    cam:detach()
 end
 
 function love.keypressed( key )
