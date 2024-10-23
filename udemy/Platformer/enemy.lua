@@ -14,7 +14,7 @@ function updateEnemies(dt)
         e.animation:update(dt)
         local ex, ey = e:getPosition()
 
-        local colliders = world:queryRectangleArea(ex + (40 * e.direction), ey + 40, 10, 10, {'Platform'})
+        local colliders = world:queryRectangleArea(ex + (40 * e.direction), ey + 40, 10, 10, {'platform'})
         if #colliders == 0 then
             e.direction = e.direction * -1
         end
@@ -26,6 +26,6 @@ end
 function drawEnemies()
     for i, e in ipairs(enemies) do 
         local ex, ey = e:getPosition()
-        e.animation:draw(sprites.enemySheet, ex, ey)
+        e.animation:draw(sprites.enemySheet, ex, ey, nil, e.direction, 1, 50, 55)
     end
 end

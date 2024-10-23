@@ -10,7 +10,7 @@ player.grounded = true
 
 function PlayerUpdate(dt)
     if player.body then
-        local colliders = world:queryRectangleArea(player:getX() - 20, player:getY() + 50, 40, 2, {'Platform'})
+        local colliders = world:queryRectangleArea(player:getX() - 20, player:getY() + 50, 40, 2, {'platform'})
         if #colliders > 0 then
             player.grounded = true
         else
