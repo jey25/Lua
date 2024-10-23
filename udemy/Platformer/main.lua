@@ -12,10 +12,20 @@ function love.load( ... )
     cameraFile = require("hump/camera") 
     cam = cameraFile()
 
+    sounds = {}
+    sounds.jump = love.audio.newSource("audio/jump.wav", "static")
+    sounds.music = love.audio.newSource("audio/music.mp3", "stream")
+    
+    sounds.music:play()
+    sounds.music:setLooping(true)
+    sounds.music:setVolume(0.5)
+
+
     -- 캐릭터 이미지 불러오기 및 Animation 세팅
     sprites = {}
     sprites.playerSheet = love.graphics.newImage('sprites/playerSheet.png')
     sprites.enemySheet = love.graphics.newImage('sprites/enemySheet.png')
+    sprites.background = love.graphics.newImage('sprites/background.png')
 
     -- 전체 이미지를 한장의 Grid 로 나누어 저장
     local grid = anim8.newGrid(614, 564, sprites.playerSheet:getWidth(), sprites.playerSheet:getHeight())
@@ -37,7 +47,7 @@ function love.load( ... )
     require('enemy')
     require('libraries/show')
 
-    dangerZone = world:newRectangleCollider(0, 550, 800, 50, {collision_class = 'Danger'})
+    dangerZone = world:newRectangleCollider(-500, 800, 5000, 50, {collision_class = 'Danger'})
     dangerZone:setType('static')
 
     platforms = {}
@@ -79,18 +89,21 @@ function love.update(dt)
 end
 
 function love.draw()
+    love.graphics.draw(sprites.background, 0, 0)
     cam:attach()
         gameMap:drawLayer(gameMap.layers["Tile Layer 1"])
-        world:draw()
+        -- world:draw()
         DrawPlayer()
         drawEnemies()
     cam:detach()
+
 end
 
 function love.keypressed( key )
     if key == 'up' then
         if player.grounded then
             player:applyLinearImpulse(0, -4000)
+            sounds.jump:play()
         end
     end
 
@@ -144,9 +157,14 @@ function loadMap(mapName)
     saveData.currentLevel = mapName
     love.filesystem.write("data.lua", table.show(saveData, "saveData"))
     destroyAll()
-    player:setPosition(360, 100)
+    
     gameMap = sti("maps/" .. mapName .. ".lua")
     
+    for i, obj in pairs(gameMap.layers["start"].objects) do
+        playerStartX = obj.x
+        playerStartX = obj.y
+    end
+    player:setPosition(playerStartX, playerStartY)
     for i, obj in pairs(gameMap.layers["platforms"].objects) do
         spawnPlatform(obj.x, obj.y, obj.width, obj.height)
     end
