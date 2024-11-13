@@ -51,5 +51,3 @@ local function resetClothes(character, originalClothes)
 		shirt.ShirtTemplate = originalClothes.Shirt -- 원래 Shirt 텍스처 복구
 	end
 end
-
-
