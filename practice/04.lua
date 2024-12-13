@@ -157,6 +157,69 @@ end
 trapPart.Touched:Connect(trap)
 
 
+-- 닿은 것들을 복사하는 파트
+
+local part = script.Parent
+
+function ezo(touched)
+	local copy = touched:Clone()
+	local clonespawn = workspace.Baseplate -- clonespawn 은 클론된 파트 생성 될 위치
+	copy.Parent = workspace
+	copy.Position = clonespawn.Position + Vector3.new(0, 1, 0)
+end
+
+part.Touched:Connect(ezo)
+
+
+-- 파트에 닿았을 때 1초에 한번씩만 데미지 주기
+local part = script.Parent
+local enabled = true
+
+part.Touched:Connect(function(hit)
+	local humanoid = hit.Parent:FindFirstChild("Humanoid")
+	if humanoid and enabled then
+		enabled = false
+		humanoid.Health -= 5
+
+		wait(1)
+		enabled = true
+	end
+end)
+
+
+-- 특정 속성이 변경되었을때만 함수 실행
+local part = game.Workspace.Part
+
+part:GetPropertyChangedSignal("Position"):Connect(function()
+	-- 함수 내용 ~~~~
+end)
+
+
+-- LocalScript 의 WaitForChild
+
+local part = workspace:WaitForChild("Part")
+local surfaceGUI = part:WaitForChild("SurfaceGui")
+local text = surfaceGUI:WaitForChild("TextLabel")
+
+local player = game.Players.LocalPlayer
+local playerName = player.Name
+
+text.Text = playerName.." 하이"
+
+
+-- GetChildren(), 플레이어 목록 구하기
+local model = script.Parent
+local parts = model:GetChildren()
+print(parts)
+
+for i, v in ipairs(parts) do
+    -- Script 같은 오브젝트는 건너뛰고, Part 만 골라서 실행
+    if v:IsA("BasePart") then
+        v.CanCollide = false
+        v.BrickColor = BrickColor.Random()
+    end
+end
+
 
 -- 2024-05-30
 
