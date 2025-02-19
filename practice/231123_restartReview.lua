@@ -367,9 +367,23 @@ end
 
 local RunService = game:GetService("RunService")
 
--- step 을 이용하면 Frame 에 다른 차이를 없앨 수 있음
+
+-- step 을 이용하면 Frame 에 따른 차이를 없앨 수 있음
 function update(step)
 	script.Parent.Rotation += 60 * step
 end
 
 RunService.RenderStepped:Connect(update)
+
+
+-- ServerScript 에서는 RenderStepped 대신 Stepped 사용
+local runService = game:GetService("RunService")
+local part = script.Parent
+
+function update(step)
+	part.CFrame = part.CFrame * CFrame.Angles(0, math.rad(180) * step, 0)
+end
+
+runService.Stepped:Connect(update)
+
+
