@@ -210,19 +210,31 @@ local function FirstQuestGui(player)
 	task.delay(5, function()
 		if nextGui then
 			nextGui:Destroy()
-			-- 화살표 안내
+
+			-- NPC 타겟 지정
 			local doctor = workspace.World.Building:FindFirstChild("Pet Hospital"):FindFirstChild("Doctor")
 			if doctor then
-				ShowArrowEvent:FireClient(player, {
-					Target = doctor.PrimaryPart or doctor:FindFirstChildWhichIsA("BasePart"),
-					HideDistance = 10
-				})
+				-- 안전하게 타겟 파트 찾기
+				local targetPart = doctor.PrimaryPart 
+					or doctor:FindFirstChild("HumanoidRootPart")
+					or doctor:FindFirstChild("Head")
+					or doctor:FindFirstChildWhichIsA("BasePart")
+
+				if targetPart then
+					ShowArrowEvent:FireClient(player, {
+						Target = targetPart,
+						HideDistance = 10
+					})
+				else
+					warn("Doctor NPC에 사용할 파트를 찾지 못했습니다.")
+				end
+			else
+				warn("Doctor NPC를 찾을 수 없습니다.")
 			end
-
-
 		end
 	end)
 end
+
 
 -- Pet 선택 완료 이벤트
 PetSelectedEvent.OnServerEvent:Connect(function(player, petName)
