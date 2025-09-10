@@ -7,7 +7,6 @@ local ServerStorage = game:GetService("ServerStorage")
 local DataStoreService = game:GetService("DataStoreService")
 local petModels = ReplicatedStorage:WaitForChild("Pets")
 local PetQuestEvent = ReplicatedStorage:WaitForChild("RemoteEvents"):WaitForChild("PetQuestEvent")
-local arrow = require(game.ServerScriptService.arrow)
 local RunService = game:GetService("RunService")
 
 -- DataStore
@@ -33,6 +32,13 @@ if not PetSelectedEvent then
 	PetSelectedEvent = Instance.new("RemoteEvent")
 	PetSelectedEvent.Name = "PetSelected"
 	PetSelectedEvent.Parent = PetEvents
+end
+
+local ShowArrowEvent = PetEvents:FindFirstChild("ShowArrow")
+if not ShowArrowEvent then
+	ShowArrowEvent = Instance.new("RemoteEvent")
+	ShowArrowEvent.Name = "ShowArrow"
+	ShowArrowEvent.Parent = PetEvents
 end
 
 -- Constants
@@ -204,14 +210,31 @@ local function FirstQuestGui(player)
 	task.delay(5, function()
 		if nextGui then
 			nextGui:Destroy()
-			-- 화살표 안내
-			local doctor = workspace.World.Building:FindFirstChild("Pet Hospital")
-			if doctor and doctor:FindFirstChild("Doctor") then
-				arrow.createArrowPath(player, doctor.Doctor)
+
+			-- NPC 타겟 지정
+			local doctor = workspace.World.Building:FindFirstChild("Pet Hospital"):FindFirstChild("Doctor")
+			if doctor then
+				-- 안전하게 타겟 파트 찾기
+				local targetPart = doctor.PrimaryPart 
+					or doctor:FindFirstChild("HumanoidRootPart")
+					or doctor:FindFirstChild("Head")
+					or doctor:FindFirstChildWhichIsA("BasePart")
+
+				if targetPart then
+					ShowArrowEvent:FireClient(player, {
+						Target = targetPart,
+						HideDistance = 10
+					})
+				else
+					warn("Doctor NPC에 사용할 파트를 찾지 못했습니다.")
+				end
+			else
+				warn("Doctor NPC를 찾을 수 없습니다.")
 			end
 		end
 	end)
 end
+
 
 -- Pet 선택 완료 이벤트
 PetSelectedEvent.OnServerEvent:Connect(function(player, petName)

@@ -1,134 +1,73 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
--- arrow 생성 예시 코드
+local PetEvents = ReplicatedStorage:WaitForChild("PetEvents")
+local ShowArrowEvent = PetEvents:WaitForChild("ShowArrow")
 
-local arrow = require(game.ServerScriptService.arrow)
+-- Arrow 3D BillboardGui 템플릿
+local arrowBillboard = ReplicatedStorage:WaitForChild("ArrowBillboard") -- BillboardGui 안에 ImageLabel or MeshPart
 
+local arrowGui
+local targetPart
+local hideDistance = 10
 
--- 첫 퀘스트 GUI 실행
-local function FirstQuestGui(player)
-	local FirstQuestTemplate = ReplicatedStorage:WaitForChild("FirstQuest")
-	if not FirstQuestTemplate then return end
+ShowArrowEvent.OnClientEvent:Connect(function(data)
+	local char = player.Character or player.CharacterAdded:Wait()
+	local head = char:WaitForChild("Head")
 
-	local nextGui = FirstQuestTemplate:Clone()
-	nextGui.Parent = player:WaitForChild("PlayerGui")
-
-	task.delay(5, function()
-		if nextGui then
-			nextGui:Destroy()
-			-- 화살표 안내
-			local doctor = workspace.World.Building:FindFirstChild("Pet Hospital")
-			if doctor and doctor:FindFirstChild("Doctor") then
-				arrow.createArrowPath(player, doctor.Doctor)
-			end
-		end
-	end)
-end
-
-
-
-
--- arrow Module (ServerScriptService 하위)
--- arrow.createArrowPath() 를 통해 목표 지점까지 Part 로 Arrow 를 생성하고 플레이어 캐릭터가 목표에 도달 시 제거
-
-local arrow = {}
-
-
-function arrow.createArrowFolder()
-	local arrowFolder = Instance.new("Folder")
-	arrowFolder.Name = "ArrowPath"
-	arrowFolder.Parent = workspace  -- workspace에 추가
-	return arrowFolder
-end
-
-
-function arrow.createArrowPart(position, direction, arrowFolder)
-	local arrow = Instance.new("Part")
-	arrow.Size = Vector3.new(1, 1, 1) -- 화살표 크기
-	arrow.Shape = Enum.PartType.Block
-	arrow.Material = Enum.Material.Neon
-	arrow.BrickColor = BrickColor.new("Bright yellow")
-	arrow.Anchored = true
-	arrow.CanCollide = false
-	arrow.CFrame = CFrame.new(position, position + direction) * CFrame.Angles(0, math.rad(90), 0)
-	arrow.Parent = arrowFolder  -- 화살표를 폴더에 추가
-	return arrow
-end
-
-
-function arrow.createArrowPath(player, targetModel)
-	local character = player.Character or player.CharacterAdded:Wait()
-
-	-- 모델에 PrimaryPart가 설정되어 있는지 확인하고, 없으면 설정
-	if not targetModel.PrimaryPart then
-		warn("Model does not have a PrimaryPart. Attempting to set it.")
-		targetModel.PrimaryPart = targetModel:FindFirstChildWhichIsA("BasePart")  -- 모델의 첫 번째 BasePart를 PrimaryPart로 설정
-		if not targetModel.PrimaryPart then
-			warn("No BasePart found in model.")
-			return
-		end
+	-- 기존 것 제거
+	if arrowGui then
+		arrowGui:Destroy()
 	end
 
-	-- 모델의 Pivot을 기준으로 위치를 계산
-	local targetPosition = targetModel:GetPivot().Position
+	-- BillboardGui 복제해서 플레이어 머리 위에 붙임
+	arrowGui = arrowBillboard:Clone()
+	arrowGui.Parent = head
+	arrowGui.Enabled = true
+	arrowGui.Size = UDim2.new(0, 100, 0, 100)  -- 100x100 픽셀
 
-	-- 화살표를 담을 폴더 생성
-	local arrowFolder = arrow.createArrowFolder()  -- 폴더 생성
-	if not arrowFolder then
-		warn("ArrowFolder was not created properly.")
-		return
+	-- 머리 위쪽 중앙으로 오프셋
+	arrowGui.StudsOffset = Vector3.new(0, 4, 0) -- y 값만 조정해서 위로 띄움
+	arrowGui.AlwaysOnTop = true -- 다른 오브젝트 뒤에 가리지 않도록
+	
+	local arrowImage = arrowGui:FindFirstChild("ImageLabel", true)
+	if arrowImage then
+		arrowImage.AnchorPoint = Vector2.new(0.5, 0.5) -- 중앙 기준
+		arrowImage.Size = UDim2.new(1, 0, 1, 0)        -- 부모 BillboardGui 전체 사용
+		arrowImage.Position = UDim2.new(0.5, 0, 0.5, 0)
 	end
 
-	local stepSize = 10  -- 화살표 간격
 
-	-- 경로 생성
-	local function generatePath()
-		if not character or not character.PrimaryPart then
-			warn("Character or Character.PrimaryPart not found")
+
+	targetPart = data.Target
+	hideDistance = data.HideDistance or 10
+end)
+
+RunService.RenderStepped:Connect(function()
+	if arrowGui and targetPart and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+		local head = player.Character:FindFirstChild("Head")
+		local charPos = head.Position
+		local targetPos = targetPart.Position
+
+		-- 거리 체크: 가까우면 제거
+		if (targetPos - charPos).Magnitude <= hideDistance then
+			arrowGui:Destroy()
+			arrowGui = nil
+			targetPart = nil
 			return
 		end
 
-		local startPosition = character.PrimaryPart.Position
-		local direction = (targetPosition - startPosition).Unit
-		local distance = (startPosition - targetPosition).Magnitude
+		-- 머리 위치 기준 NPC 방향 계산 (XZ 평면)
+		local direction = (targetPos - charPos)
+		local angle = math.deg(math.atan2(direction.Z, direction.X)) - 90
 
-		for i = 0, distance, stepSize do
-			local arrowPosition = startPosition + direction * i
-			local arrow = arrow.createArrowPart(arrowPosition, direction, arrowFolder)  -- 화살표를 폴더에 추가
-
-			-- 반짝임 효과
-			task.spawn(function()
-				while arrow and arrow.Parent do
-					arrow.Transparency = 0.5
-					wait(0.5)
-					arrow.Transparency = 0
-					wait(0.5)
-				end
-			end)
+		-- BillboardGui 내부 ImageLabel 회전
+		local arrowImage = arrowGui:FindFirstChild("ArrowImage", true)
+		if arrowImage then
+			arrowImage.Rotation = angle
 		end
 	end
-
-	generatePath()
-
-	-- 목표 위치 도달 여부 확인
-	local connection
-	connection = game:GetService("RunService").Heartbeat:Connect(function()
-		if not character or not character.PrimaryPart then
-			connection:Disconnect()
-			return
-		end
-
-		local currentDistance = (character.PrimaryPart.Position - targetPosition).Magnitude
-		if currentDistance <= 5 then  -- 목표 도달
-			for _, arrow in pairs(arrowFolder:GetChildren()) do
-				if arrow and arrow.Parent then
-					arrow:Destroy()
-				end
-			end
-			connection:Disconnect()
-			print("Player reached the target!")
-		end
-	end)
-end
-
-
-return arrow
+end)
