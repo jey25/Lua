@@ -55,6 +55,26 @@ local QUEST_REWARDS = {
 local ActiveQuest : {[Player]: string?} = {}
 local PendingTimer : {[Player]: boolean} = {}
 
+-- [추가] Play the Ball 전용 아이템 폴더
+local PLAY_BALL_ITEMS = DOG_ITEMS and (
+	DOG_ITEMS:FindFirstChild("PlayBallItems")
+		or DOG_ITEMS:FindFirstChild("playBallItems")
+)
+
+
+-- [추가] 폴더 내 타깃 후보 수집 (Model/BasePart 모두 허용)
+local function collectTargetsInFolder(folder: Instance?): {Instance}
+	local out = {}
+	if not folder then return out end
+	for _, inst in ipairs(folder:GetDescendants()) do
+		if inst:IsA("Model") or inst:IsA("BasePart") then
+			table.insert(out, inst)
+		end
+	end
+	return out
+end
+
+
 -- 유틸
 --local function getAnyBasePart(model: Instance): BasePart?
 --	if model:IsA("Model") then
@@ -106,6 +126,34 @@ local function ensurePetClickTarget(pet: Model): BasePart?
 	return hitbox
 end
 
+-- [추가] 중복 연결 방지형 ClickDetector 유틸
+local function ensureClickDetectorOnce(target: Instance, callback: (Player)->())
+	if not target then return end
+	local base : BasePart? = nil
+	if target:IsA("BasePart") then base = target
+	elseif target:IsA("Model") then base = ensurePrimaryOrAnyPart(target) end
+	if not base then return end
+
+	local cd = base:FindFirstChildOfClass("ClickDetector")
+	if not cd then
+		cd = Instance.new("ClickDetector")
+		cd.MaxActivationDistance = 10
+		cd.Parent = base
+	end
+
+	-- 이미 와이어링 됐으면 재연결하지 않음
+	if cd:GetAttribute("Wired_PlayBall") then return end
+	cd:SetAttribute("Wired_PlayBall", true)
+
+	cd.MouseClick:Connect(function(player)
+		if player and player.Parent then
+			callback(player)
+		end
+	end)
+end
+
+
+
 -- Workspace에 존재하는 "해당 플레이어 소유" 펫을 찾기
 local function findPlayersPet(player: Player): Model?
 	for _, inst in ipairs(Workspace:GetDescendants()) do
@@ -146,27 +194,33 @@ end
 
 
 -- [추가] 퀘스트별 타깃 인스턴스 찾기 (플레이어별/퀘스트별)
-local function getQuestTargetFor(player: Player, questName: string): Instance?
+-- [교체] getQuestTargetFor → getQuestTargetsFor : 리스트 반환
+local function getQuestTargetsFor(player: Player, questName: string): {Instance}
 	if questName == "Feed the Dog" then
-		return DOG_ITEMS and DOG_ITEMS:FindFirstChild("FoodItem")
+		return { DOG_ITEMS and DOG_ITEMS:FindFirstChild("FoodItem") }
 	elseif questName == "Play the Ball" then
-		return DOG_ITEMS and DOG_ITEMS:FindFirstChild("BallItem")
+		local list = collectTargetsInFolder(PLAY_BALL_ITEMS)
+		-- 기존 단일 BallItem도 함께 허용(원치 않으면 주석 처리)
+		local single = DOG_ITEMS and DOG_ITEMS:FindFirstChild("BallItem")
+		if single then table.insert(list, single) end
+		return list
 	elseif questName == "Take the Dog to the Vet" then
-		return DOG_ITEMS and DOG_ITEMS:FindFirstChild("DogMedicine")
+		return { DOG_ITEMS and DOG_ITEMS:FindFirstChild("DogMedicine") }
 	elseif questName == "Buy the Dog Food" then
-		return DOG_ITEMS and DOG_ITEMS:FindFirstChild("DogFood")
+		return { DOG_ITEMS and DOG_ITEMS:FindFirstChild("DogFood") }
 	elseif questName == "Put the Dog to Sleep" then
-		return SleepArea  -- BasePart
+		return { Workspace:FindFirstChild("SleepArea") }
 	elseif questName == "Play a Game" then
-		return FunArea    -- BasePart
+		return { Workspace:FindFirstChild("FunArea") }
 	elseif questName == "Pet the Dog" then
-		-- 플레이어 소유 펫 모델 위에 표시
-		return findPlayersPet(player)
+		return { findPlayersPet(player) }
 	end
-	return nil
+	return {}
 end
 
+
 -- [추가/변경] startQuestFor: 퀘스트 시작 알림 + 대상 마커 표시 지시
+-- [교체] startQuestFor: 마커 표시를 리스트로 보냄
 local function startQuestFor(player: Player)
 	if not player or not player.Parent then return end
 	local keys = {}
@@ -177,21 +231,14 @@ local function startQuestFor(player: Player)
 	local questName = phrases[randomPhrase]
 	ActiveQuest[player] = questName
 
-	-- 클라에 "시작" 알림
-	PetQuestEvent:FireClient(player, "StartQuest", {
-		phrase = randomPhrase,
-		quest = questName,
-	})
+	PetQuestEvent:FireClient(player, "StartQuest", { phrase = randomPhrase, quest = questName })
 
-	-- 🎯 대상 인스턴스 전달 → 클라가 해당 오브젝트 위에 '?' 생성
-	local target = getQuestTargetFor(player, questName)
-	if target then
-		PetQuestEvent:FireClient(player, "ShowQuestMarker", {
-			quest = questName,
-			target = target, -- Workspace/ReplicatedStorage 내 인스턴스는 Remote로 안전 전달됨
-		})
+	local targets = getQuestTargetsFor(player, questName)
+	if targets and #targets > 0 then
+		PetQuestEvent:FireClient(player, "ShowQuestMarkers", { quest = questName, targets = targets })
 	end
 end
+
 
 
 local function scheduleNextQuest(player: Player)
@@ -207,27 +254,24 @@ end
 
 
 -- [추가/변경] completeQuestFor: 클리어 처리 + 마커 제거 지시
+-- [교체] completeQuestFor: 마커 전부 제거 신호
 local function completeQuestFor(player, questName)
 	if ActiveQuest[player] ~= questName then return end
 	ActiveQuest[player] = nil
 
 	local reward = QUEST_REWARDS[questName] or 0
-	if reward > 0 then
-		Experience.AddExp(player, reward)
-	end
+	if reward > 0 then Experience.AddExp(player, reward) end
 
-	-- 🧹 대상 마커 제거 지시 (안전하게 타깃 재탐색해서 전달)
-	local target = getQuestTargetFor(player, questName)
-	if target then
-		PetQuestEvent:FireClient(player, "HideQuestMarker", {
-			quest = questName,
-			target = target,
-		})
+	-- 🎯 모든 타깃에 대한 마커 제거
+	local targets = getQuestTargetsFor(player, questName)
+	if targets and #targets > 0 then
+		PetQuestEvent:FireClient(player, "HideQuestMarkers", { quest = questName, targets = targets })
 	end
 
 	PetQuestEvent:FireClient(player, "CompleteQuest", { quest = questName })
 	scheduleNextQuest(player)
 end
+
 
 -- 검증 핸들러(서버 권위)
 local function onFoodClicked(player: Player)
@@ -254,8 +298,15 @@ local function onDogFoodClicked(player: Player)
 	end
 end
 
+
 local function onPetClicked(player: Player, petModel: Model)
-	-- 펫 클릭은 소유자만 인정
+	-- ✅ Wang 추적/차단 상태면 'Pet the Dog' 퀘스트 클릭 무시
+	if petModel and (petModel:GetAttribute("AIState") == "wang_approach"
+		or petModel:GetAttribute("BlockPetQuestClicks") == true) then
+		return
+	end
+
+	-- 기존 로직
 	if ActiveQuest[player] == "Pet the Dog" then
 		local owner = petModel and petModel:GetAttribute("OwnerUserId")
 		if typeof(owner) == "number" and owner == player.UserId then
@@ -264,19 +315,39 @@ local function onPetClicked(player: Player, petModel: Model)
 	end
 end
 
+
+
 local function touchedArea(questName: string, player: Player)
 	if ActiveQuest[player] == questName then
 		completeQuestFor(player, questName)
 	end
 end
 
--- 아이템들
+-- [추가] 전용 폴더에 들어있는 모든 아이템을 'Play the Ball' 클리어 대상으로 연결
+if PLAY_BALL_ITEMS then
+	-- 최초 일괄 와이어링
+	for _, inst in ipairs(PLAY_BALL_ITEMS:GetDescendants()) do
+		if inst:IsA("Model") or inst:IsA("BasePart") then
+			ensureClickDetectorOnce(inst, onBallClicked)
+		end
+	end
+	-- 런타임 추가 아이템도 자동 와이어링
+	PLAY_BALL_ITEMS.DescendantAdded:Connect(function(inst)
+		if inst:IsA("Model") or inst:IsA("BasePart") then
+			ensureClickDetectorOnce(inst, onBallClicked)
+		end
+	end)
+end
+
+
+-- 기존 단일 아이템들(다른 퀘스트 포함)은 유지
 if DOG_ITEMS then
 	ensureClickDetector(DOG_ITEMS:FindFirstChild("FoodItem"), onFoodClicked)
-	ensureClickDetector(DOG_ITEMS:FindFirstChild("BallItem"), onBallClicked)
+	ensureClickDetector(DOG_ITEMS:FindFirstChild("BallItem"), onBallClicked)  -- 기존 단일 BallItem도 유효
 	ensureClickDetector(DOG_ITEMS:FindFirstChild("DogMedicine"), onMedicineClicked)
 	ensureClickDetector(DOG_ITEMS:FindFirstChild("DogFood"), onDogFoodClicked)
 end
+
 
 
 -- 영역들
