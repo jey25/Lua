@@ -44,6 +44,8 @@ local function findMyPet(): Model?
 	return best
 end
 
+
+
 local function resolvePetAndBillboard()
 	currentPet = findMyPet()
 	bubble, textLabel = nil, nil
@@ -126,6 +128,7 @@ local function getOrCreateHud()
 		bg.BackgroundColor3 = Color3.fromRGB(0,0,0)
 		bg.BackgroundTransparency = 0.35
 		bg.BorderSizePixel = 0
+		bg.Visible = false                -- ✅ 기본은 숨김
 		bg.Parent = screenGui
 		local corner = Instance.new("UICorner")
 		corner.CornerRadius = UDim.new(0, 10)
@@ -143,16 +146,20 @@ local function getOrCreateHud()
 		label.Font = Enum.Font.SourceSansBold
 		label.TextScaled = true
 		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.Text = ""                   -- ✅ 기본 텍스트 없음
 		label.Parent = bg
 	end
 	return screenGui, bg, label
 end
 
-local function clearHud()
-	local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-	local hud = playerGui and playerGui:FindFirstChild("PetHUD")
-	if hud then hud:Destroy() end
+
+local function setQuestHudText(phrase: string)
+	local _, bg, label = getOrCreateHud()
+	label.Text = phrase or ""
+	bg.Visible = (label.Text ~= nil and label.Text ~= "")
 end
+
+
 
 -- ========= [퀘스트 마커 관리] =========
 local QuestMarkers: {[Instance]: BillboardGui} = {}
@@ -248,17 +255,14 @@ local PetQuestEvent = RemoteFolder:WaitForChild("PetQuestEvent")
 PetQuestEvent.OnClientEvent:Connect(function(action, data)
 	if action == "StartQuest" then
 		local phrase = (data and data.phrase) or ""
-		local _, _, label = getOrCreateHud()
-		label.Text = phrase
-
+		setQuestHudText(phrase)                 -- ✅ 보임
 		ensureResolvedSoon()
 		if textLabel then textLabel.Text = phrase end
 		if bubble then bubble.Enabled = true end
 
 	elseif action == "CompleteQuest" then
-		-- 일반 퀘스트 클리어 연출만 여기서 실행
 		runClearEffect()
-		clearHud()
+		setQuestHudText("")                     -- ✅ 숨김
 		if textLabel then textLabel.Text = "" end
 
 	elseif action == "ShowQuestMarkers" then
@@ -274,23 +278,6 @@ end)
 
 
 
--- 데스크톱: 마우스
-local mouse = LocalPlayer:GetMouse()
-mouse.Button1Down:Connect(function()
-	sendCancelIfMyPetClick(mouse.Target)
-end)
-
--- 모바일: 월드 탭
-local UserInputService = game:GetService("UserInputService")
-if UserInputService.TouchEnabled then
-	UserInputService.TouchTapInWorld:Connect(function(_, processedByUI)
-		if processedByUI then return end
-		sendCancelIfMyPetClick(mouse.Target) -- 터치도 mouse.Target 갱신됨
-	end)
-end
-
-
-
 -- 내 펫 모델 얻기
 local function isMyPetModel(model: Instance?): boolean
 	if not model then return false end
@@ -298,6 +285,9 @@ local function isMyPetModel(model: Instance?): boolean
 	if not petModel or not petModel:IsA("Model") then return false end
 	return petModel:GetAttribute("OwnerUserId") == LocalPlayer.UserId
 end
+
+
+
 
 -- 어떤 파츠를 클릭하든 내 펫의 히트박스로 환산
 local function resolveToMyPetHitbox(part: BasePart?): BasePart?
@@ -323,6 +313,25 @@ local function sendCancelIfMyPetClick(targetPart: BasePart?)
 	if not hitbox then return end
 	WangCancelClick:FireServer(hitbox)
 end
+
+
+-- 데스크톱: 마우스
+local mouse = LocalPlayer:GetMouse()
+mouse.Button1Down:Connect(function()
+	sendCancelIfMyPetClick(mouse.Target)
+end)
+
+-- 모바일: 월드 탭
+local UserInputService = game:GetService("UserInputService")
+if UserInputService.TouchEnabled then
+	UserInputService.TouchTapInWorld:Connect(function(_, processedByUI)
+		if processedByUI then return end
+		sendCancelIfMyPetClick(mouse.Target) -- 터치도 mouse.Target 갱신됨
+	end)
+end
+
+
+
 
 
 -- ========= [NPC 설정 테이블] =========

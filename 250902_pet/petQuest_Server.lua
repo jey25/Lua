@@ -6,18 +6,24 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 -- RemoteEvent 준비
-local remoteFolder = ReplicatedStorage:FindFirstChild("RemoteEvents")
-local PetQuestEvent = remoteFolder:FindFirstChild("PetQuestEvent")
+local remoteFolder = ReplicatedStorage:WaitForChild("RemoteEvents")
+local PetQuestEvent = remoteFolder:WaitForChild("PetQuestEvent")
 
 -- 설정
-local INTERVAL = 5
+local INTERVAL = 10
 local WORLD = Workspace:WaitForChild("World", 10)
 local DOG_ITEMS = WORLD and WORLD:FindFirstChild("dogItems")
 
 local Experience = require(game.ServerScriptService:WaitForChild("ExperienceService"))
+local PetAffection = require(game.ServerScriptService:WaitForChild("PetAffectionService"))
+
 
 local SleepArea = Workspace:FindFirstChild("SleepArea")
 local FunArea = Workspace:FindFirstChild("FunArea")
+-- 펫 선택 여부 & 지연 취소 토큰
+local HasSelectedPet : {[Player]: boolean} = {}
+local QuestGenToken  : {[Player]: number}  = {}
+
 
 -- 퀘스트 정의
 local phrases = {
@@ -75,19 +81,6 @@ local function collectTargetsInFolder(folder: Instance?): {Instance}
 end
 
 
--- 유틸
---local function getAnyBasePart(model: Instance): BasePart?
---	if model:IsA("Model") then
---		local m = model
---		local hrp = m:FindFirstChild("HumanoidRootPart")
---		if hrp and hrp:IsA("BasePart") then return hrp end
---		if m.PrimaryPart then return m.PrimaryPart end
---		return m:FindFirstChildWhichIsA("BasePart", true)
---	end
---	return nil
---end
-
-
 local function ensurePrimaryOrAnyPart(model: Model): BasePart?
 	if model.PrimaryPart then return model.PrimaryPart end
 	local hrp = model:FindFirstChild("HumanoidRootPart")
@@ -125,6 +118,8 @@ local function ensurePetClickTarget(pet: Model): BasePart?
 
 	return hitbox
 end
+
+
 
 -- [추가] 중복 연결 방지형 ClickDetector 유틸
 local function ensureClickDetectorOnce(target: Instance, callback: (Player)->())
@@ -218,20 +213,47 @@ local function getQuestTargetsFor(player: Player, questName: string): {Instance}
 	return {}
 end
 
+local function hasValidTarget(list: {Instance}): boolean
+	for _, t in ipairs(list or {}) do
+		if typeof(t) == "Instance" and t:IsDescendantOf(workspace) then
+			if t:IsA("BasePart") then return true end
+			if t:IsA("Model") and ensurePrimaryOrAnyPart(t) then return true end
+		end
+	end
+	return false
+end
+
+local function getEligiblePairs(player: Player): {{phrase: string, quest: string}}
+	local out = {}
+	for phrase, quest in pairs(phrases) do
+		local targets = getQuestTargetsFor(player, quest)
+		if hasValidTarget(targets) then
+			table.insert(out, { phrase = phrase, quest = quest })
+		end
+	end
+	return out
+end
+
+local function pickEligibleQuest(player: Player): (string?, string?)
+	local eligible = getEligiblePairs(player)
+	if #eligible == 0 then return nil, nil end
+	local pick = eligible[math.random(1, #eligible)]
+	return pick.phrase, pick.quest
+end
+
+
 
 -- [추가/변경] startQuestFor: 퀘스트 시작 알림 + 대상 마커 표시 지시
--- [교체] startQuestFor: 마커 표시를 리스트로 보냄
 local function startQuestFor(player: Player)
-	if not player or not player.Parent then return end
-	local keys = {}
-	for k in pairs(phrases) do table.insert(keys, k) end
-	if #keys == 0 then return end
+	if not (player and player.Parent) then return end
+	local phrase, questName = pickEligibleQuest(player)
+	if not phrase then
+		-- 시작 가능한 퀘스트가 현재 없음 → 시작하지 않고 끝 (스케줄은 스케줄러가 담당)
+		return
+	end
 
-	local randomPhrase = keys[math.random(1, #keys)]
-	local questName = phrases[randomPhrase]
 	ActiveQuest[player] = questName
-
-	PetQuestEvent:FireClient(player, "StartQuest", { phrase = randomPhrase, quest = questName })
+	PetQuestEvent:FireClient(player, "StartQuest", { phrase = phrase, quest = questName })
 
 	local targets = getQuestTargetsFor(player, questName)
 	if targets and #targets > 0 then
@@ -240,37 +262,55 @@ local function startQuestFor(player: Player)
 end
 
 
-
 local function scheduleNextQuest(player: Player)
 	if PendingTimer[player] then return end
 	PendingTimer[player] = true
+
+	QuestGenToken[player] = (QuestGenToken[player] or 0) + 1
+	local myToken = QuestGenToken[player]
+
 	task.delay(INTERVAL, function()
 		PendingTimer[player] = false
-		if player and player.Parent then
+
+		-- 유효성/취소 체크
+		if not (player and player.Parent) then return end
+		if QuestGenToken[player] ~= myToken then return end
+		-- 이미 진행 중이면 새로 시작하지 않음
+		if ActiveQuest[player] ~= nil then return end
+
+		-- 가능한 게 있으면 곧장 시작, 없으면 다시 예약
+		local phrase, _ = pickEligibleQuest(player)
+		if phrase then
 			startQuestFor(player)
+		else
+			-- 지금은 조건이 안 맞음 → INTERVAL 후 다시 시도
+			scheduleNextQuest(player)
 		end
 	end)
 end
 
 
+
 -- [추가/변경] completeQuestFor: 클리어 처리 + 마커 제거 지시
--- [교체] completeQuestFor: 마커 전부 제거 신호
 local function completeQuestFor(player, questName)
 	if ActiveQuest[player] ~= questName then return end
 	ActiveQuest[player] = nil
 
 	local reward = QUEST_REWARDS[questName] or 0
 	if reward > 0 then Experience.AddExp(player, reward) end
+	
+	PetAffection.OnQuestCleared(player, questName)
+	PetAffection.Configure({ DefaultMax = 10, DecaySec = 10, MinHoldSec = 10 })
 
-	-- 🎯 모든 타깃에 대한 마커 제거
 	local targets = getQuestTargetsFor(player, questName)
 	if targets and #targets > 0 then
 		PetQuestEvent:FireClient(player, "HideQuestMarkers", { quest = questName, targets = targets })
 	end
 
 	PetQuestEvent:FireClient(player, "CompleteQuest", { quest = questName })
-	scheduleNextQuest(player)
+	scheduleNextQuest(player) -- 다음 퀘스트 예약
 end
+
 
 
 -- 검증 핸들러(서버 권위)
@@ -314,7 +354,6 @@ local function onPetClicked(player: Player, petModel: Model)
 		end
 	end
 end
-
 
 
 local function touchedArea(questName: string, player: Player)
@@ -414,13 +453,29 @@ Workspace.DescendantAdded:Connect(function(inst)
 	tryWirePetClick(inst)
 end)
 
--- 플레이어 라이프사이클
 Players.PlayerAdded:Connect(function(player)
-	-- 펫이 나중에 스폰되어도 StartQuest는 먼저 줄 수 있음(클라가 펫 찾으면 GUI 붙임)
-	startQuestFor(player)
+	scheduleNextQuest(player)
 end)
+
+for _, p in ipairs(Players:GetPlayers()) do
+	scheduleNextQuest(p)
+end
+
+
+local PetSelectedEvent = remoteFolder:FindFirstChild("PetSelected")
+if PetSelectedEvent then
+	PetSelectedEvent.OnServerEvent:Connect(function(player, petName)
+		HasSelectedPet[player] = true -- (옵션) 참고용 플래그만 유지
+	end)
+end
+
+
+
 
 Players.PlayerRemoving:Connect(function(player)
 	ActiveQuest[player] = nil
 	PendingTimer[player] = nil
+	HasSelectedPet[player] = nil
+	QuestGenToken[player] = nil
 end)
+

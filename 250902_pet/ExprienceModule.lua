@@ -16,6 +16,8 @@ LevelSync.Name = "LevelSync"
 -- DataStore
 local STORE_NAME = "PlayerProgress_v1"
 local ProgressStore = DataStoreService:GetDataStore(STORE_NAME)
+local SHOW_IN_LEADERBOARD = false
+
 
 -- 경험치 요구량 공식(원하면 테이블로 바꿔도 OK)
 local function ExpToNext(level: number): number
@@ -50,44 +52,42 @@ end
 
 -- 서버에서 플레이어 상태를 단일 소스로 관리(Attributes + leaderstats)
 local function initPlayerState(player: Player)
-	-- 데이터 로드
 	local data = tryLoad(player.UserId)
 	local level = math.max(1, tonumber(data.Level) or 1)
-	local exp = math.max(0, tonumber(data.Exp) or 0)
+	local exp   = math.max(0, tonumber(data.Exp) or 0)
+	local goal  = ExpToNext(level)
 
-	-- leaderstats(가시성)
-	local leaderstats = Instance.new("Folder")
-	leaderstats.Name = "leaderstats"
-	leaderstats.Parent = player
+	-- ★ Leaderboard 표시 비활성화: leaderstats를 만들지 않거나, 만들더라도 값은 넣지 않음
+	if SHOW_IN_LEADERBOARD then
+		local leaderstats = Instance.new("Folder")
+		leaderstats.Name = "leaderstats"
+		leaderstats.Parent = player
 
-	local lvValue = Instance.new("IntValue")
-	lvValue.Name = "Level"
-	lvValue.Value = level
-	lvValue.Parent = leaderstats
+		local lvValue = Instance.new("IntValue")
+		lvValue.Name = "Level"
+		lvValue.Value = level
+		lvValue.Parent = leaderstats
 
-	-- 표시용(원하면 숨겨도 됨). Exp, ExpToNext를 숫자로 보이고 싶다면 남겨두세요
-	--local expValue = Instance.new("IntValue")
-	--expValue.Name = "Exp"
-	--expValue.Value = exp
-	--expValue.Parent = leaderstats
+		-- 필요하면 이 두 개도 표시(표시 원치 않으면 생성 X)
+		-- local expValue = Instance.new("IntValue")
+		-- expValue.Name = "Exp"
+		-- expValue.Value = exp
+		-- expValue.Parent = leaderstats
 
-	--local goalValue = Instance.new("IntValue")
-	--goalValue.Name = "ExpToNext"
-	--goalValue.Value = ExpToNext(level)
-	--goalValue.Parent = leaderstats
+		-- local goalValue = Instance.new("IntValue")
+		-- goalValue.Name = "ExpToNext"
+		-- goalValue.Value = goal
+		-- goalValue.Parent = leaderstats
+	end
 
-	 --Attributes (클라가 Changed 시그널로 관찰하기 쉬움)
-	--player:SetAttribute("Level", level)
-	--player:SetAttribute("Exp", exp)
-	--player:SetAttribute("ExpToNext", goalValue.Value)
+	-- 저장/동기화용 Attributes (GUI/HUD는 이걸로 보거나 LevelSync 수신)
+	player:SetAttribute("Level", level)
+	player:SetAttribute("Exp", exp)
+	player:SetAttribute("ExpToNext", goal)
 
-	-- --첫 동기화
-	--LevelSync:FireClient(player, {
-	--	Level = level,
-	--	Exp = exp,
-	--	ExpToNext = goalValue.Value,
-	--})
+	LevelSync:FireClient(player, { Level = level, Exp = exp, ExpToNext = goal })
 end
+
 
 -- 경험치 지급(반복적으로 레벨업 처리)
 local function addExp(player: Player, amount: number)
@@ -113,13 +113,17 @@ local function addExp(player: Player, amount: number)
 	player:SetAttribute("Exp", exp)
 	player:SetAttribute("ExpToNext", goal)
 
-	-- leaderstats 동기
-	local ls = player:FindFirstChild("leaderstats")
-	if ls then
-		local lv = ls:FindFirstChild("Level"); if lv then lv.Value = level end
-		local ex = ls:FindFirstChild("Exp"); if ex then ex.Value = exp end
-		local gv = ls:FindFirstChild("ExpToNext"); if gv then gv.Value = goal end
+	-- leaderstats 동기 (표시 꺼놨다면 건너뜀)
+	if SHOW_IN_LEADERBOARD then
+		local ls = player:FindFirstChild("leaderstats")
+		if ls then
+			local lv = ls:FindFirstChild("Level");       if lv then lv.Value = level end
+			-- 표시하려면 아래 두 줄도(지금은 보통 필요 없음)
+			-- local ex = ls:FindFirstChild("Exp");       if ex then ex.Value = exp end
+			-- local gv = ls:FindFirstChild("ExpToNext"); if gv then gv.Value = goal end
+		end
 	end
+
 
 	-- 클라 HUD 업데이트
 	LevelSync:FireClient(player, {Level = level, Exp = exp, ExpToNext = goal})

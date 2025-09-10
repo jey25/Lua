@@ -199,8 +199,22 @@ end
 
 
 
+-- 서버 util: workspace 기준 경로 문자열 생성
+local function PathFromWorkspace(inst: Instance): string
+	local parts = {}
+	local cur = inst
+	while cur and cur ~= workspace do
+		table.insert(parts, 1, cur.Name)
+		cur = cur.Parent
+	end
+	return table.concat(parts, "/") -- 예: "World/Building/Pet Hospital/Doctor/Head"
+end
+
 -- 첫 퀘스트 GUI 실행
 local function FirstQuestGui(player)
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	local ShowArrowEvent = ReplicatedStorage.PetEvents.ShowArrow
+
 	local FirstQuestTemplate = ReplicatedStorage:WaitForChild("FirstQuest")
 	if not FirstQuestTemplate then return end
 
@@ -211,29 +225,27 @@ local function FirstQuestGui(player)
 		if nextGui then
 			nextGui:Destroy()
 
-			-- NPC 타겟 지정
 			local doctor = workspace.World.Building:FindFirstChild("Pet Hospital"):FindFirstChild("Doctor")
-			if doctor then
-				-- 안전하게 타겟 파트 찾기
-				local targetPart = doctor.PrimaryPart 
-					or doctor:FindFirstChild("HumanoidRootPart")
-					or doctor:FindFirstChild("Head")
-					or doctor:FindFirstChildWhichIsA("BasePart")
+			if not doctor then warn("Doctor NPC를 찾을 수 없습니다."); return end
 
-				if targetPart then
-					ShowArrowEvent:FireClient(player, {
-						Target = targetPart,
-						HideDistance = 10
-					})
-				else
-					warn("Doctor NPC에 사용할 파트를 찾지 못했습니다.")
-				end
-			else
-				warn("Doctor NPC를 찾을 수 없습니다.")
+			local targetPart = doctor.PrimaryPart
+				or doctor:FindFirstChild("HumanoidRootPart")
+				or doctor:FindFirstChild("Head")
+				or doctor:FindFirstChildWhichIsA("BasePart", true)
+
+			if not targetPart then
+				warn("Doctor NPC에 사용할 파트를 찾지 못했습니다."); return
 			end
+
+			ShowArrowEvent:FireClient(player, {
+				Target = targetPart,                         -- 인스턴스 (스트리밍 되면 즉시 사용)
+				TargetPath = PathFromWorkspace(targetPart),  -- 경로 스트링 (스트리밍 미완 시 복구용)
+				HideDistance = 10
+			})
 		end
 	end)
 end
+
 
 
 -- Pet 선택 완료 이벤트
