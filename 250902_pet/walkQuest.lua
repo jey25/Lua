@@ -6,10 +6,22 @@ local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+-- 상단 근처 (ReplicatedStorage 등 선언 아래)
+local RemoteFolder = ReplicatedStorage:FindFirstChild("RemoteEvents") or Instance.new("Folder", ReplicatedStorage)
+RemoteFolder.Name = "RemoteEvents"
+local WalkQuestEvent = RemoteFolder:FindFirstChild("WalkQuestEvent") or Instance.new("RemoteEvent", RemoteFolder)
+WalkQuestEvent.Name = "WalkQuestEvent"
+
+local SFXFolder = ReplicatedStorage:WaitForChild("SFX") -- 여기에 템플릿들
+
 local walkStartTimes = {7, 15, 18, 21}   -- 정각 시작
 local WALK_WINDOW_HOURS = 1               -- 창 길이(게임 시계 기준)
-local walkDuration = 120                  -- 존 내 누적 필요시간(초)
+local walkDuration = 20                  -- 존 내 누적 필요시간(초)
 local walkZones = Workspace:WaitForChild("WalkZones")
+
+-- 맨 위 require들 아래에 추가
+local Experience = require(game.ServerScriptService:WaitForChild("ExperienceService"))
+local PetAffection = require(game.ServerScriptService:WaitForChild("PetAffectionService"))
 
 local playerWalkTimes: {[Player]: number} = {}
 local activePlayers:   {[Player]: boolean} = {}
@@ -17,6 +29,24 @@ local completedPlayers:{[Player]: boolean} = {}
 
 local isWalkTime = false
 local activeUntilClock: number? = nil
+
+-- 보상/패널티 기본값 (원하는 값으로 조정)
+local WALK_XP_REWARD_DEFAULT         = 250   -- 클리어 시 EXP 증가량
+local WALK_AFFECTION_GAIN_DEFAULT    = 2     -- 클리어 시 어펙션 증가량
+local WALK_AFFECTION_PENALTY_DEFAULT = 1     -- 실패(미클리어 종료) 시 어펙션 감소량
+
+
+-- walkZones 선언 이후(WaitForChild 다음)에 추가
+local function getWalkRuntimeConfig()
+	local xp   = walkZones:GetAttribute("WalkXPReward")
+	local gain = walkZones:GetAttribute("WalkAffectionGain")
+	local pen  = walkZones:GetAttribute("WalkAffectionPenalty")
+
+	if typeof(xp)   ~= "number" then xp   = WALK_XP_REWARD_DEFAULT end
+	if typeof(gain) ~= "number" then gain = WALK_AFFECTION_GAIN_DEFAULT end
+	if typeof(pen)  ~= "number" then pen  = WALK_AFFECTION_PENALTY_DEFAULT end
+	return xp, gain, pen
+end
 
 -- 템플릿 (권장: ReplicatedStorage)
 local GaugeTemplate = ReplicatedStorage:FindFirstChild("GaugeBar") or game.StarterGui:FindFirstChild("GaugeBar")
@@ -43,6 +73,31 @@ local function setZonesActive(active: boolean)
 		end
 	end
 end
+
+
+local function adjustAffection(player: Player, delta: number, reason: string?)
+	-- 우선순위: Adjust(±) → Decrease(양수 입력) → Add(±) → OnQuestCleared(증가만)
+	pcall(function()
+		if PetAffection.Adjust then
+			PetAffection.Adjust(player, delta, reason or "walk")
+			return
+		end
+		if delta < 0 and PetAffection.Decrease then
+			PetAffection.Decrease(player, -delta, reason or "walk")
+			return
+		end
+		if PetAffection.Add then
+			PetAffection.Add(player, delta)
+			return
+		end
+		-- 마지막 폴백: 증가 케이스만 가능
+		if delta > 0 and PetAffection.OnQuestCleared then
+			-- 임시 퀘스트명으로 증가 처리 (증가량은 모듈 설정에 따름)
+			PetAffection.OnQuestCleared(player, "WalkQuest")
+		end
+	end)
+end
+
 
 ----------------------------------------------------------------
 -- HUD 보조
@@ -79,8 +134,15 @@ local function toast(player: Player, msg: string, seconds: number?)
 	task.delay(seconds or 2, function() if sg then sg:Destroy() end end)
 end
 
+
+-- 토스트 띄울 때 호출되는 기존 함수의 말미에 추가:
 local function showWalkTimeGui(player: Player)
 	toast(player, "Walk Time", 2)
+	local tpl = SFXFolder:FindFirstChild("WalkStart")
+	if tpl and tpl:IsA("Sound") then
+		-- ✅ 인스턴스를 직접 보냄(테이블 X)
+		WalkQuestEvent:FireClient(player, "PlaySfxTemplate", tpl)
+	end
 end
 
 ----------------------------------------------------------------
@@ -109,11 +171,23 @@ local function failFor(player: Player)
 	resetWalkGui(player)
 	activePlayers[player]    = nil
 	playerWalkTimes[player]  = nil
+
+	-- ✅ 실패 패널티 적용 (EXP 변화 없음)
+	local _, _, affectionPenalty = getWalkRuntimeConfig()
+	adjustAffection(player, -math.abs(affectionPenalty), "walk_fail")
+
 	toast(player, "Time's up!", 1.5)
 end
 
+
 local function completeFor(player: Player)
 	completedPlayers[player] = true
+
+	-- ✅ 보상 적용
+	local xpReward, affectionGain = getWalkRuntimeConfig()
+	pcall(function() Experience.AddExp(player, xpReward) end)
+	adjustAffection(player, math.abs(affectionGain), "walk_clear")
+
 	if ClearModule and ClearModule.showClearEffect then
 		pcall(function() ClearModule.showClearEffect(player) end)
 	end
@@ -121,6 +195,7 @@ local function completeFor(player: Player)
 	activePlayers[player]    = nil
 	playerWalkTimes[player]  = nil
 end
+
 
 local function endWalkWindow()
 	-- 미완료 전원 실패 처리

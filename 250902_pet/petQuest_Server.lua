@@ -24,6 +24,8 @@ local FunArea = Workspace:FindFirstChild("FunArea")
 local HasSelectedPet : {[Player]: boolean} = {}
 local QuestGenToken  : {[Player]: number}  = {}
 
+local OwnerPets : {[number]: Model} = {}
+
 
 -- 퀘스트 정의
 local phrases = {
@@ -50,11 +52,11 @@ local quests = {
 local QUEST_REWARDS = {
 	["Feed the Dog"]        = 150,
 	["Play the Ball"]       = 150,
-	["Pet the Dog"]         = 150,
+	["Pet the Dog"]         = 100,
 	["Put the Dog to Sleep"]= 150,
 	["Play a Game"]         = 200,
 	["Take the Dog to the Vet"] = 200,
-	["Buy the Dog Food"] = 250,
+	["Buy the Dog Food"] = 200,
 }
 
 -- per-player 상태
@@ -147,21 +149,28 @@ local function ensureClickDetectorOnce(target: Instance, callback: (Player)->())
 	end)
 end
 
+local function isNearPlayer(player: Player, target: Instance, maxDist: number?): boolean
+	maxDist = maxDist or 12
+	local char = player.Character
+	if not char then return false end
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return false end
 
-
--- Workspace에 존재하는 "해당 플레이어 소유" 펫을 찾기
-local function findPlayersPet(player: Player): Model?
-	for _, inst in ipairs(Workspace:GetDescendants()) do
-		if inst:IsA("Model") then
-			local owner = inst:GetAttribute("OwnerUserId")
-			if typeof(owner) == "number" and owner == player.UserId and ensurePrimaryOrAnyPart(inst) then
-				return inst
-			end
-		end
+	local base: BasePart?
+	if target:IsA("Model") then
+		base = ensurePrimaryOrAnyPart(target)
+	elseif target:IsA("BasePart") then
+		base = target
 	end
-	return nil
+	if not base then return false end
+	return (hrp.Position - base.Position).Magnitude <= maxDist
 end
 
+
+-- 기존 findPlayersPet 교체
+local function findPlayersPet(player: Player): Model?
+	return OwnerPets[player.UserId]
+end
 
 
 -- 서버에서 공용 오브젝트 클릭/터치 세팅
@@ -419,6 +428,14 @@ local function tryWirePetClick(inst: Instance)
 	if not (inst and inst:IsA("Model")) then return end
 	local owner = inst:GetAttribute("OwnerUserId")
 	if typeof(owner) ~= "number" then return end
+	
+	-- tryWirePetClick 내부, owner 확인 직후 추가
+	OwnerPets[owner] = inst
+	inst.Destroying:Once(function()
+		if OwnerPets[owner] == inst then
+			OwnerPets[owner] = nil
+		end
+	end)
 
 	-- 모델 루트에 잘못 붙어 있는 ClickDetector는 제거(무효)
 	for _, child in ipairs(inst:GetChildren()) do
@@ -442,6 +459,8 @@ local function tryWirePetClick(inst: Instance)
 		end
 	end)
 end
+
+
 -- 기존에 이미 Workspace 내에 존재하는 펫들 처리(서버 리스타트/테스트 대비)
 for _, inst in ipairs(Workspace:GetDescendants()) do
 	tryWirePetClick(inst)

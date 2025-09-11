@@ -41,8 +41,8 @@ local Store = DataStoreService:GetDataStore(STORE_NAME)
 
 -- 기본 설정 (원하면 Configure로 바꿀 수 있음)
 local DEFAULT_MAX            = 10
-local DEFAULT_DECAY_SECONDS  = 120  -- ⏱ 테스트는 20~30으로 낮추면 편함
-local DEFAULT_MIN_HOLD_SEC   = 180  -- 최소치 유지 판정 시간
+local DEFAULT_DECAY_SECONDS  = 20   -- ⏱ 테스트는 20~30으로 낮추면 편함
+local DEFAULT_MIN_HOLD_SEC   = 10  -- 최소치 유지 판정 시간
 
 
 -- 퀘스트별 증가량 (미정의면 1)
@@ -151,33 +151,49 @@ local function scheduleDecay(player: Player)
 	end)
 end
 
--- 증가 처리(퀘스트 클리어)
-local function addAffectionInternal(player: Player, addBy: number)
+
+-- 🔁 교체: 증가 전용 -> 증감(±) 모두 허용
+local function adjustAffectionInternal(player: Player, delta: number)
 	if not (player and player.Parent) then return end
-	addBy = math.max(0, math.floor(addBy))
-	if addBy == 0 then return end
+	delta = math.floor(tonumber(delta) or 0)
+	if delta == 0 then return end
 
 	local val  = player:GetAttribute("PetAffection") or 0
 	local maxv = player:GetAttribute("PetAffectionMax") or DEFAULT_MAX
 	local decS = player:GetAttribute("PetAffectionDecaySec") or DEFAULT_DECAY_SECONDS
 
-	local newv = clamp(val + addBy, 0, maxv)
+	local newv = clamp(val + delta, 0, maxv)
 	player:SetAttribute("PetAffection", newv)
 	player:SetAttribute("PetAffectionLastChangeUnix", now())
 	broadcast(player, newv, maxv, decS)
 
-	-- 감소 타이머 리셋
+	-- 감소/증가 모두에서 다음 패시브 감소 예약을 '지금' 기준으로 리셋
 	DecayToken[player] = (DecayToken[player] or 0) + 1
 	scheduleDecay(player)
 
-	-- 최소 유지 모니터 해제(값이 증가했으니 토큰 무효화)
+	-- 최소 유지 모니터 토큰 갱신
 	MinHoldToken[player] = (MinHoldToken[player] or 0) + 1
 
-	-- 최대치 도달 테스트 이벤트
-	if newv >= maxv then
+	-- 0 도달 시, 패시브 감소와 동일하게 최소 유지 모니터링 시작(선택 사항이지만 일관성 위해)
+	if newv == 0 then
+		local holdTok = (MinHoldToken[player] or 0) + 1
+		MinHoldToken[player] = holdTok
+		local holdSec = player:GetAttribute("PetAffectionMinHoldSec") or DEFAULT_MIN_HOLD_SEC
+		task.delay(holdSec, function()
+			if not (player and player.Parent) then return end
+			if MinHoldToken[player] ~= holdTok then return end
+			if (player:GetAttribute("PetAffection") or 0) == 0 then
+				AffectionTest:FireClient(player, { type = "MinHeld", value = 0 })
+			end
+		end)
+	end
+
+	-- 최대치 도달 테스트 이벤트 (증가 케이스)
+	if delta > 0 and newv >= maxv then
 		AffectionTest:FireClient(player, { type = "MaxReached", value = newv })
 	end
 end
+
 
 -- ─────────────────────────────────────────────────────────────
 -- 🔸 공개 API
@@ -204,16 +220,23 @@ function PetAffectionService.SetMaxForPlayer(player: Player, maxv: number)
 	broadcast(player, cur, maxv, player:GetAttribute("PetAffectionDecaySec") or DEFAULT_DECAY_SECONDS)
 end
 
--- 퀘스트 클리어 시 호출(권장)
+
+-- 🔧 교체: OnQuestCleared는 여전히 "증가"만 수행
 function PetAffectionService.OnQuestCleared(player: Player, questName: string)
 	local gain = getGain(questName)
-	addAffectionInternal(player, gain)
+	adjustAffectionInternal(player, gain)
 end
 
--- 임의 증감이 필요하면 아래 함수 사용(증가는 양수로)
+-- 🔧 교체: Add도 음수 허용(하위호환)
 function PetAffectionService.Add(player: Player, amount: number)
-	addAffectionInternal(player, amount)
+	adjustAffectionInternal(player, amount)
 end
+
+-- 🆕 추가: 명시적 Adjust API (StreetFood에서 이걸 우선 사용)
+function PetAffectionService.Adjust(player: Player, delta: number, reason: string?)
+	adjustAffectionInternal(player, delta)
+end
+
 
 -- 현재값 조회
 function PetAffectionService.Get(player: Player): (number, number)

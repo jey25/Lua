@@ -29,12 +29,22 @@ local WANG_COOLDOWN_SECS   = 180   --3분 후 타겟 추적 재활성화
 -- 타겟을 '닿았을 때(Krrrr)'도 비활성화할지 여부 (원하면 true)
 local WANG_COOLDOWN_ON_TOUCH = false
 
+-- 🔧 기본값 (원하면 바꿔도 됨)
+local WANG_ATTRACT_SFX_INTERVAL_DEFAULT = 2   -- 초
+
+-- 🔧 루프 토큰 (플레이어별)
+local AttractLoopToken: {[Player]: number} = {}
+
+-- 상태
+type TWangState = { approaching: boolean, clicks: number, clickConn: RBXScriptConnection?, lastWalkSpeed: number?, target: Instance? }
+local State: {[Player]: TWangState} = {}
 
 
 -- ==================== 경로 / RemoteEvents ====================
 local World = workspace:WaitForChild("World")
 local DogItems = World:WaitForChild("dogItems")
 local WangFolder = DogItems:WaitForChild("wang")
+local SFXFolder = ReplicatedStorage:WaitForChild("SFX") -- 여기에 PetClick Sound 템플릿
 
 local RemoteFolder = ReplicatedStorage:FindFirstChild("RemoteEvents") or Instance.new("Folder", ReplicatedStorage)
 RemoteFolder.Name = "RemoteEvents"
@@ -96,13 +106,67 @@ local function restoreModelAnchored(model: Model)
 end
 
 
+-- 바닥 레이캐스트 (이미 있던 함수와 동일 취지)
 local function getGroundYBelow(origin: Vector3, ignore: Instance?): number?
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = {ignore}
-	local result = workspace:Raycast(origin + Vector3.new(0, 2, 0), Vector3.new(0, -RAY_LENGTH, 0), params)
-	if result then
-		return result.Position.Y + GROUND_OFFSET
+	local result = workspace:Raycast(origin + Vector3.new(0, 2, 0), Vector3.new(0, -200, 0), params)
+	return result and result.Position.Y or nil
+end
+
+-- 피벗(모델 Pivot)과 바운딩박스 하단 사이의 오프셋 계산
+local function getPivotBottomOffset(model: Model): number
+	local pivotCF = model:GetPivot()
+	local cf, size = model:GetBoundingBox()
+	local bottomY = cf.Position.Y - size.Y * 0.5
+	return (pivotCF.Position.Y - bottomY)
+end
+
+-- 현재 XZ 위치에서 “안 가라앉지 않는 Y” 계산
+local function computeGroundedY(model: Model, xzPos: Vector3, extraClearance: number?): number
+	local pivot = model:GetPivot()
+	local groundY = getGroundYBelow(Vector3.new(xzPos.X, pivot.Position.Y, xzPos.Z), model) or pivot.Position.Y
+	local pivotBottom = getPivotBottomOffset(model)
+	local clearance = tonumber(extraClearance) or (model:GetAttribute("GroundClearance") or 0.5)
+	return groundY + pivotBottom + clearance
+end
+
+
+-- 선택: 타겟/폴더 Attribute로 런타임 조정 가능
+--  - target(Model/BasePart)에 Number Attribute "WangAttractInterval" 넣으면 그 값(초) 사용
+--  - WangFolder(=DogItems.wang)에도 동일 Attribute 가능(타겟에 없을 때 폴백)
+--  - 사운드 이름도 "WangAttractSfxName" 로 지정 가능(예: "WangAttractLoop")
+local function getAttractIntervalFor(target: Instance?): number
+	local t = nil
+	if target then t = target:GetAttribute("WangAttractInterval") end
+	if typeof(t) ~= "number" then
+		t = WangFolder:GetAttribute("WangAttractInterval")
+	end
+	if typeof(t) ~= "number" then
+		t = WANG_ATTRACT_SFX_INTERVAL_DEFAULT
+	end
+	return math.max(0.1, t)
+end
+
+local function resolveAttractTemplate(target: Instance?): Sound?
+	-- 1) 이름 Attribute 우선
+	local nameAttr = target and target:GetAttribute("WangAttractSfxName")
+	if typeof(nameAttr) ~= "string" or #nameAttr == 0 then
+		nameAttr = WangFolder:GetAttribute("WangAttractSfxName")
+	end
+	if typeof(nameAttr) == "string" and #nameAttr > 0 then
+		local s = SFXFolder:FindFirstChild(nameAttr)
+		if s and s:IsA("Sound") then return s end
+	end
+	-- 2) 추천 기본 이름들 순회
+	for _, key in ipairs({ "Growling" }) do
+		local s = SFXFolder:FindFirstChild(key)
+		if s and s:IsA("Sound") then return s end
+	end
+	-- 3) 폴더 첫 번째 Sound 폴백
+	for _, ch in ipairs(SFXFolder:GetChildren()) do
+		if ch:IsA("Sound") then return ch end
 	end
 	return nil
 end
@@ -285,6 +349,11 @@ local function setWangActive(target: Instance, active: boolean)
 end
 
 
+local function stopAttractSfxLoop(player: Player)
+	AttractLoopToken[player] = (AttractLoopToken[player] or 0) + 1
+end
+
+
 local function beginApproach(pet: Model, target: Instance)
 	local pp = getAnyBasePart(pet); if not pp then return end
 
@@ -329,6 +398,8 @@ local function beginApproach(pet: Model, target: Instance)
 				local owner = getOwnerPlayerFromPet(pet)
 				if owner then
 					WangEvent:FireClient(owner, "Bubble", { text = TOUCH_TEXT })
+					-- ✅ 닿아서 끝나는 경우도 루프 중단
+					stopAttractSfxLoop(owner)
 				end
 
 				pet:SetAttribute("WangApproaching", false)
@@ -358,14 +429,17 @@ local function beginApproach(pet: Model, target: Instance)
 			end
 
 
-			-- 한 스텝 이동 (CFrame 보간)
+			-- beginApproach 루프 내부 이동 계산 직후
 			local step = math.min(distXZ, APPROACH_SPEED * LOOP_DT)
 			local dirXZ = (distXZ > 0) and Vector3.new(dx, 0, dz).Unit or Vector3.new()
-			local newPos = petPos + dirXZ * step
+			local nextXZ = petPos + dirXZ * step
+
+			-- Y 보정: 경사면 대응 (LOCK_Y=true면 최초 평면Y를 precomputed 해서 여기 대신 써도 됨)
+			local groundedY = computeGroundedY(pet, nextXZ, GROUND_OFFSET)  -- ex) GROUND_OFFSET=0.5
+			local newPos = Vector3.new(nextXZ.X, groundedY, nextXZ.Z)
 
 			local lookAt = Vector3.new(tgtPos.X, newPos.Y, tgtPos.Z)
-			local cf = CFrame.new(newPos, lookAt)
-			pet:PivotTo(cf)
+			pet:PivotTo(CFrame.new(newPos, lookAt))
 
 			task.wait(LOOP_DT)
 		end
@@ -403,6 +477,34 @@ local function findPlayersPet(player: Player): Model?
 	end
 	return nil
 end
+
+
+
+local function startAttractSfxLoop(player: Player, target: Instance)
+	local tpl = resolveAttractTemplate(target)
+	if not tpl then return end
+
+	AttractLoopToken[player] = (AttractLoopToken[player] or 0) + 1
+	local my = AttractLoopToken[player]
+
+	task.spawn(function()
+		while player and player.Parent do
+			-- 토큰/상태 체크
+			if AttractLoopToken[player] ~= my then break end
+			local st = State[player]
+			if not (st and st.approaching) then break end
+
+			local pet = findPlayersPet(player)
+			if not pet or pet:GetAttribute("WangApproaching") ~= true then break end
+
+			-- 발견 루프(see): 주기 재생
+			WangEvent:FireClient(player, "PlaySfxTemplate", tpl, "see")
+
+			task.wait(getAttractIntervalFor(target))
+		end
+	end)
+end
+
 
 -- 기존 ensurePetClickTarget 그대로 두되, ClickDetector 관련 부분 모두 삭제/주석 처리
 local function ensurePetClickTarget(pet: Model): BasePart?
@@ -455,13 +557,6 @@ local function normalizeTargetInstance(target)
 end
 
 
--- 상태
-type TWangState = { approaching: boolean, clicks: number, clickConn: RBXScriptConnection?, lastWalkSpeed: number?, target: Instance? }
-local State: {[Player]: TWangState} = {}
-
-
-
-
 -- 현재 활성 상태 조회 (기본값 true)
 local function isWangActive(target: Instance): boolean
 	local model = resolveTargetModel(target); if not model then return false end
@@ -488,6 +583,16 @@ local function startSequence(player: Player, target: Instance)
 
 	local resolvedTarget = normalizeTargetInstance(target)
 	if not resolvedTarget then return end
+	
+	-- Wang 추적 시작 시
+	WangEvent:FireClient(player, "ShowMarker", {
+		target = pet,
+		preset = "Click Icon",     -- ← 또는 미지정 시 기본값으로 "Click Icon" 사용
+		key = "wang_touch",
+		transparency = 0.2,
+		size = UDim2.fromOffset(72,72),
+		pulse = true,
+	})
 
 	local st = State[player]
 	if st then
@@ -514,12 +619,11 @@ local function startSequence(player: Player, target: Instance)
 
 	-- ✅ ClickDetector 와이어링 없음 (Hitbox만 보장)
 	ensurePetClickTarget(pet)
-
+	
+	-- ✅ 루프 시작: 처음 발견 시점부터 주기적으로 SFX
+	startAttractSfxLoop(player, resolvedTarget)
 	beginApproach(pet, resolvedTarget)
 end
-
-
-
 
 
 WangCancelClick.OnServerEvent:Connect(function(player, clickedPart: Instance)
@@ -533,6 +637,15 @@ WangCancelClick.OnServerEvent:Connect(function(player, clickedPart: Instance)
 	if pet:GetAttribute("WangApproaching") ~= true then return end
 
 	st.clicks += 1
+	
+	-- ✅ 유효 클릭일 때 그 플레이어에게만 SFX 재생 지시
+	local tpl = SFXFolder:FindFirstChild("PetClick")
+	if tpl and tpl:IsA("Sound") then
+		-- 펫 클릭(click): 클릭 시 재생
+		WangEvent:FireClient(player, "PlaySfxTemplate", tpl, "click")
+	end
+	
+	
 	WangEvent:FireClient(player, "Bubble", { text = ("Cancel "..st.clicks.."/3") })
 
 	if st.clicks >= 3 then
@@ -541,6 +654,8 @@ WangCancelClick.OnServerEvent:Connect(function(player, clickedPart: Instance)
 
 		WangEvent:FireClient(player, "RestoreBubble")
 		restoreFollow(player, pet, st.lastWalkSpeed)
+		
+		WangEvent:FireClient(player, "HideMarker", { target = pet, key = "wang_touch" })
 
 		-- ✅ Wang은 '클리어' 시점에만 이펙트
 		WangEvent:FireClient(player, "ClearEffect")
@@ -556,6 +671,9 @@ WangCancelClick.OnServerEvent:Connect(function(player, clickedPart: Instance)
 			end)
 		end
 
+		-- (기존 완료 처리들)
+		-- ✅ 사운드 루프 정지
+		stopAttractSfxLoop(player)
 		st.clicks = 0
 	end
 end)
@@ -589,6 +707,7 @@ Players.PlayerRemoving:Connect(function(plr)
 	if st then
 		if st.clickConn then st.clickConn:Disconnect() end
 		State[plr] = nil
+		stopAttractSfxLoop(plr)
 	end
 	-- 소유 펫 찾아 가드 해제 시도
 	local pet = findPlayersPet(plr)

@@ -3,6 +3,15 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 
+-- 🔹 [추가] 서비스 모듈
+local Experience = require(game.ServerScriptService:WaitForChild("ExperienceService"))
+local PetAffection = require(game.ServerScriptService:WaitForChild("PetAffectionService"))
+
+-- 맨 위 require들 아래에 추가
+local SFXFolder = ReplicatedStorage:WaitForChild("SFX") -- ReplicatedStorage/SFX/StreetFoodEnter (Sound)
+local ENTER_SFX_COOLDOWN = 0.6  -- 같은 플레이어에 너무 자주 안 울리도록(초)
+local LastEnterSfxAt : {[Player]: number} = {}
+
 -- ===== 설정(원하는 값으로 조정) =====
 local PROXIMITY_RADIUS    = 15                      -- 근접 반경(프롬프트 반경)
 local PROXIMITY_TEXT      = "Smells good!"     -- 근접 시 펫 말풍선
@@ -10,10 +19,23 @@ local CLICK_RESTORE_TEXT  = ""                      -- E키 트리거 후 펫 �
 local DEACTIVATE_SECS     = 300                      -- 트리거 후 모델 비활성 유지 시간
 local ANCHOR_PET          = true                    -- 펫을 Anchored로 고정할지(권장 true)
 
+-- 🔹 [추가] 보상/패널티 기본값 (원하는 수치로!)
+local XP_PER_TRIGGER      = 100   -- StreetFood 한 번 완료 시 얻는 경험치
+local AFFECTION_PENALTY   = 1     -- StreetFood 한 번 완료 시 감소할 펫 어펙션
+
 -- ===== 경로 =====
 local World = workspace:WaitForChild("World")
 local DogItemsFolder = World:WaitForChild("dogItems")
 local StreetFoodFolder = DogItemsFolder:WaitForChild("street Food") -- 공백/소문자 주의
+
+-- 🔹 [추가] 폴더 Attribute로 런타임 조정 지원
+local function getRuntimeConfig()
+	local xp = StreetFoodFolder:GetAttribute("XPPerTrigger")
+	local pen = StreetFoodFolder:GetAttribute("AffectionPenalty")
+	if typeof(xp) ~= "number" then xp = XP_PER_TRIGGER end
+	if typeof(pen) ~= "number" then pen = AFFECTION_PENALTY end
+	return xp, pen
+end
 
 -- ===== RemoteEvents =====
 local remoteFolder = ReplicatedStorage:FindFirstChild("RemoteEvents") or Instance.new("Folder", ReplicatedStorage)
@@ -60,6 +82,27 @@ local function ensurePrompt(target: Instance)
 	p.MaxActivationDistance = PROXIMITY_RADIUS
 	p.Parent = base
 end
+
+
+local function resolveEnterSfxTemplate(): Sound?
+	-- 1) 폴더 Attribute로 이름 지정 가능: StreetFoodFolder:SetAttribute("EnterSfxName","StreetFoodEnter")
+	local nameAttr = StreetFoodFolder:GetAttribute("EnterSfxName")
+	if typeof(nameAttr) == "string" and #nameAttr > 0 then
+		local s = SFXFolder:FindFirstChild(nameAttr)
+		if s and s:IsA("Sound") then return s end
+	end
+	-- 2) 기본 후보들
+	for _, key in ipairs({ "walwal" }) do
+		local s = SFXFolder:FindFirstChild(key)
+		if s and s:IsA("Sound") then return s end
+	end
+	-- 3) 폴더 첫 번째 Sound 폴백
+	for _, ch in ipairs(SFXFolder:GetChildren()) do
+		if ch:IsA("Sound") then return ch end
+	end
+	return nil
+end
+
 
 -- 프롬프트/상호작용 비활성/활성
 local function setActive(modelOrPart: Instance, active: boolean)
@@ -164,12 +207,24 @@ ProxRelay.OnServerEvent:Connect(function(player, action: "enter"|"exit", prompt:
 	if action == "enter" then
 		StreetFoodEvent:FireClient(player, "Bubble", { text = PROXIMITY_TEXT })
 		lockPet(player)           -- 근접 시 펫 고정
+		
+		-- 🔊 발견 SFX (그 플레이어에게만) + 간단 쿨다운
+		local now = os.clock()
+		if (LastEnterSfxAt[player] or -1e9) + ENTER_SFX_COOLDOWN <= now then
+			local tpl = resolveEnterSfxTemplate()
+			if tpl then
+				StreetFoodEvent:FireClient(player, "PlaySfxTemplate", tpl)
+				LastEnterSfxAt[player] = now
+			end
+		end
+		
 	elseif action == "exit" then
 		-- 요구사항상: 근접 이탈 후에도 계속 고정 유지 (언락은 트리거 시점에만)
 		-- 필요 시 말풍선 끄려면 아래 주석 해제:
 		-- StreetFoodEvent:FireClient(player, "Bubble", { text = "" })
 	end
 end)
+
 
 -- ===== E키 트리거: 프롬프트만으로 상호작용 처리(ClickDetector 제거) =====
 ProximityPromptService.PromptTriggered:Connect(function(prompt, player)
@@ -178,22 +233,46 @@ ProximityPromptService.PromptTriggered:Connect(function(prompt, player)
 	if not prompt:IsDescendantOf(StreetFoodFolder) then return end
 
 	local targetPart = prompt.Parent
-	setActive(targetPart, false)                    -- 비활성화(쿨타임)
-	unlockPet(player)                               -- 원래대로 펫 추적 재개
-	
-	StreetFoodEvent:FireClient(player, "Bubble", {  -- 말풍선 문구 갱신(비우기 권장)
-		text = CLICK_RESTORE_TEXT
-	})
-	
-	-- ✅ 프롬프트 실행 시 로컬 이펙트 실행 지시
+
+	-- ✅ StreetFood 완료 처리: 비활성화/이펙트/언락
+	setActive(targetPart, false)
+	unlockPet(player)
+	StreetFoodEvent:FireClient(player, "Bubble", { text = CLICK_RESTORE_TEXT })
 	StreetFoodEvent:FireClient(player, "ClearEffect")
 
+	-- ✅ [추가] 경험치 보상 & 펫 어펙션 감소
+	local xpGain, affectionDown = getRuntimeConfig()
+
+	-- 경험치 증가 (서버 권위)
+	pcall(function()
+		Experience.AddExp(player, xpGain)
+	end)
+
+	-- 어펙션 감소 (모듈 API 호환성 고려: Adjust/Add/Delta 중 있는 것 사용)
+	pcall(function()
+		if typeof(affectionDown) ~= "number" then return end
+		local delta = -math.abs(affectionDown)
+
+		if PetAffection.Adjust then
+			PetAffection.Adjust(player, delta, "streetfood")
+		elseif PetAffection.Add then
+			PetAffection.Add(player, delta, "streetfood")
+		elseif PetAffection.Delta then
+			PetAffection.Delta(player, delta, "streetfood")
+		elseif PetAffection.OnQuestCleared then
+			-- (임시 폴백) OnQuestCleared가 있다면, 내부에서 감소 처리를 하도록 모듈을 살짝 확장하는 걸 권장
+			-- PetAffection.OnQuestCleared(player, "StreetFood", {delta = delta})
+		end
+	end)
+
+	-- 재활성 타이머
 	task.delay(DEACTIVATE_SECS, function()
 		if targetPart and targetPart.Parent then
-			setActive(targetPart, true)             -- 쿨 종료 후 재활성
+			setActive(targetPart, true)
 		end
 	end)
 end)
+
 
 -- 정리
 Players.PlayerRemoving:Connect(function(plr)
