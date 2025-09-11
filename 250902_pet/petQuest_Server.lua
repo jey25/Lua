@@ -9,6 +9,7 @@ local Workspace = game:GetService("Workspace")
 local remoteFolder = ReplicatedStorage:WaitForChild("RemoteEvents")
 local PetQuestEvent = remoteFolder:WaitForChild("PetQuestEvent")
 
+
 -- 설정
 local INTERVAL = 10
 local WORLD = Workspace:WaitForChild("World", 10)
