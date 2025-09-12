@@ -30,18 +30,35 @@ local function createHUD()
 	local dock = Instance.new("Frame")
 	dock.Name = "HUDDock"
 	dock.BackgroundTransparency = 1
-	dock.AnchorPoint = Vector2.new(0.5, 1)
-	dock.Position = UDim2.new(0.46, 0, 1, -20) -- 살짝 왼쪽
+	-- 교체
+	dock.AnchorPoint = Vector2.new(0, 1)
+	dock.Position    = UDim2.new(0, 8, 1, -12)          -- 좌하단 + 여백
+	
 	dock.Size = UDim2.new(1, 0, 0, 40)
 	dock.Parent = screen
 
 	local list = Instance.new("UIListLayout")
 	list.FillDirection = Enum.FillDirection.Horizontal
-	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	list.HorizontalAlignment = Enum.HorizontalAlignment.Left
 	list.VerticalAlignment = Enum.VerticalAlignment.Center
 	list.SortOrder = Enum.SortOrder.LayoutOrder
 	list.Padding = UDim.new(0, 12)
 	list.Parent = dock
+	
+	-- ▼ 코인 라벨 (Level 왼쪽)
+	local coinLabel = Instance.new("TextLabel")
+	coinLabel.Name = "CoinLabel"
+	coinLabel.BackgroundTransparency = 0.1
+	coinLabel.BackgroundColor3 = Color3.fromRGB(10,10,14)
+	coinLabel.TextColor3 = Color3.fromRGB(255, 255, 180)
+	coinLabel.TextScaled = true
+	coinLabel.Font = Enum.Font.GothamBold
+	coinLabel.Text = "🪙 0"
+	coinLabel.Size = UDim2.fromOffset(110, 36)
+	coinLabel.LayoutOrder = 0
+	coinLabel.Parent = dock
+	coinLabel.TextXAlignment = Enum.TextXAlignment.Center
+
 
 	-- 좌측: Lv 카드
 	local levelLabel = Instance.new("TextLabel")
@@ -173,11 +190,14 @@ end
 
 local ui = createHUD()
 
-local dock = ui:WaitForChild("HUDDock") :: Frame
+local dock       = ui:WaitForChild("HUDDock") :: Frame
+local coinLabel  = dock:WaitForChild("CoinLabel") :: TextLabel  -- ★ 추가
 local levelLabel = dock:WaitForChild("LevelLabel") :: TextLabel
-local bar = dock:WaitForChild("ExpBar") :: Frame
-local fill = bar:WaitForChild("Fill") :: Frame
-local expText = bar:WaitForChild("ExpText") :: TextLabel
+local bar        = dock:WaitForChild("ExpBar") :: Frame
+local fill       = bar:WaitForChild("Fill") :: Frame
+local expText    = bar:WaitForChild("ExpText") :: TextLabel
+-- ... (AffBar 참조는 기존 그대로)
+
 
 -- ▼ 추가: 애정도 참조
 local affBar  = dock:WaitForChild("AffBar") :: Frame
@@ -202,6 +222,32 @@ local function tweenAff(ratio: number)
 		{ Size = UDim2.new(ratio, 0, 1, 0) }):Play()
 end
 
+-- 코인 표시
+local function setCoins(n:number?)
+	coinLabel.Text = ("🪙 %d"):format(tonumber(n) or 0)
+end
+
+-- Remotes 폴더에서 CoinUpdate 수신
+task.spawn(function()
+	-- 보통 'Remotes/CoinUpdate'를 씁니다.
+	local remotes = ReplicatedStorage:WaitForChild("Remotes", 10)
+	if not remotes then
+		-- 혹시 프로젝트가 'RemoteEvents' 폴더를 쓰면 거기서도 시도
+		remotes = ReplicatedStorage:FindFirstChild("RemoteEvents")
+	end
+
+	if remotes then
+		local coinUpdate = remotes:FindFirstChild("CoinUpdate")
+			or remotes:WaitForChild("CoinUpdate", 10)
+		if coinUpdate and coinUpdate:IsA("RemoteEvent") then
+			coinUpdate.OnClientEvent:Connect(setCoins)
+		else
+			warn("[HUD] CoinUpdate RemoteEvent가 없습니다.")
+		end
+	else
+		warn("[HUD] Remotes 폴더를 찾을 수 없습니다.")
+	end
+end)
 
 
 -- 공통: 부드러운 외곽선
@@ -286,6 +332,8 @@ addShadow(bar, 12)
 addStroke(affBar,Color3.fromRGB(255,255,255), 1, 0.85)
 addShadow(affBar, 12)
 
+addStroke(coinLabel, Color3.fromRGB(255,255,255), 1.0, 0.8)
+addShadow(coinLabel, 12)
 
 -- 채움(필) 그라데이션 + 흐르는 하이라이트
 fill.BackgroundColor3 = Color3.fromRGB(60, 135, 255)
