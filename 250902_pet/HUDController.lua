@@ -12,6 +12,7 @@ local AffectionSync: RemoteEvent? = remoteFolder and remoteFolder:FindFirstChild
 local Icons = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Icons")
 local HeartTpl = Icons:WaitForChild("HeartIcon") :: ImageLabel
 local StarTpl = Icons:WaitForChild("StarIcon") :: ImageLabel
+local CoinTpl = Icons:WaitForChild("CoinIcon") :: ImageLabel
 
 -- 간단 HUD 생성(원하면 Studio에서 디자인해도 됨)
 -- StarterPlayer/StarterPlayerScripts/HUDController (일부) 
@@ -46,6 +47,7 @@ local function createHUD()
 	list.Parent = dock
 	
 	-- ▼ 코인 라벨 (Level 왼쪽)
+	
 	local coinLabel = Instance.new("TextLabel")
 	coinLabel.Name = "CoinLabel"
 	coinLabel.BackgroundTransparency = 0.1
@@ -53,11 +55,25 @@ local function createHUD()
 	coinLabel.TextColor3 = Color3.fromRGB(255, 255, 180)
 	coinLabel.TextScaled = true
 	coinLabel.Font = Enum.Font.GothamBold
-	coinLabel.Text = "🪙 0"
-	coinLabel.Size = UDim2.fromOffset(110, 36)
+	coinLabel.Text = "0"
+	coinLabel.Size = UDim2.fromOffset(70, 36)
 	coinLabel.LayoutOrder = 0
 	coinLabel.Parent = dock
-	coinLabel.TextXAlignment = Enum.TextXAlignment.Center
+	coinLabel.TextXAlignment = Enum.TextXAlignment.Right
+	coinLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+	coinLabel.Position = UDim2.new(0.52, 0, 0.5, 0) -- 0.5 → 0.52로 조정
+	local coinCorner = Instance.new("UICorner"); coinCorner.CornerRadius = UDim.new(0,8); coinCorner.Parent = coinLabel
+
+	
+	-- 아이콘(템플릿 복제)
+	local coinClone = CoinTpl:Clone() :: ImageLabel
+	coinClone.Name = "CoinIcon"
+	coinClone.BackgroundTransparency = 1
+	coinClone.Size = UDim2.fromOffset(30, 30)
+	coinClone.AnchorPoint = Vector2.new(0, 0.5)
+	coinClone.Position = UDim2.new(0, 10, 0.5, 0)  -- 왼쪽으로 밀착, 세로 중앙
+	coinClone.ZIndex = 3
+	coinClone.Parent = coinLabel
 
 
 	-- 좌측: Lv 카드
@@ -74,6 +90,7 @@ local function createHUD()
 	levelLabel.Parent = dock
 	levelLabel.TextXAlignment = Enum.TextXAlignment.Center
 	levelLabel.ClipsDescendants = true
+	local levelCorner = Instance.new("UICorner"); levelCorner.CornerRadius = UDim.new(0,8); levelCorner.Parent = levelLabel
 	
 
 	-- 아이콘(템플릿 복제)
@@ -224,7 +241,7 @@ end
 
 -- 코인 표시
 local function setCoins(n:number?)
-	coinLabel.Text = ("🪙 %d"):format(tonumber(n) or 0)
+	coinLabel.Text = ("%d"):format(tonumber(n) or 0)
 end
 
 -- Remotes 폴더에서 CoinUpdate 수신
