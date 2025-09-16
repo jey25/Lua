@@ -12,12 +12,23 @@ local RunService = game:GetService("RunService")
 -- DataStore
 local playerDataStore = DataStoreService:GetDataStore("PlayerPetSelection")
 
+-- 🔊 SFX 템플릿 폴더
+local SFXFolder = ReplicatedStorage:WaitForChild("SFX")
+
+
 -- RemoteEvents
 local PetEvents = ReplicatedStorage:FindFirstChild("PetEvents")
 if not PetEvents then
 	PetEvents = Instance.new("Folder")
 	PetEvents.Name = "PetEvents"
 	PetEvents.Parent = ReplicatedStorage
+end
+
+local PetSfxEvent = PetEvents:FindFirstChild("PetSfx")
+if not PetSfxEvent then
+	PetSfxEvent = Instance.new("RemoteEvent")
+	PetSfxEvent.Name = "PetSfx"
+	PetSfxEvent.Parent = PetEvents
 end
 
 local ShowPetGuiEvent = PetEvents:FindFirstChild("ShowPetGui")
@@ -182,6 +193,12 @@ local function spawnPet(player: Player, petName: string)
 
 	-- 따라오기 제약
 	addFollowConstraint(pet, character)
+	
+	-- 🔊 스폰 사운드 (그 플레이어에게만)
+	local tpl = SFXFolder:FindFirstChild("Choice")
+	if tpl and tpl:IsA("Sound") then
+		PetSfxEvent:FireClient(player, "PlaySfxTemplate", tpl)
+	end
 
 	-- 캐릭터 리스폰 시에도 재부착 (HRP 교체되므로)
 	local conn

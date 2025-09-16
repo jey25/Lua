@@ -1,19 +1,3 @@
-
-
--- Clear Module 의 실행
-
-local ok, ClearModule = pcall(function()
-    return require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("ClearModule"))
-    end)
-    if ok and ClearModule and ClearModule.showClearEffect then
-        pcall(function() ClearModule.showClearEffect(LocalPlayer) end)
-    end
-
-
-
-
--- ClearModule (ReplicatedStorage)
-
 local module = {}
 
 function module.showClearEffect(player)
@@ -84,5 +68,3 @@ function module.showClearEffect(player)
 end
 
 return module
-
-
