@@ -8,28 +8,25 @@ local PlayerGui          = LocalPlayer:WaitForChild("PlayerGui")
 local REQUIRED_LEVEL = 100
 local INTERACTION_DISTANCE = 5
 
--- 이 NPC의 모델 경로(PrimaryPart 필수)
--- TODO: 실제 경로로 바꿔주세요.
 local npc_epic = workspace:WaitForChild("NPC_LIVE"):WaitForChild("vendor_ninja(Lv.200)")
 
 -- 템플릿들
 local NPCClickTemplate       = ReplicatedStorage:WaitForChild("NPCClick")              :: ScreenGui
 local EpicNpcIntroGuiTemplate= ReplicatedStorage:WaitForChild("EpicNpcIntroGui")       :: ScreenGui
 local EpicPetSelectionTemplate = ReplicatedStorage:WaitForChild("EpicPetSelectionGui") :: ScreenGui
-
--- (선택) 펫 선택 서버 알림 이벤트
-local PetEvents = ReplicatedStorage:FindFirstChild("RemoteEvents")
-local PetSelectedEvent = PetEvents and PetEvents:FindFirstChild("PetSelected")
 local LevelSync = ReplicatedStorage:FindFirstChild("LevelSync") -- 서버가 쏘던 그 이벤트
 
--- (권장) 서버 더블체크가 필요하면 RemoteFunction 사용 예:
--- local GateCheck = ReplicatedStorage:FindFirstChild("CanOpenEpicPet") :: RemoteFunction?
+-- ⛳ 교체: Remote 참조
+local PetEventsFolder  = ReplicatedStorage:WaitForChild("PetEvents")
+local PetSelectedEvent = PetEventsFolder:WaitForChild("PetSelected")          -- RemoteEvent
+local TrySelectEpicPet = PetEventsFolder:FindFirstChild("TrySelectEpicPet")   -- RemoteFunction (서버 구현 후 존재)
+
+-- 코인 브로드캐스트는 기존처럼 RemoteEvents 사용(코인 서비스가 거기로 쏘고 있음)
+local RemotesFolder    = ReplicatedStorage:WaitForChild("RemoteEvents")
+local CoinUpdate       = RemotesFolder:WaitForChild("CoinUpdate")
 
 -- ===== 상태 =====
 local activeButtonGui : ScreenGui? = nil
--- 기존:
--- local selectionOpen = false
--- local introOpen = false
 
 -- 변경: 플래그 지우고 GUI 존재 체크 함수 사용
 local function isOpen(name: string)
@@ -40,29 +37,9 @@ local function isSelectionOpen() return isOpen("EpicPetSelectionGui_runtime") en
 
 local hasRequiredLevel = false
 
-
--- 요구 레벨 (ImageLabel 이름과 정확히 일치)
-local PET_LEVEL_REQ = {
-	golden_dog   = 100,
-	Skeleton_Dog = 150,
-	Robot_Dog    = 200,
-}
-
-local PET_COIN_COST = {
-	golden_dog   = 15,
-	Skeleton_Dog = 20,
-	Robot_Dog    = 25,
-}
-
-local Players           = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local LocalPlayer       = Players.LocalPlayer
-
--- 프로젝트에 맞게 경로 확인
-local PetEvents = ReplicatedStorage:FindFirstChild("RemoteEvents")
-local PetSelectedEvent = PetEvents and PetEvents:FindFirstChild("PetSelected")
-local CoinUpdate        = PetEvents and PetEvents:FindFirstChild("CoinUpdate")             -- RemoteEvent (서버가 잔액 브로드캐스트)
-local TrySelectEpicPet  = PetEvents and PetEvents:FindFirstChild("TrySelectEpicPet")       -- RemoteFunction (있으면 사용; 없으면 생략)
+-- 클라/서버 동일 테이블(레벨/코인)
+local PET_LEVEL_REQ = { golden_dog=100, Skeleton_Dog=150, Robot_Dog=200 }
+local PET_COIN_COST = { golden_dog=15,  Skeleton_Dog=20,  Robot_Dog=25  }
 
 
 -- 색상/텍스트
@@ -244,21 +221,21 @@ local function wireEpicSelectionGui(selectionGui: ScreenGui)
 	-- Select 클릭: 서버 검증/차감/소유 기록은 RemoteFunction 있으면 거기서 처리
 	for _, node in ipairs(root:GetChildren()) do
 		if node:IsA("ImageLabel") then
-			local btn = node:FindFirstChild("Select")
-			if btn and btn:IsA("TextButton") then
-				-- wireEpicSelectionGui 내부, btn.MouseButton1Click:Connect(...) 부분 교체
+			-- 버튼 연결부에서
+			local btn = node:FindFirstChild("Select", true)  -- 깊이 탐색
+			if btn and btn:IsA("GuiButton") then             -- TextButton 또는 ImageButton 모두 허용
 				table.insert(cons, btn.MouseButton1Click:Connect(function()
 					local petName = node.Name
+
 					if not isEnabledFor(petName) then
-						-- ✅ 선택 불가: 흔들림 + 사운드만
-						shakeGui(node)      -- 썸네일 통째로 흔들기(또는 shakeGui(btn)로 버튼만)
+						shakeGui(node)     -- 불가: 흔들림
 						playDenySfx()
 						return
 					end
 
-					-- ⬇️ 기존 가능 로직 그대로 유지
 					local cost = PET_COIN_COST[petName] or 0
 					local ok = false
+
 					if TrySelectEpicPet and TrySelectEpicPet:IsA("RemoteFunction") then
 						local resp
 						local success = pcall(function()
@@ -269,10 +246,11 @@ local function wireEpicSelectionGui(selectionGui: ScreenGui)
 							currentCoins = tonumber(resp.coins) or currentCoins
 						end
 					else
-						ok = true
+						-- RF 미구현이면 이벤트만 보내고 UI는 '성공' 처리하지 않음
 						if PetSelectedEvent and PetSelectedEvent:IsA("RemoteEvent") then
 							PetSelectedEvent:FireServer(petName)
 						end
+						ok = false
 					end
 
 					if ok then
@@ -284,6 +262,8 @@ local function wireEpicSelectionGui(selectionGui: ScreenGui)
 						refreshButtons()
 					end
 				end))
+
+
 
 			end
 		end
@@ -300,7 +280,6 @@ end
 
 -- 레벨/코인 변동 시 즉시 갱신
 table.insert(cons, LocalPlayer:GetAttributeChangedSignal("Level"):Connect(refreshButtons))
-local LevelSync = ReplicatedStorage:FindFirstChild("LevelSync")
 if LevelSync and LevelSync:IsA("RemoteEvent") then
 	table.insert(cons, LevelSync.OnClientEvent:Connect(function(payload)
 		if typeof(payload) == "table" and payload.Level then
