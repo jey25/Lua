@@ -13,8 +13,12 @@ local DoctorTryVaccinate = ReplicatedStorage:WaitForChild("DoctorTryVaccinate") 
 local npc_doctor = workspace.World.Building["Pet Hospital"].Doctor
 local interactionDistance = 5
 
+
+
+
 -- 우측 상단 카운트 미니 UI (클라 표시용)
-local maxVaccinations = 6
+local maxVaccinations = 5
+
 local function ensureCountGui()
 	local pg = LocalPlayer:WaitForChild("PlayerGui")
 	local gui = pg:FindFirstChild("VaccinationCountGui") :: ScreenGui
@@ -28,7 +32,7 @@ local function ensureCountGui()
 		local title = Instance.new("TextLabel")
 		title.Name = "TitleLabel"
 		title.Size = UDim2.new(0, 120, 0, 24)
-		title.Position = UDim2.new(1, -220, 0, 100)
+		title.Position = UDim2.new(1, -220, 0, 160)
 		title.BackgroundTransparency = 1
 		title.TextColor3 = Color3.fromRGB(234,234,234)
 		title.Font = Enum.Font.SourceSansBold
@@ -39,7 +43,7 @@ local function ensureCountGui()
 		local count = Instance.new("TextLabel")
 		count.Name = "CountLabel"
 		count.Size = UDim2.new(0, 120, 0, 40)
-		count.Position = UDim2.new(1, -220, 0, 130)
+		count.Position = UDim2.new(1, -220, 0, 200)
 		count.BackgroundTransparency = 0.35
 		count.BackgroundColor3 = Color3.fromRGB(0,0,0)
 		count.TextColor3 = Color3.fromRGB(234,234,234)
@@ -51,6 +55,7 @@ local function ensureCountGui()
 	return gui, gui:FindFirstChild("CountLabel") :: TextLabel
 end
 
+
 local function setCountLabel(n)
 	local _, lbl = ensureCountGui()
 	if lbl then
@@ -61,6 +66,16 @@ local function setCountLabel(n)
 	end
 end
 
+-- 서버가 Player Attribute로 심어둔 값을 즉시 반영
+local function syncVaccinationFromAttr()
+	local n = LocalPlayer:GetAttribute("VaccinationCount")
+	setCountLabel(tonumber(n) or 0)
+end
+
+-- 최초 1회
+syncVaccinationFromAttr()
+-- 서버가 값을 바꾸면 즉시 반영
+LocalPlayer:GetAttributeChangedSignal("VaccinationCount"):Connect(syncVaccinationFromAttr)
 
 local activeButtonGui: ScreenGui? = nil
 local docOpen = false
@@ -121,10 +136,19 @@ local function showInteractButton()
 			local ok = pcall(function()
 				result = DoctorTryVaccinate:InvokeServer("try")
 			end)
+			
 			inoculationFrame.Visible = false
 			if ok and result and result.ok then
 				resultFrame.Visible = true
 				setCountLabel(result.count)
+				
+				local ok, ClearModule = pcall(function()
+					return require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("ClearModule"))
+				end)
+				if ok and ClearModule and ClearModule.showClearEffect then
+					pcall(function() ClearModule.showClearEffect(LocalPlayer) end)
+				end
+				
 			else
 				tooSoonFrame.Visible = true
 				setCountLabel(result and result.count or nil)
@@ -167,7 +191,5 @@ task.spawn(function()
 	end
 end)
 
--- 카운트 표시 초기화
+-- 교체본:
 ensureCountGui()
-setCountLabel(0)
-
