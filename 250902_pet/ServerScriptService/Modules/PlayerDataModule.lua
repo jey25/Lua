@@ -8,22 +8,33 @@ local DS_NAME = "PlayerData_v2"
 local store = DataStoreService:GetDataStore(DS_NAME)
 
 type OwnedPet = { affection: number, vaccines: { count: number } }
+-- 상단 타입들에 추가/수정
+type BuffInfo = { expiresAt: number, params: { [string]: any } }
+
+
+-- 상단 타입/DEFAULT 보강
 type PlayerData = {
 	coins: number,
 	level: number,
 	exp: number,
 	selectedPetName: string?,
 	vaccineCount: number,
-	ownedPets: { [string]: OwnedPet }
+	ownedPets: { [string]: OwnedPet },
+	buffs: { [string]: BuffInfo },
+	-- ⬇ 추가
+	lastVaxAt: number?,   -- 마지막 접종 시각(UTC epoch)
+	nextVaxAt: number?,   -- 다음 접종 가능 시각(UTC epoch)
 }
 
 local DEFAULT: PlayerData = {
-	coins = 0,
-	level = 1,
-	exp = 0,
+	coins = 0, level = 1, exp = 0,
 	selectedPetName = nil,
 	vaccineCount = 0,
-	ownedPets = {}
+	ownedPets = {},
+	buffs = {},
+	-- ⬇ 추가 (초기 0)
+	lastVaxAt = 0,
+	nextVaxAt = 0,
 }
 
 local PlayerDataService = {}
@@ -59,11 +70,31 @@ local function mergeDefault(data: any): PlayerData
 			elseif type(pet.vaccines.count) ~= "number" then pet.vaccines.count = 0 end
 		end
 	end
+	
 	-- 숫자 필드 보정
 	merged.coins = math.max(0, tonumber(merged.coins) or 0)
 	merged.level = math.max(1, tonumber(merged.level) or 1)
 	merged.exp   = math.max(0, tonumber(merged.exp) or 0)
 	merged.vaccineCount = math.max(0, tonumber(merged.vaccineCount) or 0)
+	-- mergeDefault() 안 숫자 필드 보정 끝부분에 추가
+	merged.lastVaxAt = math.max(0, tonumber(merged.lastVaxAt) or 0)
+	merged.nextVaxAt = math.max(0, tonumber(merged.nextVaxAt) or 0)
+
+	
+	if type(merged.buffs) ~= "table" then
+		merged.buffs = {}
+	else
+		for kind, info in pairs(merged.buffs) do
+			if type(info) ~= "table" then
+				merged.buffs[kind] = nil
+			else
+				info.expiresAt = tonumber(info.expiresAt) or 0
+				if type(info.params) ~= "table" then info.params = {} end
+			end
+		end
+	end
+	
+	
 	return merged
 end
 
@@ -88,22 +119,40 @@ function PlayerDataService:Load(player: Player): PlayerData
 	player:SetAttribute("Exp", data.exp)
 	player:SetAttribute("ExpToNext", 0) -- 실제 값은 ExperienceService가 즉시 계산/동기화
 	player:SetAttribute("VaccinationCount", data.vaccineCount)
+	-- ▼ Load() 마지막의 편의 Attributes에 추가
+	player:SetAttribute("VaccinationCount", data.vaccineCount)
+	-- Save(): UpdateAsync 콜백 안, 필드 덮어쓰기 부분에 추가
+
+
 
 	return data
 end
 
-local function canSave(profile) : boolean
+-- 저장 쓰로틀 완화: 접종/수동리셋은 예외 허용
+local function canSave(profile, reason: string?) : boolean
 	if not profile then return false end
 	if RunService:IsStudio() then return true end
+	if reason == "shutdown" or reason == "vaccinate" or reason == "manual-reset" then
+		return true
+	end
 	local now = os.clock()
-	return (now - (profile.lastSave or 0)) >= 15 -- 과도 저장 방지
+	return (now - (profile.lastSave or 0)) >= 15
 end
+
+
 
 -- 안전 저장(UpdateAsync)
 function PlayerDataService:Save(userId: number, reason: string?): boolean
 	local profile = _profiles[userId]
 	if not profile then return false end
-	if not canSave(profile) and reason ~= "shutdown" then return false end
+
+	-- ✅ autosave만 쿨다운 적용, leave/shutdown은 무조건 허용
+	if reason == "autosave" and not canSave(profile) then
+		return false
+	end
+	
+	-- Save 호출부에서 canSave(profile, reason) 사용
+	if not canSave(profile, reason) then return false end
 
 	local key = ("u_%d"):format(userId)
 	local data = profile.data
@@ -118,6 +167,12 @@ function PlayerDataService:Save(userId: number, reason: string?): boolean
 			old.selectedPetName = data.selectedPetName
 			old.vaccineCount = math.max(0, tonumber(data.vaccineCount) or 0)
 			old.ownedPets = deepCopy(data.ownedPets or {})
+			-- Save()의 UpdateAsync 콜백 안에서:
+			old.buffs = deepCopy(data.buffs or {})
+			-- ▼ Save()의 UpdateAsync 콜백 안에 추가
+			old.lastVaxAt = math.max(0, tonumber(data.lastVaxAt) or 0)
+			old.nextVaxAt = math.max(0, tonumber(data.nextVaxAt) or 0)
+
 			return old
 		end)
 	end)
@@ -143,6 +198,25 @@ end
 
 -- 편의 메서드들 ------------------------------
 
+-- ▼ 편의 메서드 추가
+
+-- 편의 함수 추가
+function PlayerDataService:GetLastVaxAt(player: Player): number
+	return math.max(0, tonumber(self:Get(player).lastVaxAt) or 0)
+end
+function PlayerDataService:SetLastVaxAt(player: Player, ts: number)
+	local d = self:Get(player); d.lastVaxAt = math.max(0, math.floor(ts or 0)); self:MarkDirty(player)
+end
+function PlayerDataService:GetNextVaccinationAt(player: Player): number
+	local d = self:Get(player)
+	return math.max(0, tonumber(d.nextVaxAt) or 0)
+end
+function PlayerDataService:SetNextVaccinationAt(player: Player, ts: number)
+	local d = self:Get(player); d.nextVaxAt = math.max(0, math.floor(ts or 0)); self:MarkDirty(player)
+end
+
+
+
 function PlayerDataService:GetCoins(player: Player): number
 	return self:Get(player).coins
 end
@@ -163,6 +237,18 @@ end
 function PlayerDataService:GetLevelExp(player: Player): (number, number)
 	local d = self:Get(player)
 	return d.level, d.exp
+end
+
+function PlayerDataService:SetBuffs(player: Player, buffs: { [string]: BuffInfo })
+	local d = self:Get(player)
+	-- 만료된 것만 필터링해서 저장해도 되지만, BuffService.persist에서 이미 필터링했음.
+	d.buffs = deepCopy(buffs or {})
+	self:MarkDirty(player)
+end
+
+function PlayerDataService:GetBuffs(player: Player): { [string]: BuffInfo }
+	local d = self:Get(player)
+	return d.buffs or {}
 end
 
 function PlayerDataService:SetLevelExp(player: Player, level: number, exp: number)

@@ -1,35 +1,101 @@
 -- ServerScriptService/VaccinationService.server.lua
 --!strict
+local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local DoctorTryVaccinate = ReplicatedStorage:FindFirstChild("DoctorTryVaccinate")
-	or Instance.new("RemoteFunction", ReplicatedStorage)
-DoctorTryVaccinate.Name = "DoctorTryVaccinate"
+-- Remotes 안전 생성
+local DoctorTryVaccinate = ReplicatedStorage:FindFirstChild("DoctorTryVaccinate") :: RemoteFunction?
+if not DoctorTryVaccinate then
+	DoctorTryVaccinate = Instance.new("RemoteFunction")
+	DoctorTryVaccinate.Name = "DoctorTryVaccinate"
+	DoctorTryVaccinate.Parent = ReplicatedStorage
+end
+
+local RemoteEvents = ReplicatedStorage:FindFirstChild("RemoteEvents") :: Folder?
+if not RemoteEvents then
+	RemoteEvents = Instance.new("Folder")
+	RemoteEvents.Name = "RemoteEvents"
+	RemoteEvents.Parent = ReplicatedStorage
+end
+
+local VaccinationFX = RemoteEvents:FindFirstChild("VaccinationFX") :: RemoteEvent?
+if not VaccinationFX then
+	VaccinationFX = Instance.new("RemoteEvent")
+	VaccinationFX.Name = "VaccinationFX"
+	VaccinationFX.Parent = RemoteEvents
+end
 
 local PlayerDataService = require(script.Parent:WaitForChild("PlayerDataService"))
-local CoinService = require(script.Parent:WaitForChild("CoinService"))
+local CoinService       = require(script.Parent:WaitForChild("CoinService"))
+local ExperienceService = require(script.Parent:WaitForChild("ExperienceService"))
 
-local MAX_VACCINES = 5 -- UI와 동일한 상한(필요시 조정)
+local VaccinationService = { _locks = {} :: {[number]: boolean} }
 
-DoctorTryVaccinate.OnServerInvoke = function(player: Player, payload)
+local MAX_VACCINES  = 5
+local COOLDOWN_SECS = 14 * 24 * 60 * 60 -- 2주
+
+-- ▶ 조절 가능한 값
+local EXP_PER_VACCINE = 350  -- 접종 1회 EXP
+local AFFECTION_DECAY = 1    -- 접종 1회 애정도 감소
+
+-- 단일 처리 함수(성공/실패 모두 여기서 결정)
+local function doVaccinate(player: Player)
 	local cur = PlayerDataService:GetVaccineCount(player)
 	if cur >= MAX_VACCINES then
-		return { ok = false, count = cur, reason = "max" }
+		return { ok=false, count=cur, reason="max" }
 	end
 
-	-- IncVaccineCount 내부에서:
-	-- 1) 저장값 += 1
-	-- 2) player:SetAttribute("VaccinationCount", newCount) 수행
+	local nowTs  = os.time()
+	local nextAt = PlayerDataService:GetNextVaccinationAt(player)
+	if nextAt == 0 then
+		-- 과거 저장과의 호환: lastVaxAt + cooldown 으로 보정
+		local lastTs = PlayerDataService:GetLastVaxAt(player)
+		nextAt = lastTs + COOLDOWN_SECS
+	end
+	if nextAt > nowTs then
+		return { ok=false, count=cur, reason="wait", wait=(nextAt - nowTs) }
+	end
+
 	local newCount = PlayerDataService:IncVaccineCount(player, 1)
 
-	-- 선택펫에도 1 올림 (선택펫이 있으면)
-	local sel = PlayerDataService:Get(player).selectedPetName
+	local data = PlayerDataService:Get(player)
+	local sel = data.selectedPetName
 	if sel then
 		PlayerDataService:IncPetVaccine(player, sel, 1)
+		if AFFECTION_DECAY > 0 then PlayerDataService:AddAffection(player, sel, -AFFECTION_DECAY) end
 	end
 
-	-- (선택) 코인 1 보상 (중복키 ‘VAX:n’)
-	CoinService:Award(player, "VAX:"..tostring(newCount))
+	-- ⬇ 쿨다운 타임스탬프 갱신(둘 다 유지)
+	PlayerDataService:SetLastVaxAt(player, nowTs)
+	PlayerDataService:SetNextVaccinationAt(player, nowTs + COOLDOWN_SECS)
 
-	return { ok = true, count = newCount }
+	if EXP_PER_VACCINE > 0 then pcall(function() ExperienceService.AddExp(player, EXP_PER_VACCINE) end) end
+
+	-- 즉시 저장(쓰로틀 예외 허용됨)
+	PlayerDataService:Save(player.UserId, "vaccinate")
+
+	pcall(function() CoinService:Award(player, "VAX:"..tostring(newCount)) end)
+	pcall(function() VaccinationFX:FireClient(player, { count = newCount }) end)
+
+	return { ok=true, count=newCount }
 end
+
+-- RemoteFunction 진입점(락으로 중복 호출 방지)
+DoctorTryVaccinate.OnServerInvoke = function(player: Player, payload: any)
+	local uid = player.UserId
+	if VaccinationService._locks[uid] then
+		return { ok = false, count = PlayerDataService:GetVaccineCount(player), reason = "busy" }
+	end
+	VaccinationService._locks[uid] = true
+	local result
+	local ok, err = pcall(function()
+		result = doVaccinate(player)
+	end)
+	VaccinationService._locks[uid] = nil
+
+	if ok and result then return result end
+	warn("[VaccinationService] error:", err)
+	return { ok = false, count = PlayerDataService:GetVaccineCount(player), reason = "error" }
+end
+
+return VaccinationService

@@ -35,7 +35,7 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"특별히 네 애완동물이 부럽진 않아",
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
+		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
 
@@ -48,19 +48,19 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"이 마을에는 숨겨진 비밀이 많아",
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=60, max=100},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
-	["Amogus"] = {
+	["Amona"] = {
 		templates = {"Plain"},
 		lines = {
 			"Grrrrrrrr...",
 			"Zzzzz...",
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=600, max=800},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["Walkingman"] = {
@@ -70,8 +70,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"가족을 위해 오늘도 힘내자!",
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=120, max=150},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["engineer"] = {
@@ -82,8 +82,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"얼마 전 사다리 시공을 했었지. 위치는 비밀이야",
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=250, max=400},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["illidan"] = {
@@ -94,8 +94,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"난 너같은 조무래기에는 관심 없다",
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=120, max=150},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["nightwatch_savage"] = {
@@ -106,8 +106,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"개, 개 따윈 하나도 무섭지 않아...",
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=120, max=150},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["nightwatch_zombie"] = {
@@ -117,8 +117,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"Moan...",
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=120, max=150},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["nightwatch_zombie2"] = {
@@ -128,8 +128,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"Groan...",
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=120, max=150},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["snakeman"] = {
@@ -139,8 +139,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"니 애완동물 우리 귀염둥이 간식으로 딱인데?",
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=250, max=400},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["thief"] = {
@@ -150,8 +150,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"이봐, 혹시 오는길에 경찰은 없었어?",
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=250, max=400},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["timthespamm"] = {
@@ -161,8 +161,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"니 강아지 안물지?",
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=60, max=100},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 
 	["Mewrila"] = {
@@ -173,8 +173,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"동물병원은 세탁소 지나 좌회전해서 조금만 더 가면 있어",
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=40, max=80},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 
 	["nightwatch_blackcat"] = {
@@ -185,8 +185,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"언젠가 니가 더 강해진다면 상대해주지",
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=250, max=400},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["STARCODEE_GUN"] = {
@@ -197,8 +197,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"큰 개는 무서워..",
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=250, max=400},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["sportsman"] = {
@@ -209,20 +209,20 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"타지도 못하는 거에 돈은 왜 쓰는거야?",
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=120, max=150},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["xiaoleung"] = {
 		templates = {"Plain"},
 		lines = {
-			"하아.. 커피 땡겨",
+			"강아지들이 좀 자라야 간식을 먹을 수 있어",
 			"새로운 간식 많이 들어왔어",
-			"토요일은 휴무여야 하는 거 아냐?",
+			"인간적으로 토요일은 휴무여야 하는 거 아냐?",
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=120, max=150},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["bleus_p"] = {
@@ -233,8 +233,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"대부분의 사람이 잠든 밤에 가끔씩 밖에서 이상한 소리가 들려",
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=250, max=300},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["Crimson"] = {
@@ -245,8 +245,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"지금 머리숱 많다고 나 무시해?",
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=250, max=300},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["police_c"] = {
@@ -258,8 +258,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=250, max=300},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["police_b"] = {
@@ -271,8 +271,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=160, max=180},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["police_a"] = {
@@ -284,8 +284,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=200, max=230},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 
 	
@@ -298,8 +298,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=100, max=130},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["c"] = {
@@ -311,8 +311,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=120, max=150},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["thegirl"] = {
@@ -324,8 +324,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=60, max=100},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["vendor_bloxmart"] = {
@@ -337,8 +337,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=60, max=100},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["payleey"] = {
@@ -350,8 +350,8 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=60, max=100},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["Nasynia"] = {
@@ -360,11 +360,10 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"우리 남편 못 봤어요?",
 			"아이구 귀여워라~ 얘는 털 많이 빠져요?",
 			"도대체 어디를 간거야",
-
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=60, max=100},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["HideHusband"] = {
@@ -373,12 +372,11 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"뭐야 너 남에 집에 어떻게 들어왔어?",
 			"아내 몰래 짱박혀 노는 게 스릴이 최고지!",
 			"이봐 아내에겐 비밀이야, 알겠지?",
-			
-
+		
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=60, max=100},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	["Personaje"] = {
@@ -387,12 +385,10 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"어머나, 귀여운 강아지네요, 이름이 뭐에요?",
 			"오늘 저녁엔 뭐하고 놀지?",
 			"언젠가 특이한 애완동물을 데리고 다니는 사람을 본 적이 있어",
-
-
 		},
 		offsetY = 3.25,
-		duration = {min=3.5, max=5.5},
-		interval = {min=60, max=100},
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
 	},
 	
 	

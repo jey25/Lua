@@ -1,142 +1,118 @@
--- ServerScriptService/CoinService
+-- ServerScriptService/CoinService.lua
+--!strict
 local Players = game:GetService("Players")
-local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
-local store = DataStoreService:GetDataStore("GameCoins_v2") -- 버전 업
-local Remotes = ReplicatedStorage:FindFirstChild("RemoteEvents")
+local Remotes = ReplicatedStorage:FindFirstChild("RemoteEvents") or Instance.new("Folder", ReplicatedStorage)
+Remotes.Name = "RemoteEvents"
+
 local CoinUpdate = Remotes:FindFirstChild("CoinUpdate") or Instance.new("RemoteEvent", Remotes)
 CoinUpdate.Name = "CoinUpdate"
 
+local CoinPopupEvent = Remotes:FindFirstChild("CoinPopupEvent") or Instance.new("RemoteEvent", Remotes)
+CoinPopupEvent.Name = "CoinPopupEvent"
+
+local PlayerDataService = require(script.Parent:WaitForChild("PlayerDataService"))
+
 local CoinService = {}
 
--- 🔧 설정
-CoinService.MAX_COINS = 6               -- 상한 (원하면 바꾸기)
-CoinService.LEVEL_THRESHOLDS = {5,10,15,20} -- 해당 레벨 "이상" 달성 시 1회 지급
+-- 동적 상한: BASE + (Level // 10)
+CoinService.BASE_MAX_COINS = 5
 
--- 내부 상태
-CoinService._profiles = {}   -- [userId] = {coins, awarded(map), dirty, lastSave}
-CoinService._anyNeedCache = true -- 누군가 < MAX_COINS 인가(캐시)
-
-local function toMap(tbl)
-	local m = {}
-	if typeof(tbl) == "table" then
-		for k, v in pairs(tbl) do
-			if typeof(k) == "string" then m[k] = v and true or false
-			elseif typeof(v) == "string" then m[v] = true end
-		end
-	end
-	return m
+local function getPlayerLevel(plr: Player): number
+	return math.max(1, tonumber(plr:GetAttribute("Level")) or 1)
 end
 
-local function fireUpdate(player, coins)
+function CoinService:GetMaxFor(player: Player): number
+	return (self.BASE_MAX_COINS or 0) + math.floor(getPlayerLevel(player) / 10)
+end
+
+local function fireUpdate(player: Player, coins: number)
 	pcall(function() CoinUpdate:FireClient(player, coins) end)
 end
 
-local function recomputeAnyNeed()
-	for _, plr in ipairs(game:GetService("Players"):GetPlayers()) do
-		local p = CoinService._profiles[plr.UserId]
-		if p and (p.coins or 0) < CoinService.MAX_COINS then
-			CoinService._anyNeedCache = true
-			return
-		end
-	end
-	CoinService._anyNeedCache = false
+function CoinService:_ensureLoaded(player: Player)
+	PlayerDataService:Load(player) -- 필요시 로드
+	fireUpdate(player, PlayerDataService:GetCoins(player))
 end
 
-function CoinService:_load(player)
-	local key = ("p:%d"):format(player.UserId)
-	local data
-	local ok, err = pcall(function() data = store:GetAsync(key) end)
-	if not ok or typeof(data) ~= "table" then data = {coins = 0, awarded = {}} end
-	data.coins = math.clamp(tonumber(data.coins) or 0, 0, self.MAX_COINS)
-	data.awarded = toMap(data.awarded)
-	data.dirty, data.lastSave = false, 0
-	self._profiles[player.UserId] = data
-	fireUpdate(player, data.coins)
-	recomputeAnyNeed()
+function CoinService:GetBalance(player: Player): number
+	return PlayerDataService:GetCoins(player)
 end
 
-function CoinService:_save(userId)
-	local profile = self._profiles[userId]; if not profile then return end
-	local now = os.clock()
-	if (now - (profile.lastSave or 0)) < 15 and not game:GetService("RunService"):IsStudio() then return end
-	local key = ("p:%d"):format(userId)
-	local ok, err = pcall(function()
-		store:UpdateAsync(key, function(old)
-			old = old or {}
-			old.coins = math.clamp(profile.coins or 0, 0, CoinService.MAX_COINS)
-			local out = {}
-			for k, v in pairs(profile.awarded or {}) do if v then out[k] = true end end
-			old.awarded = out
-			return old
-		end)
-	end)
-	if ok then profile.dirty, profile.lastSave = false, now else warn("Coin save failed:", err) end
+function CoinService:SetBalance(player: Player, amount: number)
+	amount = math.max(0, math.floor(amount or 0))
+	local cap = CoinService:GetMaxFor(player)
+	amount = math.clamp(amount, 0, cap)
+	PlayerDataService:SetCoins(player, amount)
+	fireUpdate(player, amount)
 end
 
-function CoinService:_remove(player)
-	self:_save(player.UserId)
-	self._profiles[player.UserId] = nil
-	recomputeAnyNeed()
-end
-
-function CoinService:GetBalance(player)
-	local p = self._profiles[player.UserId]; return p and p.coins or 0
-end
-
-function CoinService:AnyPlayerNeedsCoins() -- 스포너가 참조
-	return self._anyNeedCache
-end
-
--- 내부 증감(0~MAX_COINS 클램프)
-function CoinService:_add(player, delta)
-	local p = self._profiles[player.UserId]; if not p then return end
-	local before = p.coins or 0
-	local after = math.clamp(math.floor(before + delta), 0, self.MAX_COINS)
+-- 내부 증감(동적 상한 클램프)
+function CoinService:_add(player: Player, delta: number)
+	self:_ensureLoaded(player)
+	local before = PlayerDataService:GetCoins(player)
+	local cap = self:GetMaxFor(player)
+	local after = math.clamp(math.floor(before + (delta or 0)), 0, cap)
 	if after == before then return end
-	p.coins = after; p.dirty = true
+	PlayerDataService:SetCoins(player, after)
 	fireUpdate(player, after)
-	recomputeAnyNeed()
 end
 
--- 1코인 지급(중복방지 key 있으면 1회성)
-function CoinService:Award(player, keyOrNil)
-	local p = self._profiles[player.UserId]; if not p then return false end
-	if (p.coins or 0) >= self.MAX_COINS then return false end
-	if keyOrNil then
-		if p.awarded[keyOrNil] then return false end
-		p.awarded[keyOrNil] = true
+-- 1코인 지급(중복 방지 key가 있으면 1회성)
+function CoinService:Award(player: Player, uniqueKeyOrNil: string?): boolean
+	self:_ensureLoaded(player)
+	local cap = self:GetMaxFor(player)
+	if PlayerDataService:GetCoins(player) >= cap then return false end
+
+	-- 간단한 1회성 키 관리(플레이어 Attributes로 관리: "Awarded_<key>" = true)
+	if uniqueKeyOrNil then
+		local attrName = "Awarded_" .. uniqueKeyOrNil
+		if player:GetAttribute(attrName) then return false end
+		player:SetAttribute(attrName, true)
 	end
+
 	self:_add(player, 1)
+	pcall(function() CoinPopupEvent:FireClient(player) end)
 	return true
 end
 
--- 구매(차감)
-function CoinService:TrySpend(player, cost:number)
-	cost = math.max(0, math.floor(cost or 0))
-	local p = self._profiles[player.UserId]; if not p then return false end
-	if (p.coins or 0) < cost then return false end
-	self:_add(player, -cost)
+function CoinService:TrySpend(player: Player, cost: number): boolean
+	local price = math.max(0, math.floor(cost or 0))
+	self:_ensureLoaded(player)
+	if PlayerDataService:GetCoins(player) < price then return false end
+	self:_add(player, -price)
 	return true
 end
 
--- 레벨 변화에 따른 1회성 지급
-function CoinService:OnLevelChanged(player, newLevel:number)
-	local p = self._profiles[player.UserId]; if not p then return end
-	for _, lv in ipairs(self.LEVEL_THRESHOLDS) do
-		if newLevel >= lv then
-			local k = ("LV:%d"):format(lv)
-			if not p.awarded[k] then p.awarded[k] = true; self:_add(player, 1) end
+function CoinService:OnLevelChanged(player: Player, a: number, b: number?)
+	-- 구버전 호환: 인자가 하나면 oldLevel 추정
+	local oldLevel: number, newLevel: number
+	if b ~= nil then
+		oldLevel, newLevel = math.max(1, math.floor(a or 1)), math.max(1, math.floor(b or 1))
+	else
+		newLevel = math.max(1, math.floor(a or 1))
+		oldLevel = (math.max(1, tonumber(player:GetAttribute("Level")) or 1)) - 1
+	end
+	if newLevel <= oldLevel then return end
+
+	-- oldLevel+1 ~ newLevel 사이에서 10의 배수마다 1회성 지급
+	for lv = oldLevel + 1, newLevel do
+		if lv % 10 == 0 then
+			-- 고유키: "LV:<레벨>" → 중복 지급 방지
+			self:Award(player, ("LV:%d"):format(lv))
+			-- Award 내부에서 CoinPopupEvent를 쏘므로 머리 위 아이콘 표시됨
 		end
 	end
 end
 
--- 주기 저장
-task.spawn(function()
-	while task.wait(30) do
-		for userId in pairs(CoinService._profiles) do CoinService:_save(userId) end
-	end
+
+-- PlayerAdded에서 초기 코인 동기화
+Players.PlayerAdded:Connect(function(plr)
+	task.defer(function()
+		CoinService:_ensureLoaded(plr)
+	end)
 end)
 
 return CoinService

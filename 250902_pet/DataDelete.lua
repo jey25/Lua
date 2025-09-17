@@ -75,9 +75,12 @@ PlayerDataService:SetVaccineCount(plr, 0)
 -- 보유 펫 초기화 + 선택 펫 제거
 do
 	local d = PlayerDataService:Get(plr)
-	d.ownedPets = {}         -- 모든 종 정보 삭제
-	d.selectedPetName = nil  -- 선택펫 해제
+	d.ownedPets = {}
+	d.selectedPetName = nil
+	d.lastVaxAt = 0              -- ⬅ 추가
+	d.nextVaxAt = 0              -- ⬅ 추가
 	PlayerDataService:MarkDirty(plr)
+	PlayerDataService:Save(plr.UserId, "manual-reset")
 end
 
 -- 월드에 펼쳐진 펫 모델 제거(OwnerUserId == USER_ID)
