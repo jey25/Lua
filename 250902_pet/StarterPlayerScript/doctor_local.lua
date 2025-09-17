@@ -199,37 +199,16 @@ end
 local TweenService      = game:GetService("TweenService")
 local Debris            = game:GetService("Debris")
 
-
--- 폴백 별 이펙트 (StarIcon 사용)
-local function fallbackClearFX(player: Player)
-	local character = player.Character or player.CharacterAdded:Wait()
-	local head = character:FindFirstChild("Head") or character:WaitForChild("Head")
-
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "ClearFXFallback"
-	billboard.Size = UDim2.new(2, 0, 2, 0)
-	billboard.Adornee = head
-	billboard.AlwaysOnTop = true
-	billboard.StudsOffset = Vector3.new(0, 2.3, 0)
-	billboard.Parent = head
-
-	local img = Instance.new("ImageLabel")
-	img.BackgroundTransparency = 1
-	img.Size = UDim2.fromScale(1, 1)
-	-- ReplicatedStorage/Assets/Icons/StarIcon 가정
-	local star = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Icons"):WaitForChild("StarIcon") :: ImageLabel
-	img.Image = star.Image
-	img.Parent = billboard
-
-	local sc = Instance.new("UIScale", img)
-	sc.Scale = 0.2
-	TweenService:Create(sc, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
-	task.delay(0.35, function()
-		TweenService:Create(img, TweenInfo.new(0.35, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {ImageTransparency = 1}):Play()
+-- ========= [Clear 이펙트 실행 (명시적 신호에만)] =========
+local function runClearEffect()
+	local ok, ClearModule = pcall(function()
+		return require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("ClearModule"))
 	end)
-
-	Debris:AddItem(billboard, 0.9)
+	if ok and ClearModule and ClearModule.showClearEffect then
+		pcall(function() ClearModule.showClearEffect(LocalPlayer) end)
+	end
 end
+
 
 local function playClearFXWithModule(player: Player): boolean
 	local okReq, ClearModule = pcall(function()
@@ -252,7 +231,7 @@ end
 if VaccinationFX then
 	VaccinationFX.OnClientEvent:Connect(function()
 		if not playClearFXWithModule(LocalPlayer) then
-			fallbackClearFX(LocalPlayer)
+			runClearEffect()
 		end
 	end)
 end

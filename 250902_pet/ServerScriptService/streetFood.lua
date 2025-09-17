@@ -233,6 +233,13 @@ ProximityPromptService.PromptTriggered:Connect(function(prompt, player)
 	if not prompt:IsDescendantOf(StreetFoodFolder) then return end
 
 	local targetPart = prompt.Parent
+	
+	player:SetAttribute("ExpMultiplier", 2)
+	task.delay(1800, function()
+		if player and player.Parent then
+			player:SetAttribute("ExpMultiplier", 1)
+		end
+	end)
 
 	-- ✅ StreetFood 완료 처리: 비활성화/이펙트/언락
 	setActive(targetPart, false)
