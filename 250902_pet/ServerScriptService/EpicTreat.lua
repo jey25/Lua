@@ -1,131 +1,51 @@
 --!strict
--- Treat 구매: CoinService로 코인 차감 → 성공 시 효과 적용 → 최신 잔액 반환
+-- ServerScriptService/TreatServer.lua (예시 이름)
+-- Treat 구매: CoinService로 코인 차감 → 성공 시 BuffService로 버프 적용 → 최신 잔액 반환
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 
 -- 모듈들
 local ExperienceService      = require(script.Parent:WaitForChild("ExperienceService"))
 local PetAffectionService    = require(script.Parent:WaitForChild("PetAffectionService"))
 local CoinService            = require(script.Parent:WaitForChild("CoinService"))
+local BuffService            = require(ServerScriptService:WaitForChild("BuffService")) -- ★ 버프는 여기로 위임
 
--- Remotes
-local RemotesFolder = ReplicatedStorage:FindFirstChild("RemoteEvents") or Instance.new("Folder", ReplicatedStorage)
+-- Remotes (코인 표시는 유지)
+local RemotesFolder = ReplicatedStorage:FindFirstChild("RemoteEvents") or Instance.new("Folder")
 RemotesFolder.Name = "RemoteEvents"
-local CoinUpdate   = RemotesFolder:FindFirstChild("CoinUpdate") or Instance.new("RemoteEvent", RemotesFolder)
-CoinUpdate.Name = "CoinUpdate"
+RemotesFolder.Parent = ReplicatedStorage
 
-local TreatFolder  = ReplicatedStorage:FindFirstChild("TreatEvents") or Instance.new("Folder", ReplicatedStorage)
+local CoinUpdate = RemotesFolder:FindFirstChild("CoinUpdate") :: RemoteEvent
+if not CoinUpdate then
+	CoinUpdate = Instance.new("RemoteEvent")
+	CoinUpdate.Name = "CoinUpdate"
+	CoinUpdate.Parent = RemotesFolder
+end
+
+-- Treat 구매 RF
+local TreatFolder = ReplicatedStorage:FindFirstChild("TreatEvents") or Instance.new("Folder")
 TreatFolder.Name = "TreatEvents"
-local TryBuyTreat  = TreatFolder:FindFirstChild("TryBuyTreat") or Instance.new("RemoteFunction", TreatFolder)
-TryBuyTreat.Name = "TryBuyTreat"
+TreatFolder.Parent = ReplicatedStorage
 
--- Buff 이벤트 세팅
-local BuffFolder   = ReplicatedStorage:FindFirstChild("BuffEvents") or Instance.new("Folder", ReplicatedStorage)
-BuffFolder.Name    = "BuffEvents"
-local BuffApplied  = BuffFolder:FindFirstChild("BuffApplied") or Instance.new("RemoteEvent", BuffFolder)
-BuffApplied.Name   = "BuffApplied"
+local TryBuyTreat = TreatFolder:FindFirstChild("TryBuyTreat") :: RemoteFunction
+if not TryBuyTreat then
+	TryBuyTreat = Instance.new("RemoteFunction")
+	TryBuyTreat.Name = "TryBuyTreat"
+	TryBuyTreat.Parent = TreatFolder
+end
 
--- 클라/서버 동일 테이블(필요에 맞게 변경하세요)
-local TREAT_LEVEL_REQ = { Munchies = 20, DogGum = 10,  Snack = 10 }
-local TREAT_COIN_COST = { Munchies = 2, DogGum = 1,  Snack = 1 }
+-- ===== 설정 =====
+local TREAT_LEVEL_REQ = { Munchies = 20, DogGum = 10, Snack = 10 }
+local TREAT_COIN_COST = { Munchies = 2,  DogGum = 1,  Snack = 1 }
 
 -- 버프 파라미터
-local SPEED_BOOST       = 4       -- Snack 이동속도 +4
-local SPEED_BOOST_SECS  = 1800
-local MUNCHIES_SECS     = 1800
-local AFFECTION_MAX     = 10
+local SPEED_BOOST_SECS = 1800      -- 30분
+local MUNCHIES_SECS    = 1800
+local AFFECTION_MAX    = 10        -- DogGum 목표치
 
-local speedBuffUntil : {[Player]: number} = {}
-local munchiesUntil  : {[Player]: number} = {}
-
-
-
-local function getLevel(p: Player): number
-	return tonumber(p:GetAttribute("Level")) or 1
-end
-
--- ───── 효과들
-local function applySnack(p: Player)
-	local char = p.Character
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	if not hum then return end
-
-	local now = os.time()
-	local expires = now + SPEED_BOOST_SECS
-	-- 연장 로직(가장 늦은 시각 유지)
-	speedBuffUntil[p] = math.max(speedBuffUntil[p] or 0, expires)
-
-	-- 속도 적용/연장
-	if p:GetAttribute("BaseWalkSpeed") == nil then
-		p:SetAttribute("BaseWalkSpeed", hum.WalkSpeed)
-	end
-	local base = tonumber(p:GetAttribute("BaseWalkSpeed")) or hum.WalkSpeed
-	hum.WalkSpeed = base + SPEED_BOOST
-
-	-- 클라 UI에 알림 + 버프바 업데이트(절대시각 전달)
-	BuffApplied:FireClient(p, {
-		kind = "Speed",
-		text = "SpeedUp+",
-		expiresAt = speedBuffUntil[p],
-		duration = SPEED_BOOST_SECS,
-	})
-
-	-- 만료 복원 타이머(연장 고려)
-	task.delay(SPEED_BOOST_SECS, function()
-		if (speedBuffUntil[p] or 0) > expires then return end -- 연장됨
-		local h = p.Character and p.Character:FindFirstChildOfClass("Humanoid")
-		if not h then return end
-		local b = tonumber(p:GetAttribute("BaseWalkSpeed")) or 16
-		h.WalkSpeed = b
-		-- 만료 시각도 정리
-		speedBuffUntil[p] = 0
-	end)
-end
-
-
-local function applyDogGum(p: Player)
-	local cur, maxv = PetAffectionService.Get(p)
-	local target = AFFECTION_MAX > 0 and AFFECTION_MAX or maxv
-	local delta = target - cur
-	if delta > 0 then
-		PetAffectionService.Adjust(p, delta, "DogGum")
-	end
-	-- 즉시 효과용 토스트/하트 팝업
-	BuffApplied:FireClient(p, {
-		kind = "Affection",  -- 비지속형(버프바 X)
-		text = "♥",
-	})
-end
-
--- Munchies: 퀘스트 EXP 2배(추가분 지급)
-local QuestCleared = ReplicatedStorage:WaitForChild("QuestCleared") :: RemoteEvent
-QuestCleared.OnServerEvent:Connect(function(p: Player, payload)
-	local base = (typeof(payload) == "table") and tonumber(payload.exp) or tonumber(payload)
-	if not base or base <= 0 then return end
-	if (munchiesUntil[p] or 0) > os.time() then
-		ExperienceService.AddExp(p, base) -- 추가분(=기본과 동일) → 총 2배
-	end
-end)
-
--- Munchies: 퀘스트 EXP 2배(추가분 지급은 기존 QuestCleared 핸들러에서)
-local function applyMunchies(p: Player)
-	local now = os.time()
-	local expires = now + MUNCHIES_SECS
-	munchiesUntil[p] = math.max(munchiesUntil[p] or 0, expires)
-
-	BuffApplied:FireClient(p, {
-		kind = "Exp2x",
-		text = "Exp x2",
-		expiresAt = munchiesUntil[p],
-		duration = MUNCHIES_SECS,
-	})
-end
-
--- ───── 구매 RF
-type BuyResp = { ok: boolean, coins: number, reason: string? }
-local VALID_ITEMS = { Munchies = true, DogGum = true, Snack = true }
-
+-- ===== 유틸 =====
 local function getCoins(p: Player): number
 	return CoinService:GetBalance(p)
 end
@@ -134,8 +54,57 @@ local function trySpend(p: Player, cost: number): boolean
 	return CoinService:TrySpend(p, cost)
 end
 
+local function getLevel(p: Player): number
+	return tonumber(p:GetAttribute("Level")) or 1
+end
+
+-- Snack: 이동속도 +4 (가법 → BuffService는 승수 기반이라 승수로 환산)
+local function applySnack(p: Player)
+	-- 현재 기준 속도를 얻어 승수 계산
+	local base: number = 16
+	local char = p.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local baseAttr = p:GetAttribute("BaseWalkSpeed")
+
+	if typeof(baseAttr) == "number" then
+		base = baseAttr
+	elseif hum then
+		base = hum.WalkSpeed
+	end
+
+	local add = 4
+	local mult = (base + add) / math.max(1, base)  -- 예: base 16 → 20 ⇒ 1.25배
+
+	-- BuffService에 위임 (UI 토스트/만료 동기화 포함)
+	BuffService:ApplyBuff(p, "Speed", SPEED_BOOST_SECS, { mult = mult }, "이동 속도 UP!")
+end
+
+-- DogGum: 애정도 즉시 목표치로
+local function applyDogGum(p: Player)
+	local cur, maxv = PetAffectionService.Get(p)
+	local target = AFFECTION_MAX > 0 and AFFECTION_MAX or maxv
+	local delta = target - cur
+	if delta > 0 then
+		PetAffectionService.Adjust(p, delta, "DogGum")
+	end
+	-- (토스트는 필요시 PetAffectionService나 별도 UI에서 처리. BuffService는 관여 X)
+end
+
+-- Munchies: EXP 2배 (권장: 전역 2배 → ExperienceService.AddExp가 ExpMultiplier를 곱함)
+local function applyMunchies(p: Player)
+	BuffService:ApplyBuff(p, "Exp2x", MUNCHIES_SECS, { mult = 2 }, "경험치 2배!")
+end
+
+
+-- ===== 구매 RF =====
+type BuyResp = { ok: boolean, coins: number, reason: string? }
+local VALID_ITEMS = { Munchies = true, DogGum = true, Snack = true }
+
 TryBuyTreat.OnServerInvoke = function(p: Player, payload): BuyResp
-	if not (p and p.Parent) then return { ok = false, coins = 0, reason = "InvalidPlayer" } end
+	if not (p and p.Parent) then
+		return { ok = false, coins = 0, reason = "InvalidPlayer" }
+	end
+
 	local item = (typeof(payload) == "table" and payload.item) or tostring(payload)
 	if not VALID_ITEMS[item] then
 		return { ok = false, coins = getCoins(p), reason = "InvalidItem" }
@@ -147,12 +116,12 @@ TryBuyTreat.OnServerInvoke = function(p: Player, payload): BuyResp
 		return { ok = false, coins = getCoins(p), reason = "LevelTooLow" }
 	end
 
-	-- ⚠️ 코인 차감은 반드시 CoinService를 사용
+	-- 코인 차감
 	if not trySpend(p, cost) then
 		return { ok = false, coins = getCoins(p), reason = "NotEnoughCoins" }
 	end
 
-	-- 효과 적용
+	-- 효과 적용 (BuffService 위임)
 	if item == "Snack" then
 		applySnack(p)
 	elseif item == "DogGum" then
@@ -161,17 +130,12 @@ TryBuyTreat.OnServerInvoke = function(p: Player, payload): BuyResp
 		applyMunchies(p)
 	end
 
-	-- 최신 잔액 반환(브로드캐스트는 CoinService가 이미 해줍니다)
+	-- 최신 잔액 반환 (브로드캐스트는 CoinService에서 이미 처리)
 	local coinsNow = getCoins(p)
 	return { ok = true, coins = coinsNow }
 end
 
--- 접속 시 현재 잔액을 한 번 쏴 주면 클라도 바로 동기화됨(옵션)
+-- 접속 시 잔액 초기 동기화(옵션)
 Players.PlayerAdded:Connect(function(p)
 	CoinUpdate:FireClient(p, getCoins(p))
-end)
-
-Players.PlayerRemoving:Connect(function(p)
-	speedBuffUntil[p] = nil
-	munchiesUntil[p] = nil
 end)
