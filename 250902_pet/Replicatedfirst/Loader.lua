@@ -62,11 +62,13 @@ local function setProgress(p) -- 0~1
 	percent.Text = string.format("%d%%", math.floor(p*100 + 0.5))
 end
 
--- 3) 한 프레임 그려지도록 보장 (빈 화면 방지)
-RunService.RenderStepped:Wait()
-
--- 4) 이제 기본 로딩 화면 제거 (빈 화면 전환 없음)
+-- 기본 로딩 화면을 가장 먼저 제거
 pcall(function() ReplicatedFirst:RemoveDefaultLoadingScreen() end)
+
+-- UI가 바로 보이도록 한 프레임 보장
+RunService.RenderStepped:Wait()
+setProgress(0) -- 바로 0% 표시
+
 
 -- 5) 무거운 작업은 지연 실행: UI가 뜬 뒤 시작
 task.defer(function()
@@ -119,3 +121,4 @@ task.defer(function()
 	tween.Completed:Wait()
 	screen:Destroy()
 end)
+

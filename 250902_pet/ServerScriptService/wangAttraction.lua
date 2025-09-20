@@ -3,6 +3,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ProximityPromptService = game:GetService("ProximityPromptService")
+local ExperienceService = require(game.ServerScriptService:WaitForChild("ExperienceService"))
 
 -- ==================== 설정 ====================
 local WANG_RADIUS            = 40      -- 근접 판정/프롬프트 반경
@@ -199,6 +200,8 @@ local function ensurePrompt(modelOrPart: Instance)
 		p.ActionText = "Inspect"
 		p.ObjectText = model.Name
 		p.HoldDuration = 0
+		-- 🔹 UI 숨김 처리
+		p.Style = Enum.ProximityPromptStyle.Custom
 		p.Parent = anchor
 	end
 	-- "가장 가까운 것만" 표시 → 프롬프트 과다 노출 방지
@@ -355,56 +358,52 @@ end
 
 
 local function beginApproach(pet: Model, target: Instance)
-	local pp = getAnyBasePart(pet); if not pp then return end
-
-	-- target이 Attachment/Prompt 등인 경우에도 BasePart 찾아보기
 	local tgt = getAnyBasePart(target)
 	if not tgt then
 		if target and target:IsA("Attachment") and target.Parent and target.Parent:IsA("BasePart") then
 			tgt = target.Parent
-		end
-		-- fallback: 모델 전체라면 PrimaryPart 얻기
-		if not tgt and target and target:IsA("Model") then
+		elseif target and target:IsA("Model") then
 			tgt = (target :: Model).PrimaryPart
 		end
 	end
 	if not tgt then return end
 
-	-- 기준 Y 계산
-	local planeY = pp.Position.Y
+	-- 기준 Y(LOCK_Y면 한 번만 샘플)
+	local pivotCF = pet:GetPivot()
+	local planeY = pivotCF.Position.Y
 	if LOCK_Y then
-		local groundY = getGroundYBelow(pp.Position, pet)
+		local groundY = getGroundYBelow(pivotCF.Position, pet)
 		if groundY then planeY = groundY end
 	end
 
 	task.spawn(function()
 		while pet.Parent and target and target.Parent do
-			-- 접근 취소 플래그 확인(클릭 등에서 끌 수 있음)
-			local approachingAttr = pet:GetAttribute("WangApproaching")
-			if approachingAttr == false then break end
+			if pet:GetAttribute("WangApproaching") == false then break end
 
-			pp = getAnyBasePart(pet); tgt = getAnyBasePart(target)
-			if not (pp and tgt) then break end
+			pivotCF = pet:GetPivot()
+			local petPos = pivotCF.Position
 
-			local petPos = pp.Position
 			local tgtPos = tgt.Position
-			if LOCK_Y then tgtPos = Vector3.new(tgtPos.X, planeY, tgtPos.Z) end
+			if LOCK_Y then
+				tgtPos = Vector3.new(tgtPos.X, planeY, tgtPos.Z)
+			end
 
 			local dx, dz = tgtPos.X - petPos.X, tgtPos.Z - petPos.Z
 			local distXZ = math.sqrt(dx*dx + dz*dz)
 
-			-- beginApproach 내부: 닿음 분기 교체
+			-- 도착 체크
 			if distXZ <= TOUCH_RANGE then
 				local owner = getOwnerPlayerFromPet(pet)
 				if owner then
 					WangEvent:FireClient(owner, "Bubble", { text = TOUCH_TEXT })
-					-- ✅ 닿아서 끝나는 경우도 루프 중단
 					stopAttractSfxLoop(owner)
+					
+					-- ⬇⬇ 추가: 도착 즉시 마커/이펙트 제거
+					WangEvent:FireClient(owner, "HideMarker", { target = pet, key = "wang_touch" })
+					WangEvent:FireClient(owner, "ClearEffect")
 				end
-
 				pet:SetAttribute("WangApproaching", false)
 
-				-- 🔁 닿았을 때도 쿨타임 주고 싶다면 (옵션)
 				if WANG_COOLDOWN_ON_TOUCH then
 					local targetModel = resolveTargetModel(target)
 					if targetModel then
@@ -417,25 +416,27 @@ local function beginApproach(pet: Model, target: Instance)
 					end
 				end
 
-				if AUTO_RESUME_AFTER_TOUCH and owner then
-					local lastWS = pet:GetAttribute("WANG_LastWalkSpeed")
-					task.delay(RESUME_DELAY_AFTER_TOUCH, function()
-						WangEvent:FireClient(owner, "RestoreBubble")
-						restoreFollow(owner, pet, (type(lastWS) == "number") and lastWS or nil)
-						pet:SetAttribute("WANG_LastWalkSpeed", nil)
-					end)
+				if AUTO_RESUME_AFTER_TOUCH then
+					local owner = getOwnerPlayerFromPet(pet)
+					if owner then
+						local lastWS = pet:GetAttribute("WANG_LastWalkSpeed")
+						task.delay(RESUME_DELAY_AFTER_TOUCH, function()
+							WangEvent:FireClient(owner, "RestoreBubble")
+							restoreFollow(owner, pet, (type(lastWS) == "number") and lastWS or nil)
+							pet:SetAttribute("WANG_LastWalkSpeed", nil)
+						end)
+					end
 				end
 				break
 			end
 
-
-			-- beginApproach 루프 내부 이동 계산 직후
+			-- ▶ Pivot 기준으로 전진
 			local step = math.min(distXZ, APPROACH_SPEED * LOOP_DT)
 			local dirXZ = (distXZ > 0) and Vector3.new(dx, 0, dz).Unit or Vector3.new()
 			local nextXZ = petPos + dirXZ * step
 
-			-- Y 보정: 경사면 대응 (LOCK_Y=true면 최초 평면Y를 precomputed 해서 여기 대신 써도 됨)
-			local groundedY = computeGroundedY(pet, nextXZ, GROUND_OFFSET)  -- ex) GROUND_OFFSET=0.5
+			-- Y 보정
+			local groundedY = computeGroundedY(pet, nextXZ, GROUND_OFFSET)
 			local newPos = Vector3.new(nextXZ.X, groundedY, nextXZ.Z)
 
 			local lookAt = Vector3.new(tgtPos.X, newPos.Y, tgtPos.Z)
@@ -443,14 +444,21 @@ local function beginApproach(pet: Model, target: Instance)
 
 			task.wait(LOOP_DT)
 		end
+		
+		-- 종료 후 안전 복구(기존 그대로)
+		-- ⬇⬇ 추가: 어떤 종료 경로에서도 마커/이펙트가 남지 않도록 보장
+		do
+			local owner4 = getOwnerPlayerFromPet(pet)
+			if owner4 then
+				WangEvent:FireClient(owner4, "HideMarker", { target = pet, key = "wang_touch" })
+				WangEvent:FireClient(owner4, "ClearEffect")
+			end
+		end
 
-		-- 루프 종료 후 안전장치: 만약 접근이 멈췄고(플래그 false) 플레이어 복원이 안되어 있다면 네트워크/앵커를 풀어둡니다.
-		-- (restoreFollow에서 이미 처리되었다면 중복되어도 괜찮음)
+		-- 종료 후 안전 복구(기존 그대로)
 		if not pet:GetAttribute("WangApproaching") then
-			-- 복원 시도 (owner가 있으면 restoreFollow 권장)
 			local owner3 = getOwnerPlayerFromPet(pet)
 			if owner3 then
-				-- 만약 FollowLocked가 true라면 restoreFollow를 호출해서 Align/Anchors 복구
 				if pet:GetAttribute("FollowLocked") then
 					local lastWS2 = pet:GetAttribute("WANG_LastWalkSpeed")
 					restoreFollow(owner3, pet, (type(lastWS2) == "number") and lastWS2 or nil)
@@ -458,13 +466,13 @@ local function beginApproach(pet: Model, target: Instance)
 					pet:SetAttribute("FollowLocked", false)
 				end
 			else
-				-- 소유자 없음: 최소 앵커 원복/소유권 자동으로 돌려놓기
 				restoreModelAnchored(pet)
 				releaseOwnership(pet)
 			end
 		end
 	end)
 end
+
 
 
 
@@ -659,6 +667,7 @@ WangCancelClick.OnServerEvent:Connect(function(player, clickedPart: Instance)
 
 		-- ✅ Wang은 '클리어' 시점에만 이펙트
 		WangEvent:FireClient(player, "ClearEffect")
+		ExperienceService.AddExp(player, 150)
 
 		-- ✅ 이번에 사용한 타겟 쿨타임 진입
 		local targetModel = resolveTargetModel(st.target or clickedPart)

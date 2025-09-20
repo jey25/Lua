@@ -80,6 +80,7 @@ local function ensurePrompt(target: Instance)
 	p.HoldDuration = 0
 	p.RequiresLineOfSight = false
 	p.MaxActivationDistance = PROXIMITY_RADIUS
+	p.Style = Enum.ProximityPromptStyle.Custom   -- UI 숨김 처리
 	p.Parent = base
 end
 

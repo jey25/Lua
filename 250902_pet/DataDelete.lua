@@ -73,15 +73,53 @@ end
 PlayerDataService:SetVaccineCount(plr, 0)
 
 -- 보유 펫 초기화 + 선택 펫 제거
+-- 보유 펫 초기화 + 선택 펫 제거 + 버프 초기화
 do
 	local d = PlayerDataService:Get(plr)
 	d.ownedPets = {}
 	d.selectedPetName = nil
-	d.lastVaxAt = 0              -- ⬅ 추가
-	d.nextVaxAt = 0              -- ⬅ 추가
+	d.lastVaxAt = 0
+	d.nextVaxAt = 0
+	d.buffs = {}  -- ⬅⬅ 버프 초기화 추가
 	PlayerDataService:MarkDirty(plr)
 	PlayerDataService:Save(plr.UserId, "manual-reset")
 end
+
+-- 버프 초기화 (런타임/Attribute 포함)
+local function resetBuffs(plr: Player)
+	-- 테이블 클리어
+	speedBuffUntil[plr] = nil
+	munchiesUntil[plr]  = nil
+
+	-- Exp 버프 해제 알림
+	plr:SetAttribute("ExpMultiplier", 1)
+
+	-- Speed 버프 해제
+	local hum = plr.Character and plr.Character:FindFirstChildOfClass("Humanoid")
+	if hum then
+		local base = tonumber(plr:GetAttribute("BaseWalkSpeed")) or 16
+		hum.WalkSpeed = base
+	end
+
+	-- 클라이언트 UI 갱신 (버프바에서 지워주려면 필요)
+	BuffApplied:FireClient(plr, {
+		kind = "Exp2x",
+		text = "Expired",
+		expiresAt = os.time(),
+		duration = 0,
+	})
+	BuffApplied:FireClient(plr, {
+		kind = "Speed",
+		text = "Expired",
+		expiresAt = os.time(),
+		duration = 0,
+	})
+end
+
+-- PlayerData 초기화 이후
+resetBuffs(plr)
+
+
 
 -- 월드에 펼쳐진 펫 모델 제거(OwnerUserId == USER_ID)
 for _, m in ipairs(workspace:GetDescendants()) do
@@ -93,6 +131,8 @@ end
 -- 애정도 Attribute 초기화 (HUD에서 사용한다면)
 plr:SetAttribute("PetAffection", 0)
 plr:SetAttribute("PetAffectionMax", 10)
+plr:SetAttribute("ExpMultiplier", 1)
+plr:SetAttribute("SpeedMultiplier", 1)
 
 -- 3) 선택: 즉시 펫 선택 GUI 열기
 if OPEN_PET_SELECTION_UI then

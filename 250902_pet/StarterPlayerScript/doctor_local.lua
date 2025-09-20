@@ -229,7 +229,10 @@ end
 
 
 if VaccinationFX then
-	VaccinationFX.OnClientEvent:Connect(function()
+	VaccinationFX.OnClientEvent:Connect(function(data)
+		-- data.count 같은 값 확인 가능
+		print("VaccinationFX event received. Count:", data and data.count)
+
 		if not playClearFXWithModule(LocalPlayer) then
 			runClearEffect()
 		end
