@@ -54,8 +54,34 @@ local function ensureCountGui()
 		count.Text = "0/"..maxVaccinations
 		count.Parent = gui
 	end
-	return gui, gui:FindFirstChild("CountLabel") :: TextLabel
+
+	-- ▼ 이미 있던 GUI에도 동일 스타일 적용(중복 안전)
+	local title = gui:FindFirstChild("TitleLabel") :: TextLabel?
+	local count = gui:FindFirstChild("CountLabel") :: TextLabel?
+
+	if title then
+		title.Font = Enum.Font.GothamBlack          -- 더 두껍게
+		title.TextStrokeTransparency = 0.6          -- 살짝 두께감
+		title.TextStrokeColor3 = Color3.new(0,0,0)
+	end
+
+	if count then
+		count.Font = Enum.Font.GothamBlack          -- 더 두껍게
+		count.TextStrokeTransparency = 0.45         -- 테두리 얇게
+		count.TextStrokeColor3 = Color3.new(0,0,0)
+
+		-- 모서리 둥글게(테두리만 변경, 위치/크기 그대로)
+		local corner = count:FindFirstChildOfClass("UICorner")
+		if not corner then
+			corner = Instance.new("UICorner")
+			corner.Parent = count
+		end
+		(corner :: UICorner).CornerRadius = UDim.new(0, 8)
+	end
+
+	return gui, count
 end
+
 
 
 local function setCountLabel(n)
