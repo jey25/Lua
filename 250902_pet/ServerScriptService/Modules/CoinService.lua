@@ -29,7 +29,8 @@ function CoinService:GetMaxFor(player: Player): number
 end
 
 local function fireUpdate(player: Player, coins: number)
-	pcall(function() CoinUpdate:FireClient(player, coins) end)
+	local max = CoinService:GetMaxFor(player)
+	pcall(function() CoinUpdate:FireClient(player, coins, max) end)
 end
 
 function CoinService:_ensureLoaded(player: Player)
@@ -48,6 +49,18 @@ function CoinService:SetBalance(player: Player, amount: number)
 	PlayerDataService:SetCoins(player, amount)
 	fireUpdate(player, amount)
 end
+
+function CoinService:AnyPlayerNeedsCoins()
+	for _, plr in ipairs(Players:GetPlayers()) do
+		local okB, bal = pcall(function() return self:GetBalance(plr) end)
+		local okM, max = pcall(function() return self:GetMaxFor(plr) end)
+		if okB and okM and tonumber(bal) < tonumber(max) then
+			return true
+		end
+	end
+	return false
+end
+
 
 -- 내부 증감(동적 상한 클램프)
 function CoinService:_add(player: Player, delta: number)
