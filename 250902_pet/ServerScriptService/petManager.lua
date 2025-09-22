@@ -46,6 +46,8 @@ local CoinService = require(script.Parent:WaitForChild("CoinService"))
 -- Constants
 local PET_GUI_NAME = "petGui"  -- ReplicatedStorage 내 GUI 이름(펫 머리 위 등)
 local petGuiTemplate: Instance = ReplicatedStorage:WaitForChild(PET_GUI_NAME)
+-- ▼▼ 추가: 펫이 살짝 더 낮아지도록 전역 기본값(음수면 아래로)
+local PET_GROUND_NUDGE_Y = -0.7   -- 추천 범위: -0.3 ~ -1.2 (모델에 따라 조절)
 
 local COLS = 2
 local X_OFFSET = 2.5
@@ -181,8 +183,9 @@ local function addFollowConstraintWithOffset(pet: Model, character: Model, offse
 	ao.Parent = petPP
 end
 
--- Spawner -------------------------------------------------------
 
+
+-- 완전 교체용: ServerScriptService/PetManager.server.lua 내 spawnPet
 local function spawnPet(player: Player, petName: string)
 	local character = player.Character or player.CharacterAdded:Wait()
 	local template = petModels:FindFirstChild(petName)
@@ -191,8 +194,17 @@ local function spawnPet(player: Player, petName: string)
 		return
 	end
 
+	-- 슬롯/기본 오프셋 계산 (기존 유지)
 	local slot = nextSlot(player)
 	local offset = getFollowOffsetForSlot(slot)
+
+	-- ▼ 지면 밀착: 모델 Attribute > 전역 상수 > 기본값(-0.7) 우선순위
+	local attrNudge = template:GetAttribute("GroundNudgeY")
+	local globalNudge = (typeof(PET_GROUND_NUDGE_Y) == "number") and PET_GROUND_NUDGE_Y or nil
+	local nudgeY = (typeof(attrNudge) == "number" and attrNudge)
+		or (globalNudge)
+		or -0.7
+	offset = offset + Vector3.new(0, nudgeY, 0)
 
 	local petId = HttpService:GenerateGUID(false)
 	local attachName = "CharAttach_" .. petId
@@ -202,14 +214,21 @@ local function spawnPet(player: Player, petName: string)
 	pet:SetAttribute("OwnerUserId", player.UserId)
 	pet:SetAttribute("PetId", petId)
 	pet:SetAttribute("Slot", slot)
+
+	-- 오프셋/부가정보 Attribute 저장 (재부착시 동일 높이 유지)
 	pet:SetAttribute("OffsetX", offset.X)
 	pet:SetAttribute("OffsetY", offset.Y)
 	pet:SetAttribute("OffsetZ", offset.Z)
 	pet:SetAttribute("AttachName", attachName)
+	pet:SetAttribute("GroundNudgeY", nudgeY)
+
 	pet.Parent = workspace
 
+	-- 머리말풍선/HP바 등 GUI 템플릿 부착
 	local petGui = petGuiTemplate:Clone()
 	petGui.Parent = pet
+
+	-- 모델을 PrimaryPart 기준으로 단단히 묶고 물리 설정
 	weldModelToPrimary(pet)
 	local pp = ensurePrimaryPart(pet)
 	if not pp then
@@ -217,22 +236,22 @@ local function spawnPet(player: Player, petName: string)
 		pet:Destroy()
 		return
 	end
-	pp.Anchored = false; pp.CanCollide = false; pp.Massless = true
+	pp.Anchored = false
+	pp.CanCollide = false
+	pp.Massless = true
 
+	-- 최초 위치: 캐릭터 뒤/좌우 offset 위치
 	local hrp = character:WaitForChild("HumanoidRootPart")
 	pet:PivotTo(hrp.CFrame * CFrame.new(offset))
 
+	-- 따라가기 제약(AlignPosition/Orientation) 생성 + 오프셋 반영
 	addFollowConstraintWithOffset(pet, character, offset, attachName)
 
-	-- 선택 SFX
-	local tpl = SFXFolder:FindFirstChild("Choice")
-	if tpl and tpl:IsA("Sound") then
-		PetSfxEvent:FireClient(player, "PlaySfxTemplate", tpl)
-	end
-
+	-- 세션 보유 리스트에 등록
 	local list = getOrInitPetList(player)
 	table.insert(list, { pet = pet, slot = slot, offset = offset, attachName = attachName })
 
+	-- 캐릭터 리스폰 시 재부착(저장된 오프셋 그대로 사용)
 	player.CharacterAdded:Connect(function(newChar)
 		task.defer(function()
 			if pet and pet.Parent then
@@ -247,9 +266,12 @@ local function spawnPet(player: Player, petName: string)
 		end)
 	end)
 
-	-- 각 펫 개별 퀘스트 시작 시그널
+	-- 펫별 퀘스트 시작 신호
 	PetQuestEvent:FireClient(player, "StartQuest", { petName = petName, petId = petId })
 end
+
+
+
 
 -- UI 화살표(첫 퀘스트) -------------------------------------------------------
 
@@ -322,6 +344,10 @@ TrySelectEpicPet.OnServerInvoke = function(player: Player, payload)
 	PlayerDataService:SetSelectedPet(player, petName)
 
 	spawnPet(player, petName)
+	local tpl = SFXFolder:FindFirstChild("Choice")
+	if tpl and tpl:IsA("Sound") then
+		PetSfxEvent:FireClient(player, "PlaySfxTemplate", tpl)
+	end
 
 	return {ok=true, coins = CoinService:GetBalance(player)}
 end
@@ -331,7 +357,12 @@ PetSelectedEvent.OnServerEvent:Connect(function(player: Player, petName: string)
 	PlayerDataService:AddOwnedPet(player, petName)
 	PlayerDataService:SetSelectedPet(player, petName)
 
+	-- PetSelectedEvent.OnServerEvent 내부:
 	spawnPet(player, petName)
+	local tpl = SFXFolder:FindFirstChild("Choice")
+	if tpl and tpl:IsA("Sound") then
+		PetSfxEvent:FireClient(player, "PlaySfxTemplate", tpl)
+	end
 	FirstQuestGui(player)
 end)
 
@@ -343,9 +374,8 @@ Players.PlayerAdded:Connect(function(player)
 	-- 코인/레벨/EXP는 각 서비스에서 별도 동기화
 	-- 선택 펫이 있으면 팝업 미표시 + 바로 소환
 	if data.selectedPetName and petModels:FindFirstChild(data.selectedPetName) then
-		spawnPet(player, data.selectedPetName)
+		spawnPet(player, data.selectedPetName) -- 사운드 X
 	else
-		-- 최초 접속(선택 없음): 클라에 선택 GUI 띄우기
 		ShowPetGuiEvent:FireClient(player)
 	end
 end)

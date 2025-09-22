@@ -13,10 +13,15 @@ local Icons = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Icons")
 local HeartTpl = Icons:WaitForChild("HeartIcon") :: ImageLabel
 local StarTpl = Icons:WaitForChild("StarIcon") :: ImageLabel
 local CoinTpl = Icons:WaitForChild("CoinIcon") :: ImageLabel
+-- ===== AffBar 외곽선 깜빡임 (Suck Icon on 동안) =====
+local ZeroEventHUD = ReplicatedStorage:WaitForChild("RemoteEvents"):WaitForChild("PetAffectionZero")
+
 
 -- 간단 HUD 생성(원하면 Studio에서 디자인해도 됨)
 -- StarterPlayer/StarterPlayerScripts/HUDController (일부) 
 -- 기존 createHUD() 교체용
+
+
 
 
 local function createHUD()
@@ -56,7 +61,7 @@ local function createHUD()
 	coinLabel.TextScaled = true
 	coinLabel.Font = Enum.Font.GothamBold
 	coinLabel.Text = "0"
-	coinLabel.Size = UDim2.fromOffset(70, 36)
+	coinLabel.Size = UDim2.fromOffset(90, 36)
 	coinLabel.LayoutOrder = 0
 	coinLabel.Parent = dock
 	coinLabel.TextXAlignment = Enum.TextXAlignment.Right
@@ -88,7 +93,7 @@ local function createHUD()
 	levelLabel.Size = UDim2.fromOffset(140, 36)
 	levelLabel.LayoutOrder = 1
 	levelLabel.Parent = dock
-	levelLabel.TextXAlignment = Enum.TextXAlignment.Center
+	levelLabel.TextXAlignment = Enum.TextXAlignment.Right
 	levelLabel.ClipsDescendants = true
 	local levelCorner = Instance.new("UICorner"); levelCorner.CornerRadius = UDim.new(0,8); levelCorner.Parent = levelLabel
 	
@@ -226,6 +231,7 @@ local affText = inner:WaitForChild("AffText") :: TextLabel
 -- 스무스 애니메이션
 local TweenService = game:GetService("TweenService")
 
+
 local function tweenFill(ratio: number)
 	ratio = math.clamp(ratio, 0, 1)
 	TweenService:Create(fill, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
@@ -239,32 +245,21 @@ local function tweenAff(ratio: number)
 		{ Size = UDim2.new(ratio, 0, 1, 0) }):Play()
 end
 
+
 -- 코인 표시
 local function setCoins(n:number?)
 	coinLabel.Text = ("%d"):format(tonumber(n) or 0)
 end
 
--- Remotes 폴더에서 CoinUpdate 수신
+-- Remotes/CoinUpdate 수신 → HUD에만 반영
 task.spawn(function()
-	-- 보통 'Remotes/CoinUpdate'를 씁니다.
-	local remotes = ReplicatedStorage:WaitForChild("Remotes", 10)
-	if not remotes then
-		-- 혹시 프로젝트가 'RemoteEvents' 폴더를 쓰면 거기서도 시도
-		remotes = ReplicatedStorage:FindFirstChild("RemoteEvents")
-	end
-
-	if remotes then
-		local coinUpdate = remotes:FindFirstChild("CoinUpdate")
-			or remotes:WaitForChild("CoinUpdate", 10)
-		if coinUpdate and coinUpdate:IsA("RemoteEvent") then
-			coinUpdate.OnClientEvent:Connect(setCoins)
-		else
-			warn("[HUD] CoinUpdate RemoteEvent가 없습니다.")
-		end
-	else
-		warn("[HUD] Remotes 폴더를 찾을 수 없습니다.")
-	end
+	local remotes = ReplicatedStorage:WaitForChild("RemoteEvents")
+	local coinUpdate = remotes:WaitForChild("CoinUpdate")
+	coinUpdate.OnClientEvent:Connect(function(newAmount)
+		setCoins(newAmount)
+	end)
 end)
+
 
 
 -- 공통: 부드러운 외곽선
@@ -354,6 +349,98 @@ addShadow(coinLabel, 12)
 
 -- 채움(필) 그라데이션 + 흐르는 하이라이트
 fill.BackgroundColor3 = Color3.fromRGB(60, 135, 255)
+
+-- affBar의 기존 UIStroke를 재사용(없으면 만들기)
+local affStroke = affBar:FindFirstChildOfClass("UIStroke") :: UIStroke
+if not affStroke then
+	affStroke = addStroke(affBar, Color3.fromRGB(255,255,255), 1, 0.85)
+end
+
+
+-- 원래 값(효과 종료 시 복구용)
+local AFF_STROKE_BASE_T     = affStroke.Transparency
+local AFF_STROKE_BASE_COLOR = affStroke.Color
+local AFF_STROKE_BASE_W     = affStroke.Thickness
+
+-- 깜빡임 파라미터
+local BLINK_MIN_T = 0.15              -- 밝을 때(진한) 투명도
+local BLINK_MAX_T = 0.85              -- 어두울 때(옅은) 투명도
+local BLINK_TIME  = 0.55              -- 단일 페이드 시간(초)     -- 한 번의 페이드 시간(초)
+-- 색/두께(밝을 때/어두울 때)
+local COLOR_RED   = Color3.fromRGB(255, 70, 70)
+local COLOR_WHITE = Color3.fromRGB(255, 255, 255)
+local THICK_HI    = math.max(2.5, AFF_STROKE_BASE_W + 1.5) -- 밝을 때 더 굵게
+local THICK_LO    = math.max(1, AFF_STROKE_BASE_W)         -- 어두울 때 기본 굵기
+
+local affBlinkToken = 0
+
+local function startAffStrokeBlink()
+	affBlinkToken += 1
+	local my = affBlinkToken
+	local s = affStroke
+	s.Enabled = true
+
+	task.spawn(function()
+		while s.Parent and affBlinkToken == my do
+			-- Phase A: 밝게(두껍게, 빨간색)
+			local t1 = TweenService:Create(
+				s,
+				TweenInfo.new(BLINK_TIME, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
+				{ Transparency = BLINK_MIN_T, Thickness = THICK_HI, Color = COLOR_RED }
+			)
+			t1:Play(); t1.Completed:Wait()
+			if affBlinkToken ~= my or not s.Parent then break end
+
+			-- Phase B: 어둡게(얇게, 흰색)
+			local t2 = TweenService:Create(
+				s,
+				TweenInfo.new(BLINK_TIME, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
+				{ Transparency = BLINK_MAX_T, Thickness = THICK_LO, Color = COLOR_WHITE }
+			)
+			t2:Play(); t2.Completed:Wait()
+		end
+	end)
+end
+
+local function stopAffStrokeBlink()
+	affBlinkToken += 1
+	-- 원래 상태로 복귀
+	affStroke.Transparency = AFF_STROKE_BASE_T
+	affStroke.Color        = AFF_STROKE_BASE_COLOR
+	affStroke.Thickness    = AFF_STROKE_BASE_W
+end
+
+-- 서버 신호: Suck Icon on/off → 깜빡임 on/off
+ZeroEventHUD.OnClientEvent:Connect(function(payload)
+	local show = payload and payload.show
+	if show then
+		startAffStrokeBlink()
+	else
+		stopAffStrokeBlink()
+	end
+end)
+
+-- 🔒 견고함 보강: 애정도 1+ → 0으로 떨어졌을 때, 서버 이벤트를 못 받아도
+-- 클라가 스스로 30초 카운트 후 깜빡임을 시작한다.
+local function armLocalZeroHoldTimer()
+	-- 새로운 타이머만 유효하게(기존 깜빡임을 끊지 않음)
+	local armToken = tick()
+	task.spawn(function()
+		local zeroH = player:GetAttribute("PetAffectionZeroHoldSec") or 10
+		local last0 = player:GetAttribute("PetAffectionMinReachedUnix") or 0
+		if last0 <= 0 then return end
+
+		-- 서버가 os.time()으로 기록한 타임스탬프 기준
+		local dueIn = math.max(0, (last0 + zeroH) - os.time())
+		task.wait(dueIn)
+
+		-- 여전히 0이면 시작(서버 이벤트와 동시 도착해도 토큰 비교로 중복 루프 방지)
+		if (player:GetAttribute("PetAffection") or 0) == 0 then
+			startAffStrokeBlink()
+		end
+	end)
+end
+
 
 
 -- 메인 그라데이션
@@ -497,7 +584,11 @@ local function onAffectionSync(payload)
 	if payload.Affection ~= nil then aff.value = tonumber(payload.Affection) or aff.value end
 	if payload.Max       ~= nil then aff.max   = tonumber(payload.Max)       or aff.max   end
 	refreshAff()
+	if aff.value > 0 then
+		stopAffStrokeBlink()
+	end
 end
+
 
 -- ───── 원격 이벤트 "늦게" 연결 (UI를 막지 않음) ─────
 task.spawn(function()
@@ -509,6 +600,7 @@ task.spawn(function()
 		warn("[HUD] LevelSync not found (10s timeout)")
 	end
 end)
+
 
 task.spawn(function()
 	-- RemoteEvents / PetAffectionSync 확보 & 연결
@@ -525,15 +617,66 @@ task.spawn(function()
 	end
 end)
 
--- (선택) Attributes 훅은 그대로 유지
-player:GetAttributeChangedSignal("PetAffection"):Connect(function()
+
+-- ===== Affection attribute hooks (deduped) =====
+-- 전제: refreshAff(), armLocalZeroHoldTimer(), stopAffStrokeBlink() 이미 정의됨
+
+local function handleAffectionChanged()
+	-- PetAffection 변경 시: 값 반영 + UI 갱신 + 깜빡임 on/off 판단
 	local v = player:GetAttribute("PetAffection")
-	if typeof(v) == "number" then aff.value = v; refreshAff() end
-end)
-player:GetAttributeChangedSignal("PetAffectionMax"):Connect(function()
+	if typeof(v) == "number" then
+		aff.value = v
+		refreshAff()
+		if v == 0 then
+			-- 0이면 로컬 타이머로 30초 경과 후 깜빡임을 암(서버 신호 유실 대비)
+			armLocalZeroHoldTimer()
+		else
+			-- 0을 벗어나면 즉시 깜빡임 해제
+			stopAffStrokeBlink()
+		end
+	end
+end
+
+local function handleAffectionMaxChanged()
+	-- 최대치 변경 시: 값 반영 + UI 갱신
 	local m = player:GetAttribute("PetAffectionMax")
-	if typeof(m) == "number" then aff.max = m; refreshAff() end
+	if typeof(m) == "number" then
+		aff.max = m
+		refreshAff()
+		-- (선택) 최대치 변경 시 0인 상태라면 다시 타이머 암
+		if (player:GetAttribute("PetAffection") or 0) == 0 then
+			armLocalZeroHoldTimer()
+		end
+	end
+end
+
+local function handleMinReachedUnixChanged()
+	-- 서버가 0 도달 시각을 갱신했을 때: 여전히 0이면 로컬 타이머 암
+	if (player:GetAttribute("PetAffection") or 0) == 0 then
+		armLocalZeroHoldTimer()
+	end
+end
+
+-- 연결(각 속성당 1개씩만)
+player:GetAttributeChangedSignal("PetAffection"):Connect(handleAffectionChanged)
+player:GetAttributeChangedSignal("PetAffectionMax"):Connect(handleAffectionMaxChanged)
+player:GetAttributeChangedSignal("PetAffectionMinReachedUnix"):Connect(handleMinReachedUnixChanged)
+
+-- 초기 1회 반영(접속 직후 상태 동기화)
+handleAffectionMaxChanged()
+handleAffectionChanged()
+handleMinReachedUnixChanged()
+
+
+
+-- 접속 직후 상태가 0이면(= 이미 0 유지 중) 즉시/잔여 대기 후 시작
+task.defer(function()
+	if (player:GetAttribute("PetAffection") or 0) == 0 then
+		armLocalZeroHoldTimer()
+	end
 end)
+
+
 
 -- 첫 그리기
 refreshHUD()

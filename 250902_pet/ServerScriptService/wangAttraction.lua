@@ -230,21 +230,38 @@ local function cleanupFollowConstraints(pet: Model)
 	end
 end
 
+
+
+-- ▶ 교체본: 저장된 OffsetX/Y/Z와 AttachName을 사용 (groundNudgeY 보존)
 local function reattachFollowToCharacter(pet: Model, character: Model)
 	local petPP = getAnyBasePart(pet)
-	local charPP = character and character:FindFirstChild("HumanoidRootPart")
-	if not (petPP and charPP) then return end
+	local hrp = character and character:FindFirstChild("HumanoidRootPart")
+	if not (petPP and hrp) then return end
 
 	cleanupFollowConstraints(pet)
 	petPP:SetNetworkOwner(nil)
 
-	local aPet = Instance.new("Attachment"); aPet.Name = "PetAttach"; aPet.Parent = petPP
-	local aChar = charPP:FindFirstChild("CharAttach") :: Attachment
-	if not aChar then aChar = Instance.new("Attachment"); aChar.Name = "CharAttach"; aChar.Parent = charPP end
-	aChar.Position = Vector3.new(2.5, -1.5, -2.5)
+	local aPet = Instance.new("Attachment")
+	aPet.Name = "PetAttach"
+	aPet.Parent = petPP
 
-	local yawOffsetDeg = pet:GetAttribute("YawOffsetDeg")
-	if typeof(yawOffsetDeg) ~= "number" then yawOffsetDeg = 0 end
+	local attachName = pet:GetAttribute("AttachName")
+		or ("CharAttach_"..tostring(pet:GetAttribute("PetId") or "")) -- 펫별 고유
+	local aChar = hrp:FindFirstChild(attachName) :: Attachment
+	if not aChar then
+		aChar = Instance.new("Attachment")
+		aChar.Name = attachName
+		aChar.Parent = hrp
+	end
+
+	local off = Vector3.new(
+		tonumber(pet:GetAttribute("OffsetX")) or 2.5,
+		tonumber(pet:GetAttribute("OffsetY")) or -1.5, -- ← groundNudgeY가 여기 들어있음
+		tonumber(pet:GetAttribute("OffsetZ")) or -2.5
+	)
+	aChar.Position = off
+
+	local yawOffsetDeg = tonumber(pet:GetAttribute("YawOffsetDeg")) or 0
 	aPet.Orientation = Vector3.new(0, yawOffsetDeg, 0)
 
 	local ap = Instance.new("AlignPosition")
@@ -257,7 +274,20 @@ local function reattachFollowToCharacter(pet: Model, character: Model)
 	ao.Attachment0 = aPet; ao.Attachment1 = aChar
 	ao.RigidityEnabled = false; ao.MaxTorque = 1e6; ao.Responsiveness = 60
 	ao.Parent = petPP
+
+	-- ✅ 한 틱 뒤 ‘착지 보정 킥’(시각적 뜸 방지 + 경사 대응)
+	task.defer(function()
+		if pet and pet.Parent and hrp.Parent then
+			local hrpPos = hrp.Position
+			local nextXZ = Vector3.new(hrpPos.X + off.X, 0, hrpPos.Z + off.Z)
+			local groundedY = computeGroundedY(pet, nextXZ, GROUND_OFFSET)
+			local targetPos = Vector3.new(nextXZ.X, groundedY, nextXZ.Z)
+			pet:PivotTo(CFrame.new(targetPos, Vector3.new(hrpPos.X, targetPos.Y, hrpPos.Z)))
+		end
+	end)
 end
+
+
 
 local function takeServerOwnership(pet: Model)
 	local root = getAnyBasePart(pet); if root then root:SetNetworkOwner(nil) end
@@ -296,6 +326,23 @@ local function restoreFollow(player: Player, pet: Model, prevWalkSpeed: number?)
 	-- 1) 플레이어 캐릭터에 재부착(Align 재생성)
 	local character = player.Character or player.CharacterAdded:Wait()
 	reattachFollowToCharacter(pet, character)
+	
+	-- ▶ restoreFollow 내 reattachFollowToCharacter 호출 직후(또는 끝부분)에 추가(선택)
+	-- (이미 reattach에서 킥을 해주므로 생략해도 OK)
+	local off = Vector3.new(
+		tonumber(pet:GetAttribute("OffsetX")) or 2.5,
+		tonumber(pet:GetAttribute("OffsetY")) or -1.5,
+		tonumber(pet:GetAttribute("OffsetZ")) or -2.5
+	)
+	local hrp = (player.Character or player.CharacterAdded:Wait()):FindFirstChild("HumanoidRootPart")
+	if hrp then
+		task.defer(function()
+			local xz = Vector3.new(hrp.Position.X + off.X, 0, hrp.Position.Z + off.Z)
+			local gy = computeGroundedY(pet, xz, GROUND_OFFSET)
+			pet:PivotTo(CFrame.new(xz.X, gy, xz.Z, hrp.CFrame.XVector, hrp.CFrame.YVector, hrp.CFrame.ZVector))
+		end)
+	end
+
 
 	-- 2) 이동 파라미터 원복
 	local hum = pet:FindFirstChildOfClass("Humanoid")

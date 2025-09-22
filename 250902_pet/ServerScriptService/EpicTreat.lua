@@ -38,12 +38,12 @@ end
 
 -- ===== 설정 =====
 local TREAT_LEVEL_REQ = { Munchies = 20, DogGum = 10, Snack = 10 }
-local TREAT_COIN_COST = { Munchies = 2,  DogGum = 1,  Snack = 1 }
+local TREAT_COIN_COST = { Munchies = 5,  DogGum = 3,  Snack = 1 }
 
 -- 버프 파라미터
 local SPEED_BOOST_SECS = 1800      -- 30분
 local MUNCHIES_SECS    = 1800
-local AFFECTION_MAX    = 10        -- DogGum 목표치
+local AFFECTION_MAX    = 5      -- DogGum 목표치
 
 -- ===== 유틸 =====
 local function getCoins(p: Player): number
