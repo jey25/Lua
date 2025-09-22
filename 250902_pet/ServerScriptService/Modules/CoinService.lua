@@ -49,6 +49,18 @@ function CoinService:SetBalance(player: Player, amount: number)
 	fireUpdate(player, amount)
 end
 
+function CoinService:AnyPlayerNeedsCoins()
+	for _, plr in ipairs(Players:GetPlayers()) do
+		local okB, bal = pcall(function() return self:GetBalance(plr) end)
+		local okM, max = pcall(function() return self:GetMaxFor(plr) end)
+		if okB and okM and tonumber(bal) < tonumber(max) then
+			return true
+		end
+	end
+	return false
+end
+
+
 -- 내부 증감(동적 상한 클램프)
 function CoinService:_add(player: Player, delta: number)
 	self:_ensureLoaded(player)

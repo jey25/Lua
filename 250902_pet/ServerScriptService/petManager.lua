@@ -247,12 +247,6 @@ local function spawnPet(player: Player, petName: string)
 	-- 따라가기 제약(AlignPosition/Orientation) 생성 + 오프셋 반영
 	addFollowConstraintWithOffset(pet, character, offset, attachName)
 
-	-- 선택 SFX (있을 때만)
-	local tpl = SFXFolder:FindFirstChild("Choice")
-	if tpl and tpl:IsA("Sound") then
-		PetSfxEvent:FireClient(player, "PlaySfxTemplate", tpl)
-	end
-
 	-- 세션 보유 리스트에 등록
 	local list = getOrInitPetList(player)
 	table.insert(list, { pet = pet, slot = slot, offset = offset, attachName = attachName })
@@ -350,6 +344,10 @@ TrySelectEpicPet.OnServerInvoke = function(player: Player, payload)
 	PlayerDataService:SetSelectedPet(player, petName)
 
 	spawnPet(player, petName)
+	local tpl = SFXFolder:FindFirstChild("Choice")
+	if tpl and tpl:IsA("Sound") then
+		PetSfxEvent:FireClient(player, "PlaySfxTemplate", tpl)
+	end
 
 	return {ok=true, coins = CoinService:GetBalance(player)}
 end
@@ -359,7 +357,12 @@ PetSelectedEvent.OnServerEvent:Connect(function(player: Player, petName: string)
 	PlayerDataService:AddOwnedPet(player, petName)
 	PlayerDataService:SetSelectedPet(player, petName)
 
+	-- PetSelectedEvent.OnServerEvent 내부:
 	spawnPet(player, petName)
+	local tpl = SFXFolder:FindFirstChild("Choice")
+	if tpl and tpl:IsA("Sound") then
+		PetSfxEvent:FireClient(player, "PlaySfxTemplate", tpl)
+	end
 	FirstQuestGui(player)
 end)
 
@@ -371,9 +374,8 @@ Players.PlayerAdded:Connect(function(player)
 	-- 코인/레벨/EXP는 각 서비스에서 별도 동기화
 	-- 선택 펫이 있으면 팝업 미표시 + 바로 소환
 	if data.selectedPetName and petModels:FindFirstChild(data.selectedPetName) then
-		spawnPet(player, data.selectedPetName)
+		spawnPet(player, data.selectedPetName) -- 사운드 X
 	else
-		-- 최초 접속(선택 없음): 클라에 선택 GUI 띄우기
 		ShowPetGuiEvent:FireClient(player)
 	end
 end)
