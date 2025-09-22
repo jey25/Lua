@@ -2,6 +2,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ProximityPromptService = game:GetService("ProximityPromptService")
+local ServerStorage = game:GetService("ServerStorage")
 
 -- 🔹 [추가] 서비스 모듈
 local Experience = require(game.ServerScriptService:WaitForChild("ExperienceService"))
@@ -28,6 +29,14 @@ local World = workspace:WaitForChild("World")
 local DogItemsFolder = World:WaitForChild("dogItems")
 local StreetFoodFolder = DogItemsFolder:WaitForChild("street Food") -- 공백/소문자 주의
 
+-- [추가] 숨김 컨테이너 준비
+local HiddenContainer = ServerStorage:FindFirstChild("StreetFoodHidden")
+if not HiddenContainer then
+	HiddenContainer = Instance.new("Folder")
+	HiddenContainer.Name = "StreetFoodHidden"
+	HiddenContainer.Parent = ServerStorage
+end
+
 -- 🔹 [추가] 폴더 Attribute로 런타임 조정 지원
 local function getRuntimeConfig()
 	local xp = StreetFoodFolder:GetAttribute("XPPerTrigger")
@@ -49,6 +58,7 @@ ProxRelay.Name = "StreetFoodProxRelay"
 local StreetFoodEvent = remoteFolder:FindFirstChild("StreetFoodEvent") or Instance.new("RemoteEvent", remoteFolder)
 StreetFoodEvent.Name = "StreetFoodEvent"
 
+
 -- ===== 유틸 =====
 local function getAnyBasePart(inst: Instance): BasePart?
 	if inst:IsA("BasePart") then return inst end
@@ -60,6 +70,22 @@ local function getAnyBasePart(inst: Instance): BasePart?
 	end
 	return nil
 end
+
+
+-- [추가] 원래 부모 저장 유틸 (ObjectValue로 안전 보관)
+local function ensureOrigParent(root: Instance): ObjectValue
+	local ov = root:FindFirstChild("SF_OrigParent")
+	if not ov then
+		ov = Instance.new("ObjectValue")
+		ov.Name = "SF_OrigParent"
+		ov.Value = root.Parent -- 최초 부모 기억
+		ov.Parent = root
+	elseif ov.Value == nil then
+		ov.Value = StreetFoodFolder -- 폴백
+	end
+	return ov :: ObjectValue
+end
+
 
 local function ensurePrompt(target: Instance)
 	local base = getAnyBasePart(target)
@@ -105,27 +131,58 @@ local function resolveEnterSfxTemplate(): Sound?
 end
 
 
--- 프롬프트/상호작용 비활성/활성
+
+-- [교체] 기존 setActive를 아래 구현으로 완전히 교체
 local function setActive(modelOrPart: Instance, active: boolean)
-	local root = modelOrPart:IsA("Model") and modelOrPart or modelOrPart:FindFirstAncestorOfClass("Model") or modelOrPart
+	-- 루트 결정(모델이 있으면 모델 기준으로 토글)
+	local root = modelOrPart:IsA("Model") and modelOrPart
+		or modelOrPart:FindFirstAncestorOfClass("Model")
+		or modelOrPart
+
+	-- 원래 부모 기록(복귀용)
+	local ov = ensureOrigParent(root)
+
+	-- 활성화라면 먼저 원래 자리로 되돌린 뒤, 프롬프트/가시성 토글
+	if active then
+		local desiredParent = ov.Value or StreetFoodFolder
+		if root.Parent ~= desiredParent then
+			root.Parent = desiredParent
+		end
+	end
+
+	-- 프롬프트/가시성 토글
 	for _, d in ipairs(root:GetDescendants()) do
 		if d:IsA("ProximityPrompt") then
 			d.Enabled = active
+			-- 반경 최신화(설정 변경에 대응)
+			d.MaxActivationDistance = PROXIMITY_RADIUS
 		elseif d:IsA("BasePart") then
-			-- 선택: 시각적으로 희미화 (원치 않으면 주석 처리)
+			-- 원래 투명도 백업
 			if not d:GetAttribute("SF_OrigTrans") then
 				d:SetAttribute("SF_OrigTrans", d.Transparency)
 			end
 			if active then
+				-- 복귀 시 원래 투명도 회복
 				local orig = d:GetAttribute("SF_OrigTrans")
 				if typeof(orig) == "number" then d.Transparency = orig end
+				d.CanCollide = d.CanCollide -- (그대로 유지; 필요시 정책 반영)
 			else
+				-- 굳이 페이드할 필요 없지만, 원하면 약간 흐리게 했다가 숨김 처리
 				d.Transparency = math.clamp(d.Transparency + 0.3, 0, 1)
 			end
 		end
 	end
-	(root :: Instance):SetAttribute("SF_Active", active)
+
+	-- 비활성화라면 최종적으로 숨김 컨테이너로 이동(클라 완전 비표시)
+	if not active then
+		if root.Parent ~= HiddenContainer then
+			root.Parent = HiddenContainer
+		end
+	end
+
+	root:SetAttribute("SF_Active", active)
 end
+
 
 -- 펫 찾기(OwnerUserId == player.UserId)
 local function findPlayersPet(player: Player): Model?
