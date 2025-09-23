@@ -44,6 +44,26 @@ local function findMyPet(): Model?
 	return best
 end
 
+local function findPetById(petId: string): Model?
+	for _, inst in ipairs(Workspace:GetDescendants()) do
+		if inst:IsA("Model")
+			and inst:GetAttribute("OwnerUserId") == LocalPlayer.UserId
+			and inst:GetAttribute("PetId") == petId then
+			return inst
+		end
+	end
+	return nil
+end
+
+local function setBubbleTextForPet(petId: string, text: string)
+	local m = findPetById(petId)
+	if not m then return end
+	local gui = m:FindFirstChild(PET_GUI_NAME, true)
+	if not (gui and gui:IsA("BillboardGui")) then return end
+	local label = gui:FindFirstChildWhichIsA("TextLabel", true)
+	if label then label.Text = text or "" end
+	gui.Enabled = (text and text ~= "")
+end
 
 
 local function resolvePetAndBillboard()
@@ -264,6 +284,19 @@ PetQuestEvent.OnClientEvent:Connect(function(action, data)
 		runClearEffect()
 		setQuestHudText("")                     -- ✅ 숨김
 		if textLabel then textLabel.Text = "" end
+	elseif action == "StartQuestForPet" then
+		local petId = data and data.petId
+		local phrase = (data and data.phrase) or ""
+		setBubbleTextForPet(petId, phrase)
+		-- 좌측 HUD에는 "가장 최근 시작된 문구"만 보여주고 싶다면:
+		setQuestHudText(phrase)
+
+	elseif action == "CompleteQuestForPet" then
+		local petId = data and data.petId
+		setBubbleTextForPet(petId, "")
+		runClearEffect()
+		-- HUD는 해당 펫이 완료됐을 때 비워줌(단, 다른 펫이 아직 진행 중이면 필요 시 로직 보강 가능)
+		setQuestHudText("")
 
 	elseif action == "ShowQuestMarkers" then
 		showMarkersOn(data and data.targets)

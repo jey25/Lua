@@ -58,7 +58,7 @@ local Z_STEP   = 1.8
 local PET_LEVEL_REQ = { golden_dog=100, Skeleton_Dog=150, Robot_Dog=200 }
 local PET_COIN_COST = { golden_dog=15,  Skeleton_Dog=20,  Robot_Dog=25  }
 
-local ACTIVE_MAX = 2
+local ACTIVE_MAX = 3
 
 -- 런타임 보유 펫(세션용)
 -- PlayerPets[userId] = { {pet=model, slot=1, attachName="CharAttach_<id>", offset=Vector3}, ... }
@@ -261,11 +261,11 @@ end
 
 -- 완전 교체용: ServerScriptService/PetManager.server.lua 내 spawnPet
 local function spawnPet(player: Player, petName: string)
-	
+
 	if alreadySpawned(player, petName) then return end
 	local character = player.Character or player.CharacterAdded:Wait()
 	local template = petModels:FindFirstChild(petName)
-	
+
 	if not template then
 		warn("Pet model not found: " .. tostring(petName))
 		return
@@ -420,14 +420,14 @@ TrySelectEpicPet.OnServerInvoke = function(player: Player, payload)
 	PlayerDataService:AddOwnedPet(player, petName)
 	PlayerDataService:SetSelectedPet(player, petName)
 	spawnPet(player, petName)
-	
+
 	-- ⬇ 추가
 	local dataNow = PlayerDataService:Load(player)
 	local active = getActivePetsFromData(player, dataNow)
 	uniqAppend(active, petName)
 	trimToCap(active, ACTIVE_MAX)
 	setActivePets(player, active)
-	
+
 	local tpl = SFXFolder:FindFirstChild("Choice")
 	if tpl and tpl:IsA("Sound") then
 		PetSfxEvent:FireClient(player, "PlaySfxTemplate", tpl)
@@ -444,15 +444,15 @@ PetSelectedEvent.OnServerEvent:Connect(function(player: Player, petName: string)
 
 	-- PetSelectedEvent.OnServerEvent 내부:
 	spawnPet(player, petName)
-	
+
 	-- ⬇ 추가
 	local dataNow = PlayerDataService:Load(player)
 	local active = getActivePetsFromData(player, dataNow)
 	uniqAppend(active, petName)
 	trimToCap(active, ACTIVE_MAX)
 	setActivePets(player, active)
-	
-	
+
+
 	local tpl = SFXFolder:FindFirstChild("Choice")
 	if tpl and tpl:IsA("Sound") then
 		PetSfxEvent:FireClient(player, "PlaySfxTemplate", tpl)
