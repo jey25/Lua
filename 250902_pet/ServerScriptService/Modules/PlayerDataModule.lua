@@ -1,18 +1,37 @@
--- ServerScriptService/PlayerDataService.lua
 --!strict
+
+-- ServerScriptService/PlayerDataService.lua
+-- Reviewed & revised on 2025-09-23
+-- Key changes:
+--  * Buff persistence is disabled by default (session-only buffs) → prevents EXP multiplier from resurrecting after rejoin
+--  * De-duplicated attribute writes; safer default merging & sanitization
+--  * Save throttling clarified; retries added for UpdateAsync
+--  * Autosave interval constant; clearer "reason" handling
+--  * Active pets list cleaned & deduplicated against ownedPets
 
 local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
 local RunService = game:GetService("RunService")
-local DS_NAME = "PlayerData_v2"
 
+-- =====================
+-- Config
+-- =====================
+local DS_NAME = "PlayerData_v2"
+local AUTOSAVE_INTERVAL = 30            -- seconds
+local SAVE_COOLDOWN_SECS = 15           -- seconds between saves per profile (except whitelisted reasons)
+local MAX_UPDATE_RETRIES = 3            -- retries for UpdateAsync on transient failures
+
+-- Important: session-only buffs should not be persisted
+local PERSIST_BUFFS = true  -- ✅ 영속화 켬 (Exp2x/Speed만 저장되도록 BuffService가 필터링)
+
+-- =====================
+-- Types
+-- =====================
 local store = DataStoreService:GetDataStore(DS_NAME)
+
 type OwnedPet = { affection: number, vaccines: { count: number } }
 type BuffInfo = { expiresAt: number, params: { [string]: any } }
 
-
-
--- type PlayerData = { ... }
 type PlayerData = {
 	coins: number,
 	level: number,
@@ -23,8 +42,7 @@ type PlayerData = {
 	buffs: { [string]: BuffInfo },
 	lastVaxAt: number?,
 	nextVaxAt: number?,
-	-- ⬇ 추가
-	activePets: { string }?,   -- 동시에 따라다닐 펫 이름 리스트(순서 유지)
+	activePets: { string }?,
 }
 
 local DEFAULT: PlayerData = {
@@ -35,123 +53,125 @@ local DEFAULT: PlayerData = {
 	buffs = {},
 	lastVaxAt = 0,
 	nextVaxAt = 0,
-	-- ⬇ 추가
 	activePets = {},
 }
 
 local PlayerDataService = {}
 
+-- Internal profile table
 local _profiles: { [number]: { data: PlayerData, dirty: boolean, lastSave: number } } = {}
 
+-- =====================
+-- Utils
+-- =====================
 local function deepCopy<T>(t: T): T
 	if type(t) ~= "table" then return t end
-	local out = {}
+	local out: any = {}
 	for k, v in pairs(t) do
 		out[k] = deepCopy(v)
 	end
-	return (out :: any)
+	return out
 end
 
-local function mergeDefault(data: any): PlayerData
-	if type(data) ~= "table" then return deepCopy(DEFAULT) end
-	-- 얕은 머지 + 필수 필드 보정
-	local merged = deepCopy(DEFAULT)
-	for k, v in pairs(data) do
-		(merged :: any)[k] = v
-	end
-	-- ownedPets 필드 보정
-	if type(merged.ownedPets) ~= "table" then
-		merged.ownedPets = {}
-	end
-	
-	if type(merged.activePets) ~= "table" then
-		merged.activePets = {}
-	else
-		-- 문자열만 남기고, ownedPets에 없는 이름은 제거, 중복 제거
-		local cleaned, seen = {}, {}
-		for _, name in ipairs(merged.activePets) do
-			if type(name) == "string" and merged.ownedPets[name] and not seen[name] then
-				table.insert(cleaned, name)
-				seen[name] = true
-			end
-		end
-		merged.activePets = cleaned
-	end
-	
-	-- 백신/애정도 같은 내부 필드 보정
-	for name, pet in pairs(merged.ownedPets) do
-		if type(pet) ~= "table" then merged.ownedPets[name] = { affection = 0, vaccines = { count = 0 } }
-		else
-			if type(pet.affection) ~= "number" then pet.affection = 0 end
-			if type(pet.vaccines) ~= "table" then pet.vaccines = { count = 0 }
-			elseif type(pet.vaccines.count) ~= "number" then pet.vaccines.count = 0 end
-		end
-	end
-	
-	-- 숫자 필드 보정
-	merged.coins = math.max(0, tonumber(merged.coins) or 0)
-	merged.level = math.max(1, tonumber(merged.level) or 1)
-	merged.exp   = math.max(0, tonumber(merged.exp) or 0)
-	merged.vaccineCount = math.max(0, tonumber(merged.vaccineCount) or 0)
-	-- mergeDefault() 안 숫자 필드 보정 끝부분에 추가
-	merged.lastVaxAt = math.max(0, tonumber(merged.lastVaxAt) or 0)
-	merged.nextVaxAt = math.max(0, tonumber(merged.nextVaxAt) or 0)
+local function clampNonNeg(n: number): number
+	return math.max(0, math.floor(n))
+end
 
-	
-	if type(merged.buffs) ~= "table" then
-		merged.buffs = {}
-	else
-		for kind, info in pairs(merged.buffs) do
-			if type(info) ~= "table" then
-				merged.buffs[kind] = nil
+local function isStringArray(a: any): boolean
+	if type(a) ~= "table" then return false end
+	for i, v in ipairs(a) do
+		if type(v) ~= "string" then return false end
+	end
+	return true
+end
+
+local function sanitizeOwnedPets(tbl: any): { [string]: OwnedPet }
+	local owned: { [string]: OwnedPet } = {}
+	if type(tbl) ~= "table" then return owned end
+	for name, pet in pairs(tbl) do
+		if type(name) == "string" then
+			if type(pet) ~= "table" then
+				owned[name] = { affection = 0, vaccines = { count = 0 } }
 			else
-				info.expiresAt = tonumber(info.expiresAt) or 0
-				if type(info.params) ~= "table" then info.params = {} end
+				local affection = tonumber((pet :: any).affection) or 0
+				local vaccines = (type((pet :: any).vaccines) == "table") and (pet :: any).vaccines or { count = 0 }
+				local count = tonumber((vaccines :: any).count) or 0
+				owned[name] = { affection = clampNonNeg(affection), vaccines = { count = clampNonNeg(count) } }
 			end
 		end
 	end
-	
-	
-	return merged
+	return owned
 end
 
-function PlayerDataService:GetOwnedPetNames(player: Player): {string}
-	local d = self:Get(player)
-	local arr = {}
-	for name, _ in pairs(d.ownedPets or {}) do
-		table.insert(arr, name)
-	end
-	return arr
-end
-
-function PlayerDataService:GetActivePets(player: Player): {string}
-	local d = self:Get(player)
-	local out, seen = {}, {}
-	for _, name in ipairs(d.activePets or {}) do
-		if type(name) == "string" and d.ownedPets[name] and not seen[name] then
-			table.insert(out, name)
+local function sanitizeActivePets(list: any, owned: { [string]: OwnedPet }): { string }
+	local out: { string } = {}
+	if not isStringArray(list) then return out end
+	local seen: { [string]: boolean } = {}
+	for _, name in ipairs(list :: { string }) do
+		if owned[name] and not seen[name] then
 			seen[name] = true
+			table.insert(out, name)
 		end
 	end
 	return out
 end
 
-function PlayerDataService:SetActivePets(player: Player, names: {string})
-	local d = self:Get(player)
-	local out, seen = {}, {}
-	for _, name in ipairs(names or {}) do
-		if type(name) == "string" and d.ownedPets[name] and not seen[name] then
-			table.insert(out, name)
-			seen[name] = true
+local function sanitizeBuffsMap(buffsAny: any): { [string]: BuffInfo }
+	local out = {}
+	if type(buffsAny) ~= "table" then return out end
+	for kind, info in pairs(buffsAny) do
+		if type(kind) == "string" and type(info) == "table" then
+			local expiresAt = tonumber(info.expiresAt) or 0  -- 벽시계(UNIX)로 보정
+			local params = type(info.params) == "table" and info.params or {}
+			out[kind] = { expiresAt = expiresAt, params = deepCopy(params) }
 		end
 	end
-	d.activePets = out
-	self:MarkDirty(player)
+	return out
 end
 
 
+local function mergeDefault(dataAny: any): PlayerData
+	if type(dataAny) ~= "table" then
+		return deepCopy(DEFAULT)
+	end
 
--- 안전 로드
+	local merged: PlayerData = deepCopy(DEFAULT)
+	for k, v in pairs(dataAny) do
+		(merged :: any)[k] = v
+	end
+
+	merged.ownedPets = sanitizeOwnedPets(merged.ownedPets)
+	merged.activePets = sanitizeActivePets(merged.activePets, merged.ownedPets)
+
+	merged.coins = clampNonNeg(tonumber(merged.coins) or 0)
+	merged.level = math.max(1, math.floor(tonumber(merged.level) or 1))
+	merged.exp   = clampNonNeg(tonumber(merged.exp) or 0)
+	merged.vaccineCount = clampNonNeg(tonumber(merged.vaccineCount) or 0)
+	merged.lastVaxAt = clampNonNeg(tonumber(merged.lastVaxAt) or 0)
+	merged.nextVaxAt = clampNonNeg(tonumber(merged.nextVaxAt) or 0)
+
+	-- Buffs: may be ignored depending on PERSIST_BUFFS
+	merged.buffs = sanitizeBuffsMap(merged.buffs)
+
+	return merged
+end
+
+-- =====================
+-- Profile access
+-- =====================
+function PlayerDataService:Get(player: Player): PlayerData
+	local p = _profiles[player.UserId]
+	return p and p.data or self:Load(player)
+end
+
+function PlayerDataService:MarkDirty(player: Player)
+	local p = _profiles[player.UserId]
+	if p then p.dirty = true end
+end
+
+-- =====================
+-- Load
+-- =====================
 function PlayerDataService:Load(player: Player): PlayerData
 	local userId = player.UserId
 	if _profiles[userId] then
@@ -163,219 +183,213 @@ function PlayerDataService:Load(player: Player): PlayerData
 	local ok, err = pcall(function()
 		loaded = store:GetAsync(key)
 	end)
+	if not ok then
+		warn(('[PDS] GetAsync failed for %d: %s'):format(userId, tostring(err)))
+	end
 
-	local data = mergeDefault(ok and loaded or nil)
+	local data = mergeDefault(loaded)
 	_profiles[userId] = { data = data, dirty = false, lastSave = 0 }
 
-	-- 편의상 속성에도 심어두면 HUD 등이 쉽게 사용 가능
+	-- Convenience attributes for HUD (ExperienceService will recompute ExpToNext)
 	player:SetAttribute("Level", data.level)
 	player:SetAttribute("Exp", data.exp)
-	player:SetAttribute("ExpToNext", 0) -- 실제 값은 ExperienceService가 즉시 계산/동기화
+	player:SetAttribute("ExpToNext", 0)
 	player:SetAttribute("VaccinationCount", data.vaccineCount)
-	-- ▼ Load() 마지막의 편의 Attributes에 추가
-	player:SetAttribute("VaccinationCount", data.vaccineCount)
-	-- Save(): UpdateAsync 콜백 안, 필드 덮어쓰기 부분에 추가
-
-
 
 	return data
 end
 
--- 저장 쓰로틀 완화: 접종/수동리셋은 예외 허용
-local function canSave(profile, reason: string?) : boolean
+-- =====================
+-- Save
+-- =====================
+local function shouldSave(profile: { data: PlayerData, dirty: boolean, lastSave: number }?, reason: string?): boolean
 	if not profile then return false end
 	if RunService:IsStudio() then return true end
-	if reason == "shutdown" or reason == "vaccinate" or reason == "manual-reset" then
+	if reason == "shutdown" or reason == "leave" or reason == "vaccinate" or reason == "manual-reset" then
 		return true
 	end
 	local now = os.clock()
-	return (now - (profile.lastSave or 0)) >= 15
+	return (now - (profile.lastSave or 0)) >= SAVE_COOLDOWN_SECS
 end
 
-
-
--- 안전 저장(UpdateAsync)
 function PlayerDataService:Save(userId: number, reason: string?): boolean
 	local profile = _profiles[userId]
 	if not profile then return false end
-
-	-- ✅ autosave만 쿨다운 적용, leave/shutdown은 무조건 허용
-	if reason == "autosave" and not canSave(profile) then
-		return false
-	end
-	
-	-- Save 호출부에서 canSave(profile, reason) 사용
-	if not canSave(profile, reason) then return false end
+	if not shouldSave(profile, reason) then return false end
 
 	local key = ("u_%d"):format(userId)
 	local data = profile.data
 
-	local ok, err = pcall(function()
+	local function updateOnce()
 		store:UpdateAsync(key, function(old)
 			old = mergeDefault(old)
-			-- 최신 상태로 덮어쓰기
-			old.coins = math.max(0, tonumber(data.coins) or 0)
-			old.level = math.max(1, tonumber(data.level) or 1)
-			old.exp   = math.max(0, tonumber(data.exp) or 0)
+			-- overwrite fields from current profile
+			old.coins = clampNonNeg(tonumber(data.coins) or 0)
+			old.level = math.max(1, math.floor(tonumber(data.level) or 1))
+			old.exp   = clampNonNeg(tonumber(data.exp) or 0)
 			old.selectedPetName = data.selectedPetName
-			old.vaccineCount = math.max(0, tonumber(data.vaccineCount) or 0)
+			old.vaccineCount = clampNonNeg(tonumber(data.vaccineCount) or 0)
 			old.ownedPets = deepCopy(data.ownedPets or {})
-			-- Save()의 UpdateAsync 콜백 안에서:
-			old.buffs = deepCopy(data.buffs or {})
-			-- ▼ Save()의 UpdateAsync 콜백 안에 추가
-			old.lastVaxAt = math.max(0, tonumber(data.lastVaxAt) or 0)
-			old.nextVaxAt = math.max(0, tonumber(data.nextVaxAt) or 0)
+			old.lastVaxAt = clampNonNeg(tonumber(data.lastVaxAt) or 0)
+			old.nextVaxAt = clampNonNeg(tonumber(data.nextVaxAt) or 0)
 			old.activePets = deepCopy(data.activePets or {})
-			
+
+			if PERSIST_BUFFS then
+				old.buffs = sanitizeBuffsMap(data.buffs)
+			else
+				old.buffs = {}
+			end
+
 			return old
 		end)
-	end)
+	end
+
+	local ok = false
+	local lastErr: any = nil
+	for attempt = 1, MAX_UPDATE_RETRIES do
+		ok, lastErr = pcall(updateOnce)
+		if ok then break end
+		if attempt < MAX_UPDATE_RETRIES then
+			-- simple backoff
+			task.wait(attempt * 0.5)
+		end
+	end
 
 	if ok then
 		profile.dirty = false
 		profile.lastSave = os.clock()
 	else
-		warn(("[PDS] Save failed for %d (%s): %s"):format(userId, reason or "n/a", tostring(err)))
+		warn(('[PDS] Save failed for %d (%s): %s'):format(userId, tostring(reason or 'n/a'), tostring(lastErr)))
 	end
 	return ok
 end
 
-function PlayerDataService:MarkDirty(player: Player)
-	local p = _profiles[player.UserId]; if not p then return end
-	p.dirty = true
-end
-
-function PlayerDataService:Get(player: Player): PlayerData
-	local p = _profiles[player.UserId]
-	return p and p.data or self:Load(player)
-end
-
--- 편의 메서드들 ------------------------------
-
--- ▼ 편의 메서드 추가
-
--- 편의 함수 추가
-function PlayerDataService:GetLastVaxAt(player: Player): number
-	return math.max(0, tonumber(self:Get(player).lastVaxAt) or 0)
-end
-function PlayerDataService:SetLastVaxAt(player: Player, ts: number)
-	local d = self:Get(player); d.lastVaxAt = math.max(0, math.floor(ts or 0)); self:MarkDirty(player)
-end
-function PlayerDataService:GetNextVaccinationAt(player: Player): number
+-- =====================
+-- Public getters / setters
+-- =====================
+function PlayerDataService:GetOwnedPetNames(player: Player): {string}
 	local d = self:Get(player)
-	return math.max(0, tonumber(d.nextVaxAt) or 0)
-end
-function PlayerDataService:SetNextVaccinationAt(player: Player, ts: number)
-	local d = self:Get(player); d.nextVaxAt = math.max(0, math.floor(ts or 0)); self:MarkDirty(player)
-end
-
-
-
-function PlayerDataService:GetCoins(player: Player): number
-	return self:Get(player).coins
+	local arr: {string} = {}
+	for name in pairs(d.ownedPets or {}) do
+		table.insert(arr, name)
+	end
+	return arr
 end
 
-function PlayerDataService:SetCoins(player: Player, amount: number)
+function PlayerDataService:GetActivePets(player: Player): {string}
 	local d = self:Get(player)
-	d.coins = math.max(0, math.floor(amount or 0))
+	return sanitizeActivePets(d.activePets, d.ownedPets)
+end
+
+function PlayerDataService:SetActivePets(player: Player, names: {string})
+	local d = self:Get(player)
+	d.activePets = sanitizeActivePets(names, d.ownedPets)
 	self:MarkDirty(player)
 end
 
+-- Vaccination timestamps
+function PlayerDataService:GetLastVaxAt(player: Player): number
+	return clampNonNeg(tonumber(self:Get(player).lastVaxAt) or 0)
+end
+function PlayerDataService:SetLastVaxAt(player: Player, ts: number)
+	local d = self:Get(player); d.lastVaxAt = clampNonNeg(ts); self:MarkDirty(player)
+end
+function PlayerDataService:GetNextVaccinationAt(player: Player): number
+	return clampNonNeg(tonumber(self:Get(player).nextVaxAt) or 0)
+end
+function PlayerDataService:SetNextVaccinationAt(player: Player, ts: number)
+	local d = self:Get(player); d.nextVaxAt = clampNonNeg(ts); self:MarkDirty(player)
+end
+
+-- Coins
+function PlayerDataService:GetCoins(player: Player): number
+	return self:Get(player).coins
+end
+function PlayerDataService:SetCoins(player: Player, amount: number)
+	local d = self:Get(player)
+	d.coins = clampNonNeg(amount)
+	self:MarkDirty(player)
+end
 function PlayerDataService:AddCoins(player: Player, delta: number): number
 	local d = self:Get(player)
-	d.coins = math.max(0, math.floor((d.coins or 0) + (delta or 0)))
+	d.coins = clampNonNeg((d.coins or 0) + (delta or 0))
 	self:MarkDirty(player)
 	return d.coins
 end
 
+-- Level / Exp
 function PlayerDataService:GetLevelExp(player: Player): (number, number)
 	local d = self:Get(player)
 	return d.level, d.exp
 end
-
-
-function PlayerDataService:SetBuffs(player: Player, buffs: { [string]: BuffInfo })
-	local d = self:Get(player)
-	-- 만료된 것만 필터링해서 저장해도 되지만, BuffService.persist에서 이미 필터링했음.
-	d.buffs = deepCopy(buffs or {})
-	self:MarkDirty(player)
-end
-
-function PlayerDataService:GetBuffs(player: Player): { [string]: BuffInfo }
-	local d = self:Get(player)
-	return d.buffs or {}
-end
-
 function PlayerDataService:SetLevelExp(player: Player, level: number, exp: number)
 	local d = self:Get(player)
 	d.level = math.max(1, math.floor(level or 1))
-	d.exp   = math.max(0, math.floor(exp or 0))
+	d.exp   = clampNonNeg(exp)
 	self:MarkDirty(player)
 end
 
-function PlayerDataService:GetVaccineCount(player: Player): number
-	return self:Get(player).vaccineCount or 0
-end
-
-function PlayerDataService:SetVaccineCount(player: Player, count: number)
+-- Buffs (persist optional)
+function PlayerDataService:SetBuffs(player: Player, buffs: { [string]: BuffInfo })
 	local d = self:Get(player)
-	d.vaccineCount = math.max(0, math.floor(count or 0))
-	player:SetAttribute("VaccinationCount", d.vaccineCount)
+	if PERSIST_BUFFS then
+		d.buffs = sanitizeBuffsMap(buffs)
+	else
+		d.buffs = {}
+	end
 	self:MarkDirty(player)
 end
-
-function PlayerDataService:IncVaccineCount(player: Player, by: number?): number
+function PlayerDataService:GetBuffs(player: Player): { [string]: BuffInfo }
 	local d = self:Get(player)
-	d.vaccineCount = math.max(0, math.floor((d.vaccineCount or 0) + (by or 1)))
-	player:SetAttribute("VaccinationCount", d.vaccineCount)
-	self:MarkDirty(player)
-	return d.vaccineCount
+	if PERSIST_BUFFS then
+		return sanitizeBuffsMap(d.buffs)
+	end
+	return {}
 end
 
+-- Pets
 function PlayerDataService:AddOwnedPet(player: Player, petName: string)
 	local d = self:Get(player)
+	if type(petName) ~= "string" or petName == "" then return end
 	d.ownedPets[petName] = d.ownedPets[petName] or { affection = 0, vaccines = { count = 0 } }
 	self:MarkDirty(player)
 end
-
 function PlayerDataService:HasOwnedPet(player: Player, petName: string): boolean
 	local d = self:Get(player)
 	return d.ownedPets[petName] ~= nil
 end
-
 function PlayerDataService:GetOwnedPetInfo(player: Player, petName: string): OwnedPet
 	local d = self:Get(player)
 	return d.ownedPets[petName]
 end
-
 function PlayerDataService:AddAffection(player: Player, petName: string, delta: number): number
 	self:AddOwnedPet(player, petName)
 	local d = self:Get(player)
 	local info = d.ownedPets[petName]
-	info.affection = math.max(0, (info.affection or 0) + (delta or 0))
+	info.affection = clampNonNeg((info.affection or 0) + (delta or 0))
 	self:MarkDirty(player)
 	return info.affection
 end
-
 function PlayerDataService:IncPetVaccine(player: Player, petName: string, by: number?): number
 	self:AddOwnedPet(player, petName)
 	local d = self:Get(player)
 	local info = d.ownedPets[petName]
-	info.vaccines.count = math.max(0, (info.vaccines.count or 0) + (by or 1))
+	info.vaccines.count = clampNonNeg((info.vaccines.count or 0) + (by or 1))
 	self:MarkDirty(player)
 	return info.vaccines.count
 end
-
 function PlayerDataService:SetSelectedPet(player: Player, petName: string?)
 	local d = self:Get(player)
 	d.selectedPetName = petName
 	self:MarkDirty(player)
 end
 
--- 루프/정리 ------------------------------
+-- =====================
+-- Autosave & lifecycle
+-- =====================
 
 task.spawn(function()
-	while task.wait(30) do
+	while task.wait(AUTOSAVE_INTERVAL) do
 		for userId, p in pairs(_profiles) do
 			if p.dirty then
 				PlayerDataService:Save(userId, "autosave")
@@ -396,4 +410,3 @@ game:BindToClose(function()
 end)
 
 return PlayerDataService
-

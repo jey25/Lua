@@ -1,58 +1,100 @@
 --!strict
--- ServerScriptService/BuffService.lua
+-- ServerScriptService/BuffService.lua  (세션 한정 버프, 모노토닉 만료)
 
--- Services
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
--- Deps
 local PlayerDataService = require(script.Parent:WaitForChild("PlayerDataService"))
+-- 파일 상단의 상태 정의 근처에 추가
+local _attrConn: { [number]: { exp: RBXScriptConnection? } } = {}
 
--- ===== Helpers: typed remote creators =====
-local function ensureRemoteEvent(parent: Instance, name: string): RemoteEvent
-	local inst = parent:FindFirstChild(name)
-	if inst and inst:IsA("RemoteEvent") then return inst end
-	local re = Instance.new("RemoteEvent")
-	re.Name = name
-	re.Parent = parent
-	return re
+
+-- ===== 설정 =====
+-- 세션 한정 버프(저장 안 함) → 영속 전환: false
+local EPHEMERAL_BUFFS = false
+-- (파일 상단 근처) getActiveTable을 먼저 둠
+local _active: { [number]: ActiveMap } = {}
+-- 영속 허용 버프 화이트리스트 (이 외 버프는 저장/복원 안 함)
+local PERSIST_WHITELIST = { Exp2x = true, Speed = true }
+
+-- 만료 체크 시계: 세션 경과 시간(모노토닉)
+local function now(): number
+	return os.clock()
 end
 
-local function ensureRemoteFunction(parent: Instance, name: string): RemoteFunction
-	local inst = parent:FindFirstChild(name)
-	if inst and inst:IsA("RemoteFunction") then return inst end
-	local rf = Instance.new("RemoteFunction")
-	rf.Name = name
-	rf.Parent = parent
-	return rf
+local function getActiveTable(player: Player): ActiveMap
+	local t = _active[player.UserId]
+	if not t then t = {}; _active[player.UserId] = t end
+	return t
 end
 
--- ===== Remotes / Folder =====
-local BuffFolder = ReplicatedStorage:FindFirstChild("BuffEvents")
+-- 그 다음 expectedExpMult 정의
+local function expectedExpMult(player: Player): number
+	local act = getActiveTable(player)
+	local b = act["Exp2x"]
+	if b and (b.expiresAt or 0) > now() then
+		local m = tonumber(b.params and b.params.mult) or 2
+		return math.max(1, m)
+	end
+	return 1
+end
+
+
+local function hookExpAttrGuard(player: Player)
+	local uid = player.UserId
+	_attrConn[uid] = _attrConn[uid] or {}
+	if _attrConn[uid].exp then _attrConn[uid].exp:Disconnect() end
+
+	-- 클라/다른 코드가 ExpMultiplier를 바꿔도 서버가 즉시 되돌림
+	_attrConn[uid].exp = player:GetAttributeChangedSignal("ExpMultiplier"):Connect(function()
+		local want = expectedExpMult(player)
+		local got = tonumber(player:GetAttribute("ExpMultiplier")) or 1
+		if math.abs(got - want) > 1e-4 then
+			player:SetAttribute("ExpMultiplier", want)
+		end
+	end)
+
+	-- 초기 강제 세팅
+	player:SetAttribute("ExpMultiplier", expectedExpMult(player))
+end
+
+-- 클라 UI용 만료 시각(벽시계)이 필요할 때 변환
+local function toWallExpires(clockExpiry: number): number
+	local remain = math.max(0, math.floor(clockExpiry - now()))
+	-- UI가 절대시각을 쓰는 경우를 위해 현재 벽시계 + 남은 시간으로 계산
+	return os.time() + remain
+end
+
+-- ===== Remotes =====
+local BuffFolder = ReplicatedStorage:FindFirstChild("BuffEvents") :: Folder
 if not BuffFolder or not BuffFolder:IsA("Folder") then
 	BuffFolder = Instance.new("Folder")
 	BuffFolder.Name = "BuffEvents"
 	BuffFolder.Parent = ReplicatedStorage
 end
 
-local BuffApplied: RemoteEvent = ensureRemoteEvent(BuffFolder, "BuffApplied")
-local GetActiveBuffsRF: RemoteFunction = ensureRemoteFunction(BuffFolder, "GetActiveBuffs")
+local BuffApplied = BuffFolder:FindFirstChild("BuffApplied") :: RemoteEvent
+if not BuffApplied then
+	BuffApplied = Instance.new("RemoteEvent")
+	BuffApplied.Name = "BuffApplied"
+	BuffApplied.Parent = BuffFolder
+end
 
--- ===== Types / State =====
+local GetActiveBuffsRF = BuffFolder:FindFirstChild("GetActiveBuffs") :: RemoteFunction
+if not GetActiveBuffsRF then
+	GetActiveBuffsRF = Instance.new("RemoteFunction")
+	GetActiveBuffsRF.Name = "GetActiveBuffs"
+	GetActiveBuffsRF.Parent = BuffFolder
+end
+
+-- ===== 타입/상태 =====
 type BuffParams = { [string]: any }
--- PlayerDataService가 기대하는 형태와 일치: params는 반드시 table
-type BuffInfo = { expiresAt: number, params: BuffParams }
+type BuffInfo = { expiresAt: number, params: BuffParams } -- expiresAt는 os.clock() 기준
 type ActiveMap = { [string]: BuffInfo }
 
-local _active: { [number]: ActiveMap } = {}              -- by userId
-local _charConn: { [number]: RBXScriptConnection } = {}  -- CharacterAdded hook
+local _active: { [number]: ActiveMap } = {}
+local _charConn: { [number]: RBXScriptConnection } = {}
 
 local BuffService = {}
-
--- ===== Utils =====
-local function now(): number
-	return os.time()
-end
 
 local function getActiveTable(player: Player): ActiveMap
 	local t = _active[player.UserId]
@@ -67,16 +109,14 @@ local function ensureCharHook(player: Player, onChar: (Model?) -> ())
 	-- 기존 훅 제거
 	local old = _charConn[player.UserId]
 	if old then old:Disconnect() end
-
 	_charConn[player.UserId] = player.CharacterAdded:Connect(function(char: Model)
 		task.defer(function() onChar(char) end)
 	end)
-
 	-- 현재 캐릭터에도 즉시 적용
 	onChar(player.Character)
 end
 
--- ===== Effects =====
+-- ===== 효과 적용 =====
 local function applySpeedEffect(player: Player)
 	local buffs = getActiveTable(player)
 	local mult = 1.0
@@ -90,66 +130,74 @@ local function applySpeedEffect(player: Player)
 
 	local function applyToChar(char: Model?)
 		if not char then return end
-		local humanoid = char:FindFirstChildWhichIsA("Humanoid")
-		if not humanoid then return end
+		local h = char:FindFirstChildWhichIsA("Humanoid")
+		if not h then return end
 		local baseAttr = player:GetAttribute("BaseWalkSpeed")
-		local base = (typeof(baseAttr) == "number") and baseAttr or humanoid.WalkSpeed
+		local base = (typeof(baseAttr) == "number") and baseAttr or h.WalkSpeed
 		if typeof(baseAttr) ~= "number" then
 			player:SetAttribute("BaseWalkSpeed", base)
 		end
-		humanoid.WalkSpeed = base * mult
+		h.WalkSpeed = base * mult
 	end
 
 	ensureCharHook(player, applyToChar)
 end
 
+-- 깔끔하게: 계산 → 한 번만 세팅
 local function applyExpEffect(player: Player)
-	local buffs = getActiveTable(player)
-	local mult = 1.0
-	local b = buffs["Exp2x"]
-	if b and (b.expiresAt or 0) > now() then
-		local params = b.params or {} :: BuffParams
-		local m = tonumber(params.mult) or 2
-		mult = math.max(1, m)
-	end
-	player:SetAttribute("ExpMultiplier", mult)
+	player:SetAttribute("ExpMultiplier", expectedExpMult(player))
 end
 
 local function reapplyAllEffects(player: Player)
 	applySpeedEffect(player)
 	applyExpEffect(player)
+	hookExpAttrGuard(player)
 end
 
--- ===== Persist / Load =====
+
+
+-- ===== 저장/로드 =====
 local function persist(player: Player)
-	-- 현재 활성만 (만료 제거) — params는 반드시 table 보장
+	-- 저장 시에는 "남은 시간"을 벽시계 만료로 변환하여 저장한다.
 	local out: ActiveMap = {}
 	for kind, info in pairs(getActiveTable(player)) do
-		if (info.expiresAt or 0) > now() then
-			out[kind] = {
-				expiresAt = info.expiresAt,
-				params = info.params or {}, -- non-nil 보장
-			}
+		if PERSIST_WHITELIST[kind] then
+			local remain = math.max(0, (info.expiresAt or 0) - now())      -- clock 기준 남은 시간
+			if remain > 0 then
+				out[kind] = {
+					expiresAt = os.time() + remain,                         -- 저장은 벽시계 만료(UNIX)
+					params    = info.params or {}
+				}
+			end
 		end
 	end
-	-- ▼ 타입 일치: PlayerDataService는 params가 반드시 table인 BuffInfo를 기대
 	PlayerDataService:SetBuffs(player, out)
 end
+
 
 local function loadFromStore(player: Player)
 	local data = PlayerDataService:Load(player) :: any
 	local buffs: ActiveMap = {}
+	local wallNow = os.time()
+
 	if type(data) == "table" and type(data.buffs) == "table" then
 		for kind, info in pairs(data.buffs) do
-			local expAt = tonumber(info and info.expiresAt) or 0
-			if expAt > now() then
-				local params = (type(info.params) == "table") and info.params or {}
-				buffs[kind] = { expiresAt = expAt, params = params }
+			if PERSIST_WHITELIST[kind] and type(info) == "table" then
+				local wallExp = tonumber(info.expiresAt) or 0              -- 저장된 만료는 벽시계
+				local remain  = wallExp - wallNow
+				if remain > 0 then
+					buffs[kind] = {
+						expiresAt = now() + remain,                        -- 활성 테이블은 clock 기준
+						params    = (type(info.params) == "table") and info.params or {}
+					}
+				end
 			end
 		end
 	end
+
 	_active[player.UserId] = buffs
 end
+
 
 -- ===== Public API =====
 function BuffService:ApplyBuff(player: Player, kind: string, durationSecs: number, params: BuffParams?, toastText: string?)
@@ -158,35 +206,30 @@ function BuffService:ApplyBuff(player: Player, kind: string, durationSecs: numbe
 	local cur = act[kind]
 
 	if cur and (cur.expiresAt or 0) > now() then
-		-- 연장
 		cur.expiresAt = math.max(cur.expiresAt, untilTs)
 		cur.params = cur.params or {}
-		for k, v in pairs(params or {}) do
-			(cur.params :: BuffParams)[k] = v
-		end
+		for k, v in pairs(params or {}) do (cur.params :: BuffParams)[k] = v end
 	else
 		act[kind] = { expiresAt = untilTs, params = params or {} }
 	end
 
-	-- 효과 적용
 	if kind == "Speed" then
 		applySpeedEffect(player)
 	elseif kind == "Exp2x" then
 		applyExpEffect(player)
+		hookExpAttrGuard(player)  -- ★ 가드 연결 보장
 	end
 
-	-- UI 동기화
 	local text = toastText
 	if not text then
 		if kind == "Speed" then text = "이동 속도 UP!"
 		elseif kind == "Exp2x" then text = "경험치 2배!"
 		else text = "버프 적용" end
 	end
-	BuffApplied:FireClient(player, {
-		kind = kind,
-		text = text,
-		expiresAt = (act[kind] :: BuffInfo).expiresAt,
-	})
+
+	-- UI에는 벽시계 만료시각(또는 남은시간 계산용)을 내려줌
+	local wallExpires = toWallExpires((act[kind] :: BuffInfo).expiresAt)
+	BuffApplied:FireClient(player, { kind = kind, text = text, expiresAt = wallExpires })
 
 	persist(player)
 end
@@ -205,6 +248,7 @@ function BuffService:ClearBuff(player: Player, kind: string)
 end
 
 function BuffService:GetActive(player: Player): ActiveMap
+	-- 외부 로직에서 쓰더라도 내부는 clock 기반 시각을 유지
 	local t: ActiveMap = {}
 	for k, info in pairs(getActiveTable(player)) do
 		if (info.expiresAt or 0) > now() then
@@ -221,12 +265,12 @@ function BuffService:SyncToClient(player: Player)
 			text = (kind == "Speed" and "이동 속도 UP!")
 				or (kind == "Exp2x" and "경험치 2배!")
 				or "버프 적용",
-			expiresAt = info.expiresAt,
+			expiresAt = toWallExpires(info.expiresAt),
 		})
 	end
 end
 
--- ===== Expiration loop =====
+-- ===== 만료 루프 =====
 task.spawn(function()
 	while task.wait(1) do
 		for _, plr in ipairs(Players:GetPlayers()) do
@@ -247,7 +291,7 @@ task.spawn(function()
 	end
 end)
 
--- ===== Lifecycle =====
+-- ===== 라이프사이클 =====
 Players.PlayerAdded:Connect(function(plr: Player)
 	loadFromStore(plr)
 	reapplyAllEffects(plr)
@@ -255,19 +299,37 @@ Players.PlayerAdded:Connect(function(plr: Player)
 end)
 
 Players.PlayerRemoving:Connect(function(plr: Player)
-	local c = _charConn[plr.UserId]
-	if c then c:Disconnect(); _charConn[plr.UserId] = nil end
-	persist(plr)
-	_active[plr.UserId] = nil
+	-- 세션 종료 시 반드시 초기화
+	_active[plr.UserId] = {}
+	plr:SetAttribute("ExpMultiplier", 1)
+	plr:SetAttribute("SpeedMultiplier", 1)
+	local h = plr.Character and plr.Character:FindFirstChildWhichIsA("Humanoid")
+	if h then
+		local baseAttr = plr:GetAttribute("BaseWalkSpeed")
+		local base = (typeof(baseAttr) == "number") and baseAttr or 16
+		h.WalkSpeed = base
+	end
+
+	local c = _attrConn[plr.UserId]
+	if c and c.exp then c.exp:Disconnect() end
+	_attrConn[plr.UserId] = nil
+
+	persist(plr) -- EPHEMERAL이면 빈 값 저장되어 다음 접속에 잔존 안 됨
+	local ok = pcall(function()
+		PlayerDataService:Save(plr.UserId, "leave")
+	end)
+	if not ok then
+		warn("[BuffService] Save on leave failed for", plr.UserId)
+	end
 end)
 
--- ===== Client sync RF (typed 변수로 OnServerInvoke 설정) =====
+-- 클라 초기 동기화용 RF
 GetActiveBuffsRF.OnServerInvoke = function(player: Player)
 	local list = {}
 	for kind, info in pairs(BuffService:GetActive(player)) do
 		table.insert(list, {
 			kind = kind,
-			expiresAt = info.expiresAt,
+			expiresAt = toWallExpires(info.expiresAt), -- UI 호환
 			text = (kind == "Speed" and "이동 속도 UP!")
 				or (kind == "Exp2x" and "경험치 2배!")
 				or kind,

@@ -79,16 +79,26 @@ local function applySnack(p: Player)
 	BuffService:ApplyBuff(p, "Speed", SPEED_BOOST_SECS, { mult = mult }, "이동 속도 UP!")
 end
 
--- DogGum: 애정도 즉시 목표치로
+
+-- DogGum: 애정도 +5 (버프 아님, 즉시 가산만)
+local DOGGUM_DELTA = 5
+
 local function applyDogGum(p: Player)
-	local cur, maxv = PetAffectionService.Get(p)
-	local target = AFFECTION_MAX > 0 and AFFECTION_MAX or maxv
+	local cur, maxv = PetAffectionService.Get(p)  -- cur: 현재 애정도, maxv: 상한
+	local target = math.min(cur + DOGGUM_DELTA, maxv) -- 상한 초과 금지
 	local delta = target - cur
 	if delta > 0 then
 		PetAffectionService.Adjust(p, delta, "DogGum")
+		-- (선택) 하트 팝업/토스트: 버프가 아니므로 타이머 슬롯은 만들지 않음
+		local rs = game:GetService("ReplicatedStorage")
+		local folder = rs:FindFirstChild("BuffEvents")
+		local BuffApplied = folder and folder:FindFirstChild("BuffApplied")
+		if BuffApplied then
+			(BuffApplied :: RemoteEvent):FireClient(p, { kind = "Affection", text = "+5 애정도!" })
+		end
 	end
-	-- (토스트는 필요시 PetAffectionService나 별도 UI에서 처리. BuffService는 관여 X)
 end
+
 
 -- Munchies: EXP 2배 (권장: 전역 2배 → ExperienceService.AddExp가 ExpMultiplier를 곱함)
 local function applyMunchies(p: Player)
