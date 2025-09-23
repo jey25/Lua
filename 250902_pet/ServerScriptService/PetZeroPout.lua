@@ -19,17 +19,19 @@ WangEvent.Name = "WangEvent"
 local StreetFoodEvent = RemoteFolder:FindFirstChild("StreetFoodEvent") or Instance.new("RemoteEvent", RemoteFolder)
 StreetFoodEvent.Name = "StreetFoodEvent"
 
-local SFXFolder = ReplicatedStorage:WaitForChild("SFX")
+local SFXFolder = ReplicatedStorage:FindFirstChild("SFX") -- WaitForChild 제거
 local function resolveWhimper(): Sound?
+	if not SFXFolder then return nil end
 	local s = SFXFolder:FindFirstChild("Whimper")
 	return (s and s:IsA("Sound")) and s or nil
 end
 
+
 -- ===== 설정 =====
 local DS_NAME                = "PetPout_v1"
-local POUT_MIN_GAP_SEC       = 60      -- 1회차~3회차: 최소 대기
-local POUT_MAX_GAP_SEC       = 90     -- 1회차~3회차: 최대 대기 (평균 ~2분)
-local HOME_SPEED             = 2.0     -- wangattraction의 APPROACH_SPEED와 동일
+local POUT_MIN_GAP_SEC       = 30      
+local POUT_MAX_GAP_SEC       = 60    
+local HOME_SPEED             = 2.0     
 local LOOP_DT                = 0.15
 local TOUCH_NEEDED           = 3       -- 클릭 필요 횟수
 local TOUCH_RANGE            = 2.5     -- 목표 도달 판정
@@ -41,6 +43,7 @@ local ZERO_REACHED_ATTR      = "PetAffectionMinReachedUnix"
 -- ▸ 저장소
 local Store = DataStoreService:GetDataStore(DS_NAME)
 
+
 -- ===== 내부 상태 =====
 type PState = {
 	count: number,         -- 현재까지 발동 누계(0~3). 4회째에 홈으로 귀가
@@ -49,7 +52,15 @@ type PState = {
 	clicking: boolean,     -- 클릭 해제 모드 중 여부
 	clickCount: number,    -- 이번 회차 클릭 누계
 	savedWS: number?,      -- 복원용 WalkSpeed
+	
+	-- 추가
+	whTok: number,          -- whimper 루프 토큰
+	scheduled: boolean,     -- 예약 중인지
+	nextAt: number?,        -- 다음 예약 시각(디버그용)
+	lastClickAt: number?,   -- 이중 입력 방지용 디바운스 타임스탬프
 }
+
+
 local ST: {[Player]: PState} = {}
 
 local function now(): number return os.time() end
@@ -100,8 +111,8 @@ end
 -- 플레이어 캐릭터에 재부착(기존 wang 코어 로직을 경량화)
 local function reattachFollowToCharacter(pet: Model, player: Player)
 	local pp = getAnyBasePart(pet)
-	local char = player.Character or player.CharacterAdded:Wait()
-	local hrp = char:FindFirstChild("HumanoidRootPart")
+	local char = player.Character -- Wait() 제거 (논블로킹)
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
 	if not (pp and hrp) then return end
 
 	cleanupFollowConstraints(pet)
@@ -215,10 +226,22 @@ end
 -- ===== 저장/로드 =====
 local function save(player: Player)
 	local st = ST[player]; if not st then return end
-	pcall(function()
-		Store:SetAsync("u_"..player.UserId, { Count = st.count })
+	task.spawn(function()
+		for attempt = 1, 3 do
+			local ok, err = pcall(function()
+				Store:UpdateAsync("u_"..player.UserId, function(old)
+					old = (typeof(old) == "table") and old or {}
+					old.Count = st.count
+					return old
+				end)
+			end)
+			if ok then return end
+			task.wait(1 + attempt * 2) -- 지수 백오프
+		end
 	end)
 end
+
+
 local function load(player: Player): number
 	local ok, data = pcall(function()
 		return Store:GetAsync("u_"..player.UserId)
@@ -228,6 +251,7 @@ local function load(player: Player): number
 	end
 	return 0
 end
+
 
 -- ===== 조건 검사: Suck Icon(Zero) 실제 노출 상태인지 =====
 local function isZeroIconOn(player: Player): boolean
@@ -293,6 +317,11 @@ local function startFreezeAndClick(player: Player)
 	local function onClick(p: Player)
 		if p ~= player then return end
 		if ST[player] ~= st or st.actionTok ~= my or not st.clicking then return end
+		
+		-- 디바운스 (마우스/터치 중복 입력 방지)
+		local t = os.clock()
+		if st.lastClickAt and (t - st.lastClickAt) < 0.1 then return end
+		st.lastClickAt = t
 
 		st.clickCount += 1
 		StreetFoodEvent:FireClient(player, "Bubble", { text = ("Tap "..st.clickCount.."/"..TOUCH_NEEDED) })
@@ -387,37 +416,44 @@ local function startGoHome(player: Player)
 	end)
 end
 
+
 -- ===== 스케줄링 =====
+local rng = Random.new()
+
 local function scheduleNext(player: Player)
 	local st = ST[player]; if not st then return end
-	st.schedTok += 1
-	local my = st.schedTok
-
-	-- 0 유지 + Suck 표시 상태에서만 작동
+	if st.scheduled then return end           -- 이미 예약됨: 재예약 금지
 	if not isZeroIconOn(player) then return end
 
-	-- 무작위 간격
-	local delaySec = math.random(POUT_MIN_GAP_SEC, POUT_MAX_GAP_SEC)
+	st.schedTok += 1
+	local my = st.schedTok
+	st.scheduled = true
+
+	local delaySec = rng:NextInteger(POUT_MIN_GAP_SEC, POUT_MAX_GAP_SEC)
+	st.nextAt = os.clock() + delaySec
+
 	task.delay(delaySec, function()
-		if ST[player] ~= st or st.schedTok ~= my then return end
-		if not isZeroIconOn(player) then return end
+		-- 예약 무효/조건 미충족 시 종료 + 플래그 해제
+		if ST[player] ~= st or st.schedTok ~= my or not isZeroIconOn(player) then
+			if ST[player] == st then st.scheduled = false end
+			return
+		end
 
 		if st.count >= 3 then
-			-- 4회째: 귀가
 			startGoHome(player)
 		else
-			-- 1~3회: 멈춤 + 클릭
 			startFreezeAndClick(player)
 		end
 
-		-- 다음 스케줄은 액션이 끝났을 때 다시 암 → 간단히 조금 뒤 조건 재확인
+		-- 액션 종료 후 일정 시간 뒤 다음 예약 시도
+		st.scheduled = false
 		task.delay(5, function()
-			if ST[player] == st and isZeroIconOn(player) then
-				scheduleNext(player)
-			end
+			if ST[player] == st then scheduleNext(player) end
 		end)
 	end)
 end
+
+
 
 -- ===== 활성/비활성 제어 =====
 local function tryArm(player: Player)
@@ -441,8 +477,10 @@ end
 local function onPlayerAdded(player: Player)
 	ST[player] = {
 		count = load(player), schedTok = 0, actionTok = 0,
-		clicking = false, clickCount = 0, savedWS = nil
+		clicking = false, clickCount = 0, savedWS = nil,
+		whTok = 0, scheduled = false, nextAt = nil, lastClickAt = nil,
 	}
+
 
 	-- 애정도 변화 감시
 	player:GetAttributeChangedSignal("PetAffection"):Connect(function()
@@ -463,7 +501,22 @@ local function onPlayerAdded(player: Player)
 		disarmAndResetIfPositive(player)
 		if isZeroIconOn(player) then tryArm(player) end
 	end)
+	
+	-- onPlayerAdded 끝부분에 추가
+	task.spawn(function()
+		while player.Parent do
+			task.wait(10)
+			local st = ST[player]
+			if not st then break end
+			-- 조건 성립 & 아직 예약 없을 때만 예약
+			if isZeroIconOn(player) and not st.scheduled then
+				scheduleNext(player)
+			end
+		end
+	end)
 end
+
+
 
 local function onPlayerRemoving(player: Player)
 	save(player)

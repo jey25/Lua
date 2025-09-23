@@ -5,10 +5,12 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
-
--- Assets / Folders
 local petModels = ReplicatedStorage:WaitForChild("Pets")
 local SFXFolder = ReplicatedStorage:WaitForChild("SFX")
+-- Requires
+local PlayerDataService = require(script.Parent:WaitForChild("PlayerDataService"))
+local CoinService = require(script.Parent:WaitForChild("CoinService"))
+
 
 -- Shared Remotes
 local RemoteEvents = ReplicatedStorage:FindFirstChild("RemoteEvents") or Instance.new("Folder", ReplicatedStorage)
@@ -39,9 +41,6 @@ PetSelectedEvent.Name = "PetSelected"
 local ShowArrowEvent = PetEvents:FindFirstChild("ShowArrow") or Instance.new("RemoteEvent", PetEvents)
 ShowArrowEvent.Name = "ShowArrow"
 
--- Requires
-local PlayerDataService = require(script.Parent:WaitForChild("PlayerDataService"))
-local CoinService = require(script.Parent:WaitForChild("CoinService"))
 
 -- Constants
 local PET_GUI_NAME = "petGui"  -- ReplicatedStorage 내 GUI 이름(펫 머리 위 등)
@@ -59,11 +58,16 @@ local Z_STEP   = 1.8
 local PET_LEVEL_REQ = { golden_dog=100, Skeleton_Dog=150, Robot_Dog=200 }
 local PET_COIN_COST = { golden_dog=15,  Skeleton_Dog=20,  Robot_Dog=25  }
 
+local ACTIVE_MAX = 2
+
 -- 런타임 보유 펫(세션용)
 -- PlayerPets[userId] = { {pet=model, slot=1, attachName="CharAttach_<id>", offset=Vector3}, ... }
 local PlayerPets: { [number]: { { pet: Model, slot: number, attachName: string, offset: Vector3 } } } = {}
 
+
+
 -- Helpers -------------------------------------------------------
+
 
 local function getFollowOffsetForSlot(slot: number): Vector3
 	local index = math.max(1, math.floor(slot))
@@ -82,6 +86,13 @@ local function getOrInitPetList(player: Player)
 		PlayerPets[player.UserId] = list
 	end
 	return list
+end
+
+local function alreadySpawned(player: Player, petName: string): boolean
+	for _, info in ipairs(getOrInitPetList(player)) do
+		if info.pet and info.pet.Parent and info.pet.Name == petName then return true end
+	end
+	return false
 end
 
 local function nextSlot(player: Player): number
@@ -120,6 +131,69 @@ local function weldModelToPrimary(m: Model)
 	pp.CanCollide = false
 	pp.Massless = true
 end
+
+local function uniqAppend(list: {string}, name: string)
+	for _, v in ipairs(list) do if v == name then return end end
+	table.insert(list, name)
+end
+
+local function trimToCap(list: {string}, cap: number)
+	while #list > cap do table.remove(list, 1) end -- FIFO
+end
+
+local function getActivePetsFromData(player: Player, data): {string}
+	-- 1순위: 저장된 activePets
+	if data and typeof(data.activePets) == "table" then
+		return table.clone(data.activePets)
+	end
+
+	-- 2순위: 서비스 메서드
+	if PlayerDataService.GetActivePets then
+		local ok, ap = pcall(function() return PlayerDataService:GetActivePets(player) end)
+		if ok and typeof(ap) == "table" then
+			return table.clone(ap)
+		end
+	end
+
+	-- 3순위 폴백: selected + owned (ACTIVE_MAX까지)
+	local res = {}
+	if data and data.selectedPetName then
+		uniqAppend(res, data.selectedPetName)
+	end
+
+	-- ✅ owned 목록은 딕셔너리이므로 key를 배열화
+	local ownedNames = {}
+	if data and type(data.ownedPets) == "table" then
+		for name, _ in pairs(data.ownedPets) do
+			table.insert(ownedNames, name)
+		end
+	elseif PlayerDataService.GetOwnedPetNames then
+		local ok, arr = pcall(function() return PlayerDataService:GetOwnedPetNames(player) end)
+		if ok and type(arr) == "table" then
+			ownedNames = arr
+		end
+	end
+
+	for _, name in ipairs(ownedNames) do
+		if #res >= ACTIVE_MAX then break end
+		if name ~= data.selectedPetName then
+			uniqAppend(res, name)
+		end
+	end
+
+	trimToCap(res, ACTIVE_MAX)
+	return res
+end
+
+
+local function setActivePets(player: Player, names: {string})
+	trimToCap(names, ACTIVE_MAX)
+	if PlayerDataService.SetActivePets then
+		pcall(function() PlayerDataService:SetActivePets(player, names) end)
+	end
+end
+
+
 
 local function cleanupPetConstraints(m: Model)
 	local pp = ensurePrimaryPart(m)
@@ -187,8 +261,11 @@ end
 
 -- 완전 교체용: ServerScriptService/PetManager.server.lua 내 spawnPet
 local function spawnPet(player: Player, petName: string)
+	
+	if alreadySpawned(player, petName) then return end
 	local character = player.Character or player.CharacterAdded:Wait()
 	local template = petModels:FindFirstChild(petName)
+	
 	if not template then
 		warn("Pet model not found: " .. tostring(petName))
 		return
@@ -342,8 +419,15 @@ TrySelectEpicPet.OnServerInvoke = function(player: Player, payload)
 
 	PlayerDataService:AddOwnedPet(player, petName)
 	PlayerDataService:SetSelectedPet(player, petName)
-
 	spawnPet(player, petName)
+	
+	-- ⬇ 추가
+	local dataNow = PlayerDataService:Load(player)
+	local active = getActivePetsFromData(player, dataNow)
+	uniqAppend(active, petName)
+	trimToCap(active, ACTIVE_MAX)
+	setActivePets(player, active)
+	
 	local tpl = SFXFolder:FindFirstChild("Choice")
 	if tpl and tpl:IsA("Sound") then
 		PetSfxEvent:FireClient(player, "PlaySfxTemplate", tpl)
@@ -352,6 +436,7 @@ TrySelectEpicPet.OnServerInvoke = function(player: Player, payload)
 	return {ok=true, coins = CoinService:GetBalance(player)}
 end
 
+
 PetSelectedEvent.OnServerEvent:Connect(function(player: Player, petName: string)
 	-- 최초 선택 시 저장
 	PlayerDataService:AddOwnedPet(player, petName)
@@ -359,6 +444,15 @@ PetSelectedEvent.OnServerEvent:Connect(function(player: Player, petName: string)
 
 	-- PetSelectedEvent.OnServerEvent 내부:
 	spawnPet(player, petName)
+	
+	-- ⬇ 추가
+	local dataNow = PlayerDataService:Load(player)
+	local active = getActivePetsFromData(player, dataNow)
+	uniqAppend(active, petName)
+	trimToCap(active, ACTIVE_MAX)
+	setActivePets(player, active)
+	
+	
 	local tpl = SFXFolder:FindFirstChild("Choice")
 	if tpl and tpl:IsA("Sound") then
 		PetSfxEvent:FireClient(player, "PlaySfxTemplate", tpl)
@@ -366,19 +460,40 @@ PetSelectedEvent.OnServerEvent:Connect(function(player: Player, petName: string)
 	FirstQuestGui(player)
 end)
 
--- 접속/퇴장 -------------------------------------------------------
 
+
+-- 접속/퇴장 -------------------------------------------------------
 Players.PlayerAdded:Connect(function(player)
 	local data = PlayerDataService:Load(player)
 
-	-- 코인/레벨/EXP는 각 서비스에서 별도 동기화
-	-- 선택 펫이 있으면 팝업 미표시 + 바로 소환
-	if data.selectedPetName and petModels:FindFirstChild(data.selectedPetName) then
-		spawnPet(player, data.selectedPetName) -- 사운드 X
-	else
-		ShowPetGuiEvent:FireClient(player)
+	local active = getActivePetsFromData(player, data)
+	local spawned = 0
+	for _, petName in ipairs(active) do
+		if petModels:FindFirstChild(petName) then
+			spawnPet(player, petName)
+			spawned += 1
+		end
+	end
+
+	-- 폴백으로 구성했을 가능성 → 저장소에 정규화하여 밀어넣기
+	if PlayerDataService.SetActivePets then
+		pcall(function() PlayerDataService:SetActivePets(player, active) end)
+	end
+
+	if spawned == 0 then
+		if data.selectedPetName and petModels:FindFirstChild(data.selectedPetName) then
+			spawnPet(player, data.selectedPetName)
+			-- selected 1마리만 뜬 경우에도 activePets 초기화
+			if PlayerDataService.SetActivePets then
+				pcall(function() PlayerDataService:SetActivePets(player, { data.selectedPetName }) end)
+			end
+		else
+			ShowPetGuiEvent:FireClient(player)
+		end
 	end
 end)
+
+
 
 Players.PlayerRemoving:Connect(function(plr)
 	local list = PlayerPets[plr.UserId]

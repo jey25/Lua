@@ -1,18 +1,18 @@
 -- ServerScriptService/PlayerDataService.lua
 --!strict
+
 local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
 local RunService = game:GetService("RunService")
-
 local DS_NAME = "PlayerData_v2"
-local store = DataStoreService:GetDataStore(DS_NAME)
 
+local store = DataStoreService:GetDataStore(DS_NAME)
 type OwnedPet = { affection: number, vaccines: { count: number } }
--- 상단 타입들에 추가/수정
 type BuffInfo = { expiresAt: number, params: { [string]: any } }
 
 
--- 상단 타입/DEFAULT 보강
+
+-- type PlayerData = { ... }
 type PlayerData = {
 	coins: number,
 	level: number,
@@ -21,9 +21,10 @@ type PlayerData = {
 	vaccineCount: number,
 	ownedPets: { [string]: OwnedPet },
 	buffs: { [string]: BuffInfo },
+	lastVaxAt: number?,
+	nextVaxAt: number?,
 	-- ⬇ 추가
-	lastVaxAt: number?,   -- 마지막 접종 시각(UTC epoch)
-	nextVaxAt: number?,   -- 다음 접종 가능 시각(UTC epoch)
+	activePets: { string }?,   -- 동시에 따라다닐 펫 이름 리스트(순서 유지)
 }
 
 local DEFAULT: PlayerData = {
@@ -32,9 +33,10 @@ local DEFAULT: PlayerData = {
 	vaccineCount = 0,
 	ownedPets = {},
 	buffs = {},
-	-- ⬇ 추가 (초기 0)
 	lastVaxAt = 0,
 	nextVaxAt = 0,
+	-- ⬇ 추가
+	activePets = {},
 }
 
 local PlayerDataService = {}
@@ -61,6 +63,21 @@ local function mergeDefault(data: any): PlayerData
 	if type(merged.ownedPets) ~= "table" then
 		merged.ownedPets = {}
 	end
+	
+	if type(merged.activePets) ~= "table" then
+		merged.activePets = {}
+	else
+		-- 문자열만 남기고, ownedPets에 없는 이름은 제거, 중복 제거
+		local cleaned, seen = {}, {}
+		for _, name in ipairs(merged.activePets) do
+			if type(name) == "string" and merged.ownedPets[name] and not seen[name] then
+				table.insert(cleaned, name)
+				seen[name] = true
+			end
+		end
+		merged.activePets = cleaned
+	end
+	
 	-- 백신/애정도 같은 내부 필드 보정
 	for name, pet in pairs(merged.ownedPets) do
 		if type(pet) ~= "table" then merged.ownedPets[name] = { affection = 0, vaccines = { count = 0 } }
@@ -97,6 +114,42 @@ local function mergeDefault(data: any): PlayerData
 	
 	return merged
 end
+
+function PlayerDataService:GetOwnedPetNames(player: Player): {string}
+	local d = self:Get(player)
+	local arr = {}
+	for name, _ in pairs(d.ownedPets or {}) do
+		table.insert(arr, name)
+	end
+	return arr
+end
+
+function PlayerDataService:GetActivePets(player: Player): {string}
+	local d = self:Get(player)
+	local out, seen = {}, {}
+	for _, name in ipairs(d.activePets or {}) do
+		if type(name) == "string" and d.ownedPets[name] and not seen[name] then
+			table.insert(out, name)
+			seen[name] = true
+		end
+	end
+	return out
+end
+
+function PlayerDataService:SetActivePets(player: Player, names: {string})
+	local d = self:Get(player)
+	local out, seen = {}, {}
+	for _, name in ipairs(names or {}) do
+		if type(name) == "string" and d.ownedPets[name] and not seen[name] then
+			table.insert(out, name)
+			seen[name] = true
+		end
+	end
+	d.activePets = out
+	self:MarkDirty(player)
+end
+
+
 
 -- 안전 로드
 function PlayerDataService:Load(player: Player): PlayerData
@@ -172,7 +225,8 @@ function PlayerDataService:Save(userId: number, reason: string?): boolean
 			-- ▼ Save()의 UpdateAsync 콜백 안에 추가
 			old.lastVaxAt = math.max(0, tonumber(data.lastVaxAt) or 0)
 			old.nextVaxAt = math.max(0, tonumber(data.nextVaxAt) or 0)
-
+			old.activePets = deepCopy(data.activePets or {})
+			
 			return old
 		end)
 	end)
@@ -238,6 +292,7 @@ function PlayerDataService:GetLevelExp(player: Player): (number, number)
 	local d = self:Get(player)
 	return d.level, d.exp
 end
+
 
 function PlayerDataService:SetBuffs(player: Player, buffs: { [string]: BuffInfo })
 	local d = self:Get(player)

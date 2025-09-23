@@ -159,6 +159,7 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 		lines = {
 			"여~ 좋은 아침?",
 			"니 강아지 안물지?",
+			"니 강아지 이름이 뭐야?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -391,6 +392,798 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 		interval = {min=30, max=60},
 	},
 	
+	["KlTSUBEE"] = {
+		templates = {"Plain"},
+		lines = {
+			"맛있어 보이는 음식을 치우면 강아지들이 싫어할 걸?",
+			"마을에 보물을 노리는 도둑들이 있다던데?",
+			"애완동물을 키우다보면 몇마리 더 키우고 싶어질 때가 있지",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+	
+	["cowman"] = {
+		templates = {"Plain"},
+		lines = {
+			"마을 북쪽 골짜기에는 가지마",
+			"애정도를 높게 유지하면 특별한 능력이 생긴다는데?",
+			"10년 후에는 어떤 세상이 올까?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["ninja_bae"] = {
+		templates = {"Plain"},
+		lines = {
+			"가끔씩 마을 바닥에서 무슨 소리가 들려.. 들어봤어?",
+			"등산은 고되지만 보상을 얻을 수도 있어!",
+			"강아지들을 아프게 하지마",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["gentleman"] = {
+		templates = {"Plain"},
+		lines = {
+			"고대인들은 특별한 애완동물을 데리고 다녔다던데?",
+			"물 속을 들여다 본 적 있어?",
+			"사람을 보고 짖을때는 살살 달래면 돼",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["gentlecow"] = {
+		templates = {"Plain"},
+		lines = {
+			"강아지들이 졸려할 때는 너네 집 침대로 가봐",
+			"다양한 장난감들로 놀아줄 수 있다.",
+			"니 강아지는 고양이를 너무 좋아하는데?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["starcow"] = {
+		templates = {"Plain"},
+		lines = {
+			"애정도가 낮게 유지되면 애들이 말을 안듣기 시작해",
+			"반려동물을 키우는 사람들이 많아지면 축제도 생기지 않을까?",
+			"이름이 뭐야?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["hba"] = {
+		templates = {"Plain"},
+		lines = {
+			"애정도를 높게 유지하면 특별한 능력이 생긴다는데?",
+			"10년 후에는 어떤 세상이 올까?",
+			"이놈에 코드는 뭐 하나 수정하면 다른 게 다 고장나네",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["cowman2"] = {
+		templates = {"Plain"},
+		lines = {
+			"등산은 고되지만 보상을 얻을 수도 있어!",
+			"강아지들을 아프게 하지마",
+			"스팸 전화 좀 그만 해...",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["cowman3"] = {
+		templates = {"Plain"},
+		lines = {
+			"물 속을 들여다 본 적 있어?",
+			"사람을 보고 짖을때는 살살 달래면 돼",
+			"보험 가입하실래요?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["smurf"] = {
+		templates = {"Plain"},
+		lines = {
+			"다양한 장난감들로 놀아줄 수 있다.",
+			"니 강아지는 고양이를 너무 좋아하는데?",
+			"여~ 좋은 아침?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["boxman"] = {
+		templates = {"Plain"},
+		lines = {
+			"반려동물을 키우는 사람들이 많아지면 축제도 생기지 않을까?",
+			"이름이 뭐야?",
+			"니 강아지 안물지?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["yellowman"] = {
+		templates = {"Plain"},
+		lines = {
+			"10년 후에는 어떤 세상이 올까?",
+			"이놈에 코드는 뭐 하나 수정하면 다른 게 다 고장나네",
+			"니 강아지 이름이 뭐야?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["bluebird"] = {
+		templates = {"Plain"},
+		lines = {
+			"강아지들을 아프게 하지마",
+			"스팸 전화 좀 그만 해...",
+			"마을 구석 폐건물 구역은 가지 않는 것이 좋아",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["defaultman"] = {
+		templates = {"Plain"},
+		lines = {
+			"사람을 보고 짖을때는 살살 달래면 돼",
+			"보험 가입하실래요?",
+			"가끔 산 중턱을 지날 때 상자 같은 것이 보이던데?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["signup"] = {
+		templates = {"Plain"},
+		lines = {
+			"니 강아지는 고양이를 너무 좋아하는데?",
+			"여~ 좋은 아침?",
+			"대부분의 사람이 잠든 밤에 가끔씩 밖에서 이상한 소리가 들려",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["morning_sportsman"] = {
+		templates = {"Plain"},
+		lines = {
+			"이름이 뭐야?",
+			"니 강아지 안물지?",
+			"빨래하기 좋은 날씨네",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["stussy"] = {
+		templates = {"Plain"},
+		lines = {
+			"이놈에 코드는 뭐 하나 수정하면 다른 게 다 고장나네",
+			"니 강아지 이름이 뭐야?",
+			"마을이 발전하면 축제도 생기지 않을까?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["biking"] = {
+		templates = {"Plain"},
+		lines = {
+			"스팸 전화 좀 그만 해...",
+			"마을 구석 폐건물 구역은 가지 않는 것이 좋아",
+			"강아지랑 놀아주는 방법은 다양해",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["d"] = {
+		templates = {"Plain"},
+		lines = {
+			"보험 가입하실래요?",
+			"가끔 산 중턱을 지날 때 상자 같은 것이 보이던데?",
+			"어머나, 귀여운 강아지네요, 이름이 뭐에요?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["nerf"] = {
+		templates = {"Plain"},
+		lines = {
+			"마을 구석 폐건물 구역은 가지 않는 것이 좋아",
+			"대부분의 사람이 잠든 밤에 가끔씩 밖에서 이상한 소리가 들려",
+			"오늘 저녁엔 뭐하고 놀지?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["Indian"] = {
+		templates = {"Plain"},
+		lines = {
+			"가끔 산 중턱을 지날 때 상자 같은 것이 보이던데?",
+			"빨래하기 좋은 날씨네",
+			"언젠가 특이한 애완동물을 데리고 다니는 사람을 본 적이 있어",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["Dxummy_gaurd"] = {
+		templates = {"Plain"},
+		lines = {
+			"대부분의 사람이 잠든 밤에 가끔씩 밖에서 이상한 소리가 들려",
+			"강아지랑 놀아주는 방법은 다양해",
+			"마을 북쪽 골짜기에는 가지마",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["timthespam"] = {
+		templates = {"Plain"},
+		lines = {
+			"빨래하기 좋은 날씨네",
+			"어머나, 귀여운 강아지네요, 이름이 뭐에요?",
+			"가끔씩 마을 바닥에서 무슨 소리가 들려.. 들어봤어?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["Prabzil"] = {
+		templates = {"Plain"},
+		lines = {
+			"강아지랑 놀아주는 방법은 다양해",
+			"오늘 저녁엔 뭐하고 놀지?",
+			"고대인들은 특별한 애완동물을 데리고 다녔다던데?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["peter"] = {
+		templates = {"Plain"},
+		lines = {
+			"어머나, 귀여운 강아지네요, 이름이 뭐에요?",
+			"언젠가 특이한 애완동물을 데리고 다니는 사람을 본 적이 있어",
+			"강아지들이 졸려할 때는 너네 집 침대로 가봐",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["hellotatta"] = {
+		templates = {"Plain"},
+		lines = {
+			"오늘 저녁엔 뭐하고 놀지?",
+			"마을 북쪽 골짜기에는 가지마",
+			"애정도가 낮게 유지되면 애들이 말을 안듣기 시작해",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["catman"] = {
+		templates = {"Plain"},
+		lines = {
+			"고대인들은 특별한 애완동물을 데리고 다녔다던데?",
+			"이름이 뭐야?",
+			"등산은 고되지만 보상을 얻을 수도 있어!",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["afternoon_cowman"] = {
+		templates = {"Plain"},
+		lines = {
+			"강아지들이 졸려할 때는 너네 집 침대로 가봐",
+			"니 강아지 안물지?",
+			"물 속을 들여다 본 적 있어?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["eagle"] = {
+		templates = {"Plain"},
+		lines = {
+			"애정도가 낮게 유지되면 애들이 말을 안듣기 시작해",
+			"니 강아지 이름이 뭐야?",
+			"다양한 장난감들로 놀아줄 수 있다.",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["mmp"] = {
+		templates = {"Plain"},
+		lines = {
+			"등산은 고되지만 보상을 얻을 수도 있어!",
+			"마을 구석 폐건물 구역은 가지 않는 것이 좋아",
+			"반려동물을 키우는 사람들이 많아지면 축제도 생기지 않을까?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["ninjapark"] = {
+		templates = {"Plain"},
+		lines = {
+			"물 속을 들여다 본 적 있어?",
+			"가끔 산 중턱을 지날 때 상자 같은 것이 보이던데?",
+			"10년 후에는 어떤 세상이 올까?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["canada"] = {
+		templates = {"Plain"},
+		lines = {
+			"다양한 장난감들로 놀아줄 수 있다.",
+			"대부분의 사람이 잠든 밤에 가끔씩 밖에서 이상한 소리가 들려",
+			"강아지들을 아프게 하지마",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["b"] = {
+		templates = {"Plain"},
+		lines = {
+			"반려동물을 키우는 사람들이 많아지면 축제도 생기지 않을까?",
+			"빨래하기 좋은 날씨네",
+			"사람을 보고 짖을때는 살살 달래면 돼",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["afternoon_gentlecolor"] = {
+		templates = {"Plain"},
+		lines = {
+			"10년 후에는 어떤 세상이 올까?",
+			"강아지랑 놀아주는 방법은 다양해",
+			"니 강아지는 고양이를 너무 좋아하는데?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["afternoon_musicman"] = {
+		templates = {"Plain"},
+		lines = {
+			"강아지들을 아프게 하지마",
+			"어머나, 귀여운 강아지네요, 이름이 뭐에요?",
+			"여~ 좋은 아침?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["king"] = {
+		templates = {"Plain"},
+		lines = {
+			"사람을 보고 짖을때는 살살 달래면 돼",
+			"오늘 저녁엔 뭐하고 놀지?",
+			"가끔씩 마을 바닥에서 무슨 소리가 들려.. 들어봤어?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["afternoon_smurf"] = {
+		templates = {"Plain"},
+		lines = {
+			"니 강아지는 고양이를 너무 좋아하는데?",
+			"가끔 산 중턱을 지날 때 상자 같은 것이 보이던데?",
+			"고대인들은 특별한 애완동물을 데리고 다녔다던데?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["afternoon_gentlecow"] = {
+		templates = {"Plain"},
+		lines = {
+			"여~ 좋은 아침?",
+			"대부분의 사람이 잠든 밤에 가끔씩 밖에서 이상한 소리가 들려",
+			"강아지들이 졸려할 때는 너네 집 침대로 가봐",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["afternoon_ninja"] = {
+		templates = {"Plain"},
+		lines = {
+			"니 강아지 안물지?",
+			"빨래하기 좋은 날씨네",
+			"애정도가 낮게 유지되면 애들이 말을 안듣기 시작해",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["robloxman"] = {
+		templates = {"Plain"},
+		lines = {
+			"니 강아지 이름이 뭐야?",
+			"마을이 발전하면 축제도 생기지 않을까?",
+			"등산은 고되지만 보상을 얻을 수도 있어!",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["electroman"] = {
+		templates = {"Plain"},
+		lines = {
+			"마을 구석 폐건물 구역은 가지 않는 것이 좋아",
+			"강아지랑 놀아주는 방법은 다양해",
+			"물 속을 들여다 본 적 있어?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["BarbieBankz"] = {
+		templates = {"Plain"},
+		lines = {
+			"가끔 산 중턱을 지날 때 상자 같은 것이 보이던데?",
+			"어머나, 귀여운 강아지네요, 이름이 뭐에요?",
+			"다양한 장난감들로 놀아줄 수 있다.",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["IconicFatma"] = {
+		templates = {"Plain"},
+		lines = {
+			"대부분의 사람이 잠든 밤에 가끔씩 밖에서 이상한 소리가 들려",
+			"오늘 저녁엔 뭐하고 놀지?",
+			"반려동물을 키우는 사람들이 많아지면 축제도 생기지 않을까?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["TheOdd"] = {
+		templates = {"Plain"},
+		lines = {
+			"빨래하기 좋은 날씨네",
+			"고대인들은 특별한 애완동물을 데리고 다녔다던데?",
+			"10년 후에는 어떤 세상이 올까?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["theman"] = {
+		templates = {"Plain"},
+		lines = {
+			"마을이 발전하면 축제도 생기지 않을까?",
+			"강아지들이 졸려할 때는 너네 집 침대로 가봐",
+			"가끔씩 마을 바닥에서 무슨 소리가 들려.. 들어봤어?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["ninja"] = {
+		templates = {"Plain"},
+		lines = {
+			"오늘 저녁엔 뭐하고 놀지?",
+			"애정도가 낮게 유지되면 애들이 말을 안듣기 시작해",
+			"등산은 고되지만 보상을 얻을 수도 있어!",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["savage"] = {
+		templates = {"Plain"},
+		lines = {
+			"언젠가 특이한 애완동물을 데리고 다니는 사람을 본 적이 있어",
+			"등산은 고되지만 보상을 얻을 수도 있어!",
+			"물 속을 들여다 본 적 있어?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["sol"] = {
+		templates = {"Plain"},
+		lines = {
+			"마을 북쪽 골짜기에는 가지마",
+			"물 속을 들여다 본 적 있어?",
+			"사람을 보고 짖을때는 살살 달래면 돼",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["night_cowman"] = {
+		templates = {"Plain"},
+		lines = {
+			"가끔씩 마을 바닥에서 무슨 소리가 들려.. 들어봤어?",
+			"다양한 장난감들로 놀아줄 수 있다.",
+			"니 강아지는 고양이를 너무 좋아하는데?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["gentlecolor"] = {
+		templates = {"Plain"},
+		lines = {
+			"고대인들은 특별한 애완동물을 데리고 다녔다던데?",
+			"반려동물을 키우는 사람들이 많아지면 축제도 생기지 않을까?",
+			"이름이 뭐야?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["bleus"] = {
+		templates = {"Plain"},
+		lines = {
+			"강아지들이 졸려할 때는 너네 집 침대로 가봐",
+			"10년 후에는 어떤 세상이 올까?",
+			"이놈에 코드는 뭐 하나 수정하면 다른 게 다 고장나네",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["ggocalcon"] = {
+		templates = {"Plain"},
+		lines = {
+			"애정도가 낮게 유지되면 애들이 말을 안듣기 시작해",
+			"강아지들을 아프게 하지마",
+			"스팸 전화 좀 그만 해...",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["a"] = {
+		templates = {"Plain"},
+		lines = {
+			"등산은 고되지만 보상을 얻을 수도 있어!",
+			"사람을 보고 짖을때는 살살 달래면 돼",
+			"보험 가입하실래요?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["night_cowman2"] = {
+		templates = {"Plain"},
+		lines = {
+			"물 속을 들여다 본 적 있어?",
+			"니 강아지는 고양이를 너무 좋아하는데?",
+			"여~ 좋은 아침?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["musicman"] = {
+		templates = {"Plain"},
+		lines = {
+			"다양한 장난감들로 놀아줄 수 있다.",
+			"이름이 뭐야?",
+			"니 강아지 안물지?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["musicman2"] = {
+		templates = {"Plain"},
+		lines = {
+			"반려동물을 키우는 사람들이 많아지면 축제도 생기지 않을까?",
+			"이놈에 코드는 뭐 하나 수정하면 다른 게 다 고장나네",
+			"니 강아지 이름이 뭐야?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["night_boxman"] = {
+		templates = {"Plain"},
+		lines = {
+			"10년 후에는 어떤 세상이 올까?",
+			"스팸 전화 좀 그만 해...",
+			"마을 구석 폐건물 구역은 가지 않는 것이 좋아",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["youtubu"] = {
+		templates = {"Plain"},
+		lines = {
+			"강아지들을 아프게 하지마",
+			"보험 가입하실래요?",
+			"가끔 산 중턱을 지날 때 상자 같은 것이 보이던데?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["blackman"] = {
+		templates = {"Plain"},
+		lines = {
+			"사람을 보고 짖을때는 살살 달래면 돼",
+			"여~ 좋은 아침?",
+			"대부분의 사람이 잠든 밤에 가끔씩 밖에서 이상한 소리가 들려",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["night_ninja_bae"] = {
+		templates = {"Plain"},
+		lines = {
+			"니 강아지는 고양이를 너무 좋아하는데?",
+			"니 강아지 이름이 뭐야?",
+			"빨래하기 좋은 날씨네",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["sunglasscow"] = {
+		templates = {"Plain"},
+		lines = {
+			"여~ 좋은 아침?",
+			"마을이 발전하면 축제도 생기지 않을까?",
+			"가끔씩 마을 바닥에서 무슨 소리가 들려.. 들어봤어?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["purpleman"] = {
+		templates = {"Plain"},
+		lines = {
+			"니 강아지 안물지?",
+			"강아지들이 졸려할 때는 너네 집 침대로 가봐",
+			"고대인들은 특별한 애완동물을 데리고 다녔다던데?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["runner"] = {
+		templates = {"Plain"},
+		lines = {
+			"니 강아지 이름이 뭐야?",
+			"등산은 고되지만 보상을 얻을 수도 있어!",
+			"반려동물을 키우는 사람들이 많아지면 축제도 생기지 않을까?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["supreme"] = {
+		templates = {"Plain"},
+		lines = {
+			"마을이 발전하면 축제도 생기지 않을까?",
+			"물 속을 들여다 본 적 있어?",
+			"가끔 산 중턱을 지날 때 상자 같은 것이 보이던데?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["eightman"] = {
+		templates = {"Plain"},
+		lines = {
+			"강아지들이 졸려할 때는 너네 집 침대로 가봐",
+			"다양한 장난감들로 놀아줄 수 있다.",
+			"대부분의 사람이 잠든 밤에 가끔씩 밖에서 이상한 소리가 들려",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
+	["walkingman"] = {
+		templates = {"Plain"},
+		lines = {
+			"애정도가 낮게 유지되면 애들이 말을 안듣기 시작해",
+			"반려동물을 키우는 사람들이 많아지면 축제도 생기지 않을까?",
+			"오늘 저녁엔 뭐하고 놀지?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+
 	
 
 	-- 기본값(모든 미지정 NPC에 적용하고 싶다면 아래 주석 해제)
@@ -473,6 +1266,39 @@ do
 		clone.Parent = TEMPLATES
 	end
 end
+
+local function styleFrame(frame: Frame)
+	-- 배경색/투명도
+	frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	frame.BackgroundTransparency = 0.35
+
+	-- 둥근 모서리
+	if not frame:FindFirstChildOfClass("UICorner") then
+		local uic = Instance.new("UICorner")
+		uic.CornerRadius = UDim.new(0, 12)
+		uic.Parent = frame
+	end
+
+	-- 흰색 테두리
+	if not frame:FindFirstChildOfClass("UIStroke") then
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 1
+		stroke.Color = Color3.fromRGB(255, 255, 255)
+		stroke.Transparency = 0.2
+		stroke.Parent = frame
+	end
+
+	-- 안쪽 여백
+	if not frame:FindFirstChildOfClass("UIPadding") then
+		local pad = Instance.new("UIPadding")
+		pad.PaddingTop = UDim.new(0, 6)
+		pad.PaddingBottom = UDim.new(0, 6)
+		pad.PaddingLeft = UDim.new(0, 10)
+		pad.PaddingRight = UDim.new(0, 10)
+		pad.Parent = frame
+	end
+end
+
 
 -- ====== 유틸 ======
 local rng = Random.new()
