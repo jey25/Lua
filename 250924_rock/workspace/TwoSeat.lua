@@ -5,6 +5,11 @@ local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 local BlockService = require(game.ServerScriptService:WaitForChild("BlockService"))
 
+-- 안전 플래그: 종료 처리 중복 방지
+local endingInProgress = false
+
+-- ReplicatedStorage SFX 폴더(사운드 객체들) 참조
+local sfxFolder = RS:FindFirstChild("SFX")
 
 local startEvent = RS:WaitForChild("TwoSeatStart") :: RemoteEvent
 local seatsFolder = script.Parent
@@ -53,6 +58,118 @@ end
 
 local gameStarted = false
 local waitingHumanoid: Humanoid? = nil
+
+-- 사운드 이름이 정해져 있다면 직접 참조해도 되고(예: "Win","Lose"), 없다면 첫 2개 사용
+local function pickSfxPair()
+	if not sfxFolder then return nil, nil end
+	local winSound = sfxFolder:FindFirstChild("Win") or sfxFolder:FindFirstChild("Winner")
+	local loseSound = sfxFolder:FindFirstChild("Lose") or sfxFolder:FindFirstChild("Loser")
+	if winSound and loseSound then return winSound, loseSound end
+	-- fallback: 첫 두 Sound 자식
+	local sounds = {}
+	for _, c in ipairs(sfxFolder:GetChildren()) do
+		if c:IsA("Sound") then table.insert(sounds, c) end
+		if #sounds >= 2 then break end
+	end
+	return sounds[1], sounds[2]
+end
+
+local function safePlaySfxToPlayer(plr: Player, soundTemplate: Sound?)
+	if not plr or not soundTemplate or not soundTemplate:IsA("Sound") then return end
+	-- 캐릭터가 존재하면 HRP/Head에 붙여서 재생
+	local char = plr.Character
+	if not char then return end
+	local primary = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Head")
+	if not primary then return end
+	local s = soundTemplate:Clone()
+	s.Parent = primary
+	-- 서버에서 재생해도 클라이언트에서 들리도록 LocalSound가 아닌 Sound 사용 (서버 권한으로 재생)
+	pcall(function() s:Play() end)
+	-- 파기 (안전하게 8초 후 제거)
+	task.delay(8, function()
+		pcall(function() s:Stop(); s:Destroy() end)
+	end)
+end
+
+
+local function handleZeroBlocks(pWinner: Player, pLoser: Player)
+	if endingInProgress then return end
+	endingInProgress = true
+
+	-- 1) 게임/매치 플래그 정리(즉시 멈추게 함)
+	activeMatch.running = false
+	gameStarted = false
+	setPromptsEnabled(true)
+	unlockAll()
+
+	-- 2) 사운드 재생 (ReplicatedStorage/SFX에서 두 사운드 취득)
+	local winSfx, loseSfx = pickSfxPair()
+	-- 안전: 둘 다 없으면 재생 없이 진행
+	if winSfx then
+		pcall(function() safePlaySfxToPlayer(pWinner, winSfx) end)
+	end
+	if loseSfx then
+		pcall(function() safePlaySfxToPlayer(pLoser, loseSfx) end)
+	end
+
+	-- 3) 5초 대기 (사운드가 재생되는 동안)
+	task.wait(5)
+
+	-- 4) 블록 수 데이터 강제 저장
+	-- BlockService 측에 M.ForceSave(userId) 를 추가했음을 전제
+	pcall(function()
+		if pWinner and pWinner.Parent then BlockService.ForceSave(pWinner.UserId) end
+		if pLoser  and pLoser.Parent  then BlockService.ForceSave(pLoser.UserId)  end
+	end)
+
+	-- 5) 룸 제거 및 플레이어 로비 복귀
+	-- (a) 좌석 강제 해제
+	forceStandAll()
+	-- (b) 룸(좌석 폴더) 제거: script.Parent 는 이 스크립트의 폴더. 안전하게 Destroy
+	local parentFolder = script.Parent
+	if parentFolder and parentFolder:IsA("Instance") then
+		-- 먼저 부모가 남아있다면 잠깐 노티/딜레이 주고 제거
+		pcall(function()
+			-- 두 플레이어가 안전히 LoadCharacter 되도록 강제 리스폰 호출
+			if pWinner and pWinner.Parent then
+				pWinner:LoadCharacter()
+			end
+			if pLoser and pLoser.Parent then
+				pLoser:LoadCharacter()
+			end
+			-- 약간 지연 후 룸 제거
+			task.delay(0.5, function()
+				if parentFolder and parentFolder.Parent then
+					pcall(function() parentFolder:Destroy() end)
+				end
+			end)
+		end)
+	else
+		-- fallback: 플레이어들만 리스폰
+		if pWinner and pWinner.Parent then pWinner:LoadCharacter() end
+		if pLoser  and pLoser.Parent  then pLoser:LoadCharacter()  end
+	end
+
+	-- 6) 모든 정리 보장 (Ordered값 반영 등)
+	if pWinner and pWinner.Parent then
+		pcall(function() BlockService.ForceSave(pWinner.UserId) end)
+	end
+	if pLoser and pLoser.Parent then
+		pcall(function() BlockService.ForceSave(pLoser.UserId) end)
+	end
+
+	-- 7) 매치/잠금 상태 초기화
+	activeMatch.p1 = nil
+	activeMatch.p2 = nil
+	activeMatch.round = 0
+	activeMatch.choices = {}
+	waitingHumanoid = nil
+	unlockAll()
+	setPromptsEnabled(true)
+
+	-- 8) 플래그 내려주기
+	endingInProgress = false
+end
 
 local function getPlayerFromHumanoid(h: Humanoid?): Player?
 	if not h then return nil end
@@ -271,7 +388,33 @@ local function runMatch(p1: Player, p2: Player)
 		resultEv:FireClient(p2, activeMatch.round, b, a, out2)
 		BlockService.ApplyRoundResult(p1, p2, who)
 
-		
+		do
+			-- 최신 블록 값 확인
+			local p1Blocks = BlockService.Get(p1.UserId) or 0
+			local p2Blocks = BlockService.Get(p2.UserId) or 0
+
+			-- 어느 한 쪽이 0이면 종료 플로우
+			if p1Blocks <= 0 or p2Blocks <= 0 then
+				-- 누가 승자/패자인지 판정
+				local winner, loser
+				if p1Blocks <= 0 and p2Blocks <= 0 then
+					-- 둘 다 0이면 무승부 처리: 그냥 룸 삭제 흐름으로 처리 (winner/loser 없이 동시 종료)
+					-- 편의상 p2를 winner로 두거나 null 처리 가능 — 여기선 둘다 리스폰 + 저장
+					handleZeroBlocks(p1, p2) -- 호출하면 내부에서 안전히 처리(둘 다 저장/리스폰)
+				else
+					if p1Blocks <= 0 then
+						-- p2 승리
+						handleZeroBlocks(p2, p1)
+					else
+						-- p1 승리
+						handleZeroBlocks(p1, p2)
+					end
+				end
+				-- runMatch 루프는 activeMatch.running 플래그가 false가 되어 곧 종료됩니다.
+				-- 더 이상의 라운드 처리를 막기 위해 바로 return
+				return
+			end
+		end
 
 		if not waitUntil(os.clock() + 1.6) then break end
 	end

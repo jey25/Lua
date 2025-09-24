@@ -121,6 +121,17 @@ local function loadUser(userId: number): number
 	end
 end
 
+function M.ForceSave(userId: number)
+	pcall(function() saveUser(userId) end)
+end
+
+-- 모든 온라인 플레이어 저장 (서버 종료/룸 삭제 직전 등)
+function M.ForceSaveAll()
+	for _, pl in ipairs(Players:GetPlayers()) do
+		pcall(function() saveUser(pl.UserId) end)
+	end
+end
+
 -- ===== Player Hooks =====
 Players.PlayerAdded:Connect(function(plr: Player)
 	displayNameMap[plr.UserId] = plr.DisplayName
