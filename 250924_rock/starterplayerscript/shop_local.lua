@@ -9,6 +9,8 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 local shopButton = script.Parent
 local SHOP_TEMPLATE = ReplicatedStorage:WaitForChild("shop") -- ScreenGui
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local ShopStateEvent = Remotes:WaitForChild("ShopState")
 
 -- 각 슬롯(a~e)에 대응되는 Developer Product ID를 채워주세요
 local PRODUCT_IDS = {
@@ -17,22 +19,22 @@ local PRODUCT_IDS = {
 	c = 3412831754,
 	d = 3412831964,
 	e = 3412832270,
+	f = 3413851547,
+	g = 3413902573,
+	h = 3413906749,
 }
 
 local currentShop -- 현재 떠있는 ShopGui
 
-local function hookShopUI(shopGui: ScreenGui)
+local function hookShopUI(shopGui)
 	local frame = shopGui:WaitForChild("Frame")
-
-	-- 닫기 버튼
 	local closeBtn = frame:WaitForChild("Close")
 	closeBtn.MouseButton1Click:Connect(function()
 		shopGui:Destroy()
 		currentShop = nil
 	end)
 
-	-- 각 이미지 하위 select 버튼 → 구매 팝업
-	local function bindSlot(slotName: string)
+	local function bindSlot(slotName)
 		local slot = frame:FindFirstChild(slotName)
 		if not slot then return end
 		local selectBtn = slot:FindFirstChild("select")
@@ -41,8 +43,6 @@ local function hookShopUI(shopGui: ScreenGui)
 			selectBtn.MouseButton1Click:Connect(function()
 				if productId and productId ~= 0 then
 					MarketplaceService:PromptProductPurchase(player, productId)
-				else
-					warn(("PRODUCT_IDS.%s 가 비어있습니다."):format(slotName))
 				end
 			end)
 		end
@@ -53,8 +53,8 @@ local function hookShopUI(shopGui: ScreenGui)
 	end
 end
 
--- 열기 버튼
 shopButton.MouseButton1Click:Connect(function()
+	if not shopButton.Active then return end -- 비활성화 상태면 클릭 무시
 	if currentShop then
 		currentShop.Enabled = true
 		return
@@ -65,4 +65,11 @@ shopButton.MouseButton1Click:Connect(function()
 	clone.Parent = playerGui
 	currentShop = clone
 	hookShopUI(clone)
+end)
+
+-- 서버에서 Shop 활성 여부 수신
+ShopStateEvent.OnClientEvent:Connect(function(enable)
+	shopButton.Active = enable
+	shopButton.AutoButtonColor = enable
+	shopButton.TextColor3 = enable and Color3.new(1,1,1) or Color3.fromRGB(120,120,120)
 end)

@@ -391,8 +391,11 @@ local function ensureBoard()
 	list.Parent = frame
 
 	buttons = {}
+	local myPack = HandsState.Get(player.UserId)  -- <-- 내 Hands 상태 가져오기
+	local images = (myPack and myPack.images) or {}
+
 	for _, name in ipairs({"rock","paper","scissors"}) do
-		local img = getTexture(name)
+		local img = images[name] or getTexture(name)  -- <-- 구매한 이미지가 있으면 사용
 		local btn = Instance.new("ImageButton")
 		btn.Name = name
 		btn.Size = UDim2.fromOffset(170, 170)
@@ -431,6 +434,7 @@ local function ensureBoard()
 
 	boardGui = root
 end
+
 
 local function setButtonsLocked(state: boolean)
 	locked = state
