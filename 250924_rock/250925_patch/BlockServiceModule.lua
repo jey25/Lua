@@ -6,6 +6,9 @@ local DSS     = game:GetService("DataStoreService")
 local RS      = game:GetService("ReplicatedStorage")
 local MS      = game:GetService("MessagingService")
 
+local GameOverManager = require(ServerScriptService:WaitForChild("GameOverManager"))
+
+
 -- ===== Remotes =====
 local BlocksEvent = RS:FindFirstChild("Blocks_Update") :: RemoteEvent
 if not BlocksEvent then
@@ -65,16 +68,52 @@ local function updateOrdered(userId: number)
 	end)
 end
 
+-- 종료 조건 검사
+local function checkAndEndIfAnyZero()
+	for _, pl in ipairs(Players:GetPlayers()) do
+		if (blocks[pl.UserId] or 0) <= 0 then
+			-- 클라에 게임 종료 브로드캐스트(or Round 관리자 호출)
+			BlocksEvent:FireAllClients("gameover", pl.UserId)
+			GameOverManager.EndGame(loserUserId)
+			-- TODO: 서버 측 라운드/게임 종료 처리 호출 (예: RoundService.EndNow())
+			return true
+		end
+	end
+	return false
+end
+
 -- ===== Public API =====
 function M.Get(userId: number): number
 	return blocks[userId] or 0
 end
 
+-- 0 도달 검사 지점 추가
 function M.Set(userId: number, value: number)
 	blocks[userId] = clampNonNegInt(value)
 	pushDelta(userId)
 	updateOrdered(userId)
+	checkAndEndIfAnyZero()
 end
+
+-- BlockService.lua 하단 “Public API” 근처에 추가
+function M.SaveSync(userId: number)
+	local ok, err = pcall(saveUser, userId) -- spawn 없이 동기 호출
+	if not ok then warn("[BlockService] SaveSync failed:", userId, err) end
+end
+
+function M.SaveAllSync()
+	for _, pl in ipairs(Players:GetPlayers()) do
+		M.SaveSync(pl.UserId)
+	end
+end
+
+-- 서버 종료/서버이동 대비
+game:BindToClose(function()
+	M.SaveAllSync()
+	-- DS 예산 여유용 짧은 대기(선택)
+	task.wait(1)
+end)
+
 
 function M.Add(userId: number, delta: number)
 	if delta == 0 then return end
@@ -102,6 +141,7 @@ function M.Transfer(fromPlr: Player | number, toPlr: Player | number, amount: nu
 	pushDelta(toId)
 	updateOrdered(fromId)
 	updateOrdered(toId)
+	checkAndEndIfAnyZero()
 end
 
 function M.ApplyRoundResult(p1: Player, p2: Player, who: "p1"|"p2"|"draw")

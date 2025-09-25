@@ -14,6 +14,8 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local myUserId = player.UserId
 local oppUserId: number? = nil
+local exitReq    = RS:WaitForChild("Game_ExitRequest") :: RemoteEvent
+
 
 -- 선택적 데이터 소스(있으면 사용)
 local HandsState do
@@ -33,6 +35,9 @@ local chooseEv    = RS:WaitForChild("RPS_Choose") :: RemoteEvent
 local resultEv    = RS:WaitForChild("RPS_Result") :: RemoteEvent
 local reqCancel   = RS:WaitForChild("RPS_RequestCancel") :: RemoteEvent
 local cancelledEv = RS:WaitForChild("RPS_Cancelled") :: RemoteEvent
+
+-- 추가: 블록/리더보드 브로드캐스트 (서버 BlockService.lua)
+local blocksEv    = RS:WaitForChild("Blocks_Update") :: RemoteEvent
 
 -- (옵션) 호환 브로드캐스트: 서버가 장착 변경을 알려줌
 local Remotes = RS:FindFirstChild("Remotes")
@@ -653,6 +658,197 @@ do
 	end
 end
 
+-- ===== GameOver UI/Scene =====
+local function hideRpsLayers()
+	for _, layerName in ipairs({"RPS_Countdown","RPS_Result","RPS_Sides"}) do
+		local g = playerGui:FindFirstChild(layerName) :: ScreenGui?
+		if g then
+			for _,v in ipairs(g:GetChildren()) do
+				if v:IsA("TextLabel") or v:IsA("ImageLabel") then v.Visible = false end
+			end
+		end
+	end
+	-- 팝업 아이콘 숨김
+	local pop = playerGui:FindFirstChild("RPS_Pop") :: ScreenGui?
+	if pop then
+		local top = pop:FindFirstChild("Top")
+		local bottom = pop:FindFirstChild("Bottom")
+		if top and top:IsA("ImageLabel") then top.Visible = false end
+		if bottom and bottom:IsA("ImageLabel") then bottom.Visible = false end
+	end
+end
+
+local function ensureGameOverSubLabel(): TextLabel
+	local layer = ensureLayer("RPS_GameOver")
+	local s = layer:FindFirstChild("Sub") :: TextLabel?
+	if not s then
+		s = Instance.new("TextLabel")
+		s.Name = "Sub"
+		s.AnchorPoint = Vector2.new(0.5, 0.5)
+		s.Position = UDim2.fromScale(0.5, 0.60)
+		s.Size = UDim2.fromScale(0.8, 0.08)
+		s.BackgroundTransparency = 1
+		s.TextScaled = true
+		s.Font = Enum.Font.GothamBold
+		s.TextColor3 = Color3.new(1,1,1)
+		s.Parent = layer
+	end
+	return s
+end
+
+local function showGameOver(loserUserId: number?)
+	-- 상태/씬 정리
+	inMatch = false
+	locked = true
+	selected = nil
+	if boardGui then boardGui.Enabled = false end
+	hideWaiting()
+	hideRpsLayers()
+	CAS:UnbindAction("RPS_CancelAction")
+
+	-- 카메라 복구
+	local cam = workspace.CurrentCamera
+	cam.CameraType = Enum.CameraType.Custom
+
+	-- BGM/효과음
+	if SFX.Spring then
+		SFX.Spring.TimePosition = 0
+		SFX.Spring:Play()
+	end
+	if SFX.Result then
+		SFX.Result.TimePosition = 0
+		SFX.Result:Play()
+	end
+
+	-- 표시할 이름
+	local nameText = "어느 플레이어"
+	if typeof(loserUserId) == "number" then
+		local pl = Players:GetPlayerByUserId(loserUserId)
+		if pl then nameText = pl.DisplayName or pl.Name end
+	end
+
+	-- 메인 라벨
+	local main = ensureBigLabel("RPS_GameOver")
+	main.Text = "게임 종료!"
+	main.TextColor3 = Color3.fromRGB(255, 90, 90)
+	main.Visible = true
+	pulseLabel(main); shimmerText(main)
+
+	-- 서브 라벨
+	local sub = ensureGameOverSubLabel()
+	sub.TextTransparency = 0
+	sub.Text = string.format("%s의 블록이 0개가 되어 라운드가 종료되었습니다.", nameText)
+	sub.Visible = true
+
+	-- 잠시 보여준 뒤 정리 (원하면 유지해도 됨)
+	task.delay(2.5, function()
+		if main then main.Visible = false end
+		if sub then sub.Visible = false end
+	end)
+end
+
+-- ===== Exit Modal =====
+local function ensureExitModal(): Frame
+	local layer = ensureLayer("RPS_ExitModal")
+	local modal = layer:FindFirstChild("Modal") :: Frame?
+	if modal then return modal end
+
+	modal = Instance.new("Frame")
+	modal.Name = "Modal"
+	modal.AnchorPoint = Vector2.new(0.5, 0.5)
+	modal.Position = UDim2.fromScale(0.5, 0.5)
+	modal.Size = UDim2.fromScale(0.5, 0.28)
+	modal.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	modal.BackgroundTransparency = 0.1
+	modal.BorderSizePixel = 0
+	modal.Parent = layer
+
+	local uiCorner = Instance.new("UICorner"); uiCorner.CornerRadius = UDim.new(0, 16); uiCorner.Parent = modal
+	local padding = Instance.new("UIPadding"); padding.PaddingTop = UDim.new(0, 18); padding.PaddingBottom = UDim.new(0, 18); padding.PaddingLeft = UDim.new(0, 22); padding.PaddingRight = UDim.new(0, 22); padding.Parent = modal
+
+	local title = Instance.new("TextLabel")
+	title.Name = "Title"
+	title.Size = UDim2.new(1, 0, 0, 48)
+	title.BackgroundTransparency = 1
+	title.Text = "게임이 종료되었습니다"
+	title.Font = Enum.Font.GothamBlack
+	title.TextScaled = true
+	title.TextColor3 = Color3.fromRGB(255, 230, 0)
+	title.Parent = modal
+	stylizeRichLabel(title)
+
+	local body = Instance.new("TextLabel")
+	body.Name = "Body"
+	body.Size = UDim2.new(1, 0, 0, 40)
+	body.Position = UDim2.new(0, 0, 0, 56)
+	body.BackgroundTransparency = 1
+	body.Text = "나가기를 선택하면 로블록스 로비 화면으로 돌아갑니다."
+	body.Font = Enum.Font.Gotham
+	body.TextScaled = true
+	body.TextColor3 = Color3.fromRGB(235, 235, 235)
+	body.Parent = modal
+
+	local btnRow = Instance.new("Frame")
+	btnRow.Name = "Buttons"
+	btnRow.BackgroundTransparency = 1
+	btnRow.Position = UDim2.new(0, 0, 1, -64)
+	btnRow.Size = UDim2.new(1, 0, 0, 48)
+	btnRow.Parent = modal
+
+	local list = Instance.new("UIListLayout")
+	list.FillDirection = Enum.FillDirection.Horizontal
+	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	list.VerticalAlignment = Enum.VerticalAlignment.Center
+	list.Padding = UDim.new(0, 18)
+	list.Parent = btnRow
+
+	local function makeBtn(name: string, text: string): TextButton
+		local b = Instance.new("TextButton")
+		b.Name = name
+		b.AutoButtonColor = true
+		b.Text = text
+		b.Size = UDim2.fromOffset(220, 48)
+		b.BackgroundColor3 = Color3.fromRGB(255, 215, 90)
+		b.TextColor3 = Color3.fromRGB(30, 20, 0)
+		b.Font = Enum.Font.GothamBold
+		b.TextScaled = true
+		b.Parent = btnRow
+		local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, 12); c.Parent = b
+		return b
+	end
+
+	makeBtn("LeaveBtn", "나가기")
+	makeBtn("StayBtn",  "머물기")
+
+	return modal
+end
+
+local function showExitModal()
+	local modal = ensureExitModal()
+	modal.Visible = true
+
+	local leave = modal:FindFirstChild("Buttons"):FindFirstChild("LeaveBtn") :: TextButton
+	local stay  = modal:FindFirstChild("Buttons"):FindFirstChild("StayBtn")  :: TextButton
+
+	-- 중복 연결 방지
+	for _, b in ipairs({leave, stay}) do
+		for _, c in ipairs(b:GetConnections()) do
+			-- (Studio에서는 GetConnections가 제한될 수 있어 보통은 새로 연결만 둬도 무방)
+		end
+	end
+
+	leave.MouseButton1Click:Connect(function()
+		exitReq:FireServer("leave")
+		leave.Active = false; stay.Active = false
+	end)
+
+	stay.MouseButton1Click:Connect(function()
+		modal.Visible = false
+	end)
+end
+
+
+
 -- ===== Event wiring =====
 uiEvent.OnClientEvent:Connect(function(action: string)
 	if action == "showWaiting" then
@@ -735,6 +931,21 @@ cancelledEv.OnClientEvent:Connect(function(_reason: string)
 	SFX.Spring:Play()
 	CAS:UnbindAction("RPS_CancelAction")
 end)
+
+-- ===== Blocks / Gameover wiring =====
+blocksEv.OnClientEvent:Connect(function(kind: string, a: any, _b: any, _c: any)
+	-- 서버: BlocksEvent:FireAllClients("gameover", loserUserId)
+	if kind == "gameover" then
+		local loserUserId = (typeof(a) == "number") and (a :: number) or nil
+		showGameOver(loserUserId)
+		showExitModal()            -- ➜ 종료 선택 모달
+	-- (참고) 아래 분기들은 필요하면 채우세요.
+	-- elseif kind == "full" then
+	-- elseif kind == "delta" then
+	-- elseif kind == "leave" then
+	end
+end)
+
 
 resultEv.OnClientEvent:Connect(function(roundNum: number, myChoice: string?, oppChoice: string?, outcome: string)
 	if roundNum == 1 then return end
