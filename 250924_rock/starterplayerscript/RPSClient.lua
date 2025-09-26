@@ -68,6 +68,9 @@ end
 ensureSFX()
 if not SFX.Spring.IsPlaying then SFX.Spring:Play() end
 
+
+
+
 -- ===== UI Helpers =====
 local function ensureLayer(name: string): ScreenGui
 	local g = playerGui:FindFirstChild(name) :: ScreenGui?
@@ -150,14 +153,18 @@ local function ensureBigLabel(layerName: string): TextLabel
 		lbl.Size = UDim2.fromScale(0.6, 0.25)
 		lbl.BackgroundTransparency = 1
 		lbl.TextScaled = true
-		lbl.Font = Enum.Font.GothamBlack
-		lbl.TextColor3 = Color3.fromRGB(255, 226, 0)
+		lbl.Font = Enum.Font.FredokaOne
+		lbl.TextColor3 = Color3.fromRGB(255, 255, 0)
+		lbl.TextStrokeColor3 = Color3.fromRGB(255, 0, 0)
+		lbl.TextStrokeTransparency = 0.2
+		
 		local stroke = Instance.new("UIStroke")
 		stroke.Thickness = 2
 		stroke.Color = Color3.new(0,0,0)
 		stroke.Parent = lbl
 		lbl.Parent = root
 		stylizeRichLabel(lbl)
+
 	end
 	return lbl
 end
@@ -181,10 +188,13 @@ local function ensureBigTextGui(pGui: PlayerGui): TextLabel
 		lbl.Size = UDim2.fromScale(0.8, 0.2)
 		lbl.BackgroundTransparency = 1
 		lbl.TextScaled = true
-		lbl.Font = Enum.Font.GothamBlack
-		lbl.TextColor3 = Color3.fromRGB(255, 230, 0)
+		lbl.Font = Enum.Font.FredokaOne
+		lbl.TextColor3 = Color3.fromRGB(255, 255, 0)
+		lbl.TextStrokeColor3 = Color3.fromRGB(255, 0, 0)
+		lbl.TextStrokeTransparency = 0.2
 		lbl.Text = "게임 시작!"
 		lbl.ZIndex = 1000
+		
 		local stroke = Instance.new("UIStroke")
 		stroke.Thickness = 2
 		stroke.Color = Color3.new(0,0,0)
@@ -531,15 +541,31 @@ local function showResult(myChoice: string?, oppChoice: string?, outcome: string
 	lbl.TextTransparency = 0
 	if outcome == "win" then
 		lbl.Text = "승리!";  lbl.TextColor3 = Color3.fromRGB(80, 255, 120)
+		-- 승리 SFX
+		local sfxWin = SFXF:FindFirstChild("BlockWin") :: Sound?
+		if sfxWin then
+			local s = sfxWin:Clone()
+			s.Parent = SoundService
+			s:Play()
+			task.delay(s.TimeLength, function() s:Destroy() end)
+		end
 	elseif outcome == "lose" then
 		lbl.Text = "패배!";  lbl.TextColor3 = Color3.fromRGB(255, 90, 90)
+		-- 패배 SFX
+		local sfxLose = SFXF:FindFirstChild("BlockLose") :: Sound?
+		if sfxLose then
+			local s = sfxLose:Clone()
+			s.Parent = SoundService
+			s:Play()
+			task.delay(s.TimeLength, function() s:Destroy() end)
+		end
 	else
 		lbl.Text = "무승부!"; lbl.TextColor3 = Color3.fromRGB(255, 226, 0)
 	end
 	lbl.Visible = true
 	pulseLabel(lbl); shimmerText(lbl)
 
-	task.delay(1.5, function()
+	task.delay(2.5, function()
 		lbl.Visible = false
 		topImg.Visible = false
 		bottomImg.Visible = false
