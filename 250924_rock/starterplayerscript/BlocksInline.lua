@@ -4,6 +4,7 @@
 
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService") -- ✅ 추가
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -14,6 +15,27 @@ local startEvent  = RS:WaitForChild("TwoSeatStart") :: RemoteEvent
 local myId: number = player.UserId
 local opponentId: number? = nil
 local latestCounts: {[number]: number} = {}
+
+local IS_TOUCH: boolean = UserInputService.TouchEnabled
+local ICON_SIZE: number
+local LABEL_TEXT_SIZE: number
+local TOP_Y: number
+local BOTTOM_Y: number       -- ★ 추가
+
+if IS_TOUCH then
+	ICON_SIZE = 48
+	LABEL_TEXT_SIZE = 44
+	TOP_Y = 0.34            -- ⬆ 기존 0.26 → 0.34 (상대 행을 아래쪽으로)
+	BOTTOM_Y = 0.64         -- ⬇ 기존 0.70 → 0.64 (내 행을 위쪽으로)
+else
+	ICON_SIZE = 56
+	LABEL_TEXT_SIZE = 60
+	TOP_Y = 0.28            -- ⬆ 기존 0.18 → 0.28
+	BOTTOM_Y = 0.62         -- ⬇ 기존 0.70 → 0.62
+end
+
+local ROW_HEIGHT: number = math.max(ICON_SIZE, 56)
+------------------------------------------------------------
 
 -- ===== UI =====
 local function getBlockImageId(): string
@@ -41,70 +63,88 @@ local function ensureInlineLayer(): ScreenGui
 	return root
 end
 
--- 아이콘 56px, 숫자는 아이콘 오른쪽에 딱 붙게(8px)
+
+-- 아이콘/라벨을 상수 기반으로 배치하도록 수정
 local function makeRow(name: string, pos: UDim2): Frame
 	local root = ensureInlineLayer()
 	local row = root:FindFirstChild(name) :: Frame?
-	if row then
+
+	if not row then
+		row = Instance.new("Frame")
+		row.Name = name
+		row.AnchorPoint = Vector2.new(0.5, 0.5)
 		row.Position = pos
-		return row
+		row.Size = UDim2.fromOffset(200, ROW_HEIGHT) -- ✅ 행 높이 상수화
+		row.BackgroundTransparency = 1
+		row.BorderSizePixel = 0
+		row.Parent = root
+
+		local icon = Instance.new("ImageLabel")
+		icon.Name = "Icon"
+		icon.AnchorPoint = Vector2.new(0, 0.5)
+		icon.Position = UDim2.new(0, 0, 0.5, 0)            -- ✅ 세로 중앙 정렬
+		icon.Size = UDim2.fromOffset(ICON_SIZE, ICON_SIZE) -- ✅ 크기 상수화
+		icon.BackgroundTransparency = 1
+		icon.Image = getBlockImageId()
+		icon.Parent = row
+
+		local lbl = Instance.new("TextLabel")
+		lbl.Name = "Count"
+		lbl.AnchorPoint = Vector2.new(0, 0.5)
+		lbl.Position = UDim2.fromOffset(ICON_SIZE + 8, math.floor(ROW_HEIGHT/2)) -- ✅ 자동 위치
+		lbl.Size = UDim2.fromOffset(90, 34)
+		lbl.BackgroundTransparency = 1
+		lbl.TextXAlignment = Enum.TextXAlignment.Left
+		lbl.Font = Enum.Font.GothamBold
+		lbl.TextSize = LABEL_TEXT_SIZE -- ✅ 크기 상수화
+		lbl.TextColor3 = Color3.fromRGB(255, 230, 120)
+		lbl.Text = "0"
+
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 2
+		stroke.Color = Color3.new(0,0,0)
+		stroke.Parent = lbl
+
+		local grad = Instance.new("UIGradient")
+		grad.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255,245,200)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255,215,90)),
+			ColorSequenceKeypoint.new(1.0, Color3.fromRGB(255,245,200)),
+		})
+		grad.Parent = lbl
+		lbl.Parent = row
+	else
+		-- ✅ 이미 있는 행도 최신 상수로 업데이트
+		row.Position = pos
+		row.Size = UDim2.fromOffset(200, ROW_HEIGHT)
+
+		local icon = row:FindFirstChild("Icon") :: ImageLabel?
+		if icon then
+			icon.AnchorPoint = Vector2.new(0, 0.5)
+			icon.Position = UDim2.new(0, 0, 0.5, 0)
+			icon.Size = UDim2.fromOffset(ICON_SIZE, ICON_SIZE)
+		end
+
+		local lbl = row:FindFirstChild("Count") :: TextLabel?
+		if lbl then
+			lbl.AnchorPoint = Vector2.new(0, 0.5)
+			lbl.Position = UDim2.fromOffset(ICON_SIZE + 8, math.floor(ROW_HEIGHT/2))
+			lbl.TextSize = LABEL_TEXT_SIZE
+		end
 	end
-
-	row = Instance.new("Frame")
-	row.Name = name
-	row.AnchorPoint = Vector2.new(0.5, 0.5)
-	row.Position = pos
-	row.Size = UDim2.fromOffset(200, 56)
-	row.BackgroundTransparency = 1
-	row.BorderSizePixel = 0
-	row.Parent = root
-
-	local icon = Instance.new("ImageLabel")
-	icon.Name = "Icon"
-	icon.AnchorPoint = Vector2.new(0, 0.5)
-	icon.Position = UDim2.fromOffset(0, 28)
-	icon.Size = UDim2.fromOffset(56, 56)         -- ★ 더 크게
-	icon.BackgroundTransparency = 1
-	icon.Image = getBlockImageId()
-	icon.Parent = row
-
-	local lbl = Instance.new("TextLabel")
-	lbl.Name = "Count"
-	lbl.AnchorPoint = Vector2.new(0, 0.5)
-	lbl.Position = UDim2.fromOffset(56 + 8, 28)   -- ★ 아이콘 오른쪽 8px
-	lbl.Size = UDim2.fromOffset(90, 34)
-	lbl.BackgroundTransparency = 1
-	lbl.TextXAlignment = Enum.TextXAlignment.Left
-	lbl.TextYAlignment = Enum.TextYAlignment.Center
-	lbl.Font = Enum.Font.GothamBold
-	lbl.TextSize = 28
-	lbl.TextColor3 = Color3.fromRGB(255, 230, 120)
-	lbl.Text = "0"
-
-	local stroke = Instance.new("UIStroke")
-	stroke.Thickness = 2
-	stroke.Color = Color3.new(0,0,0)
-	stroke.Parent = lbl
-
-	local grad = Instance.new("UIGradient")
-	grad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255,245,200)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255,215,90)),
-		ColorSequenceKeypoint.new(1.0, Color3.fromRGB(255,245,200)),
-	})
-	grad.Parent = lbl
-	lbl.Parent = row
 
 	return row
 end
 
+
 local function ensureMyRow(): Frame
 	-- 보드가 0.82쯤이니 그 위 0.70, 좌측-중앙 느낌의 X=0.22
-	return makeRow("Bottom", UDim2.fromScale(0.22, 0.70))
+	return makeRow("Bottom", UDim2.fromScale(0.22, BOTTOM_Y))
 end
 
 local function ensureOppRow(): Frame
-	return makeRow("Top", UDim2.fromScale(0.22, 0.18))
+	-- ⬇ 모바일에서만 더 아래로
+	return makeRow("Top", UDim2.fromScale(0.22, TOP_Y))
 end
 
 local function setRowCount(which: "Top"|"Bottom", n: number)
