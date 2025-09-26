@@ -20,6 +20,10 @@ local interactionDistance = 5
 
 -- 우측 상단 카운트 미니 UI (클라 표시용)
 local maxVaccinations = 5
+-- 상단 우측 반응형 배치: 화면 높이의 4% 아래, 우측 16px 여백
+local RIGHT_MARGIN = 16
+local TOP_MARGIN_SCALE = 0.04
+
 
 local function ensureCountGui()
 	local pg = LocalPlayer:WaitForChild("PlayerGui")
@@ -28,56 +32,78 @@ local function ensureCountGui()
 		gui = Instance.new("ScreenGui")
 		gui.Name = "VaccinationCountGui"
 		gui.ResetOnSpawn = false
-		gui.IgnoreGuiInset = true
+		gui.IgnoreGuiInset = false -- 노치/상단바 안전영역 고려
+		gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 		gui.Parent = pg
+	else
+		gui.IgnoreGuiInset = false
+	end
 
-		local title = Instance.new("TextLabel")
+	-- 컨테이너: 상단-우측 고정 + 세로 비율 위치
+	local hud = gui:FindFirstChild("CounterHud") :: Frame
+	if not hud then
+		hud = Instance.new("Frame")
+		hud.Name = "CounterHud"
+		hud.AnchorPoint = Vector2.new(1, 0)
+		hud.Position = UDim2.new(1, -RIGHT_MARGIN, TOP_MARGIN_SCALE, 0)
+		hud.Size = UDim2.new(0, 180, 0, 0) -- 폭만 고정, 높이는 목록이 채움
+		hud.BackgroundTransparency = 1
+		hud.Parent = gui
+
+		local layout = Instance.new("UIListLayout")
+		layout.FillDirection = Enum.FillDirection.Vertical
+		layout.SortOrder = Enum.SortOrder.LayoutOrder
+		layout.VerticalAlignment = Enum.VerticalAlignment.Top
+		layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+		layout.Padding = UDim.new(0, 6)
+		layout.Parent = hud
+	else
+		-- 반복 호출 시에도 위치 유지
+		hud.AnchorPoint = Vector2.new(1, 0)
+		hud.Position = UDim2.new(1, -RIGHT_MARGIN, TOP_MARGIN_SCALE, 0)
+	end
+
+	-- Title
+	local title = hud:FindFirstChild("TitleLabel") :: TextLabel
+	if not title then
+		title = Instance.new("TextLabel")
 		title.Name = "TitleLabel"
-		title.Size = UDim2.new(0, 120, 0, 24)
-		title.Position = UDim2.new(1, -220, 0, 160)
+		title.LayoutOrder = 1
+		title.Size = UDim2.new(1, 0, 0, 24)
 		title.BackgroundTransparency = 1
 		title.TextColor3 = Color3.fromRGB(234,234,234)
-		title.Font = Enum.Font.SourceSansBold
+		title.Font = Enum.Font.GothamBlack
 		title.TextScaled = true
 		title.Text = "Vaccinations"
-		title.Parent = gui
+		title.Parent = hud
+	end
 
-		local count = Instance.new("TextLabel")
+	-- Count
+	local count = hud:FindFirstChild("CountLabel") :: TextLabel
+	if not count then
+		count = Instance.new("TextLabel")
 		count.Name = "CountLabel"
-		count.Size = UDim2.new(0, 120, 0, 40)
-		count.Position = UDim2.new(1, -220, 0, 200)
+		count.LayoutOrder = 2
+		count.Size = UDim2.new(1, 0, 0, 40)
 		count.BackgroundTransparency = 0.35
 		count.BackgroundColor3 = Color3.fromRGB(0,0,0)
 		count.TextColor3 = Color3.fromRGB(234,234,234)
-		count.Font = Enum.Font.SourceSansBold
+		count.Font = Enum.Font.GothamBlack
 		count.TextScaled = true
 		count.Text = "0/"..maxVaccinations
-		count.Parent = gui
+		count.Parent = hud
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 8)
+		corner.Parent = count
 	end
 
-	-- ▼ 이미 있던 GUI에도 동일 스타일 적용(중복 안전)
-	local title = gui:FindFirstChild("TitleLabel") :: TextLabel?
-	local count = gui:FindFirstChild("CountLabel") :: TextLabel?
+	-- 이미 존재해도 공통 스타일 재적용
+	title.TextStrokeTransparency = 0.6
+	title.TextStrokeColor3 = Color3.new(0,0,0)
 
-	if title then
-		title.Font = Enum.Font.GothamBlack          -- 더 두껍게
-		title.TextStrokeTransparency = 0.6          -- 살짝 두께감
-		title.TextStrokeColor3 = Color3.new(0,0,0)
-	end
-
-	if count then
-		count.Font = Enum.Font.GothamBlack          -- 더 두껍게
-		count.TextStrokeTransparency = 0.45         -- 테두리 얇게
-		count.TextStrokeColor3 = Color3.new(0,0,0)
-
-		-- 모서리 둥글게(테두리만 변경, 위치/크기 그대로)
-		local corner = count:FindFirstChildOfClass("UICorner")
-		if not corner then
-			corner = Instance.new("UICorner")
-			corner.Parent = count
-		end
-		(corner :: UICorner).CornerRadius = UDim.new(0, 8)
-	end
+	count.TextStrokeTransparency = 0.45
+	count.TextStrokeColor3 = Color3.new(0,0,0)
 
 	return gui, count
 end

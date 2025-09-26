@@ -16,20 +16,24 @@ local myId: number = player.UserId
 local opponentId: number? = nil
 local latestCounts: {[number]: number} = {}
 
--- 디바이스별 UI 스케일 상수 -----------------------------
 local IS_TOUCH: boolean = UserInputService.TouchEnabled
 local ICON_SIZE: number
 local LABEL_TEXT_SIZE: number
 local TOP_Y: number
+local BOTTOM_Y: number       -- ★ 추가
+
 if IS_TOUCH then
-	ICON_SIZE = 48          -- 모바일에서 작게
+	ICON_SIZE = 48
 	LABEL_TEXT_SIZE = 44
-	TOP_Y = 0.26            -- ⬇ 기존 0.18보다 조금 아래로 (채팅UI 피함)
+	TOP_Y = 0.34            -- ⬆ 기존 0.26 → 0.34 (상대 행을 아래쪽으로)
+	BOTTOM_Y = 0.64         -- ⬇ 기존 0.70 → 0.64 (내 행을 위쪽으로)
 else
-	ICON_SIZE = 56          -- PC/콘솔은 기존 느낌 유지
+	ICON_SIZE = 56
 	LABEL_TEXT_SIZE = 60
-	TOP_Y = 0.18
+	TOP_Y = 0.28            -- ⬆ 기존 0.18 → 0.28
+	BOTTOM_Y = 0.62         -- ⬇ 기존 0.70 → 0.62
 end
+
 local ROW_HEIGHT: number = math.max(ICON_SIZE, 56)
 ------------------------------------------------------------
 
@@ -135,7 +139,7 @@ end
 
 local function ensureMyRow(): Frame
 	-- 보드가 0.82쯤이니 그 위 0.70, 좌측-중앙 느낌의 X=0.22
-	return makeRow("Bottom", UDim2.fromScale(0.22, 0.70))
+	return makeRow("Bottom", UDim2.fromScale(0.22, BOTTOM_Y))
 end
 
 local function ensureOppRow(): Frame

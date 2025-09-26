@@ -5,6 +5,7 @@
 -- ===== Services / Constants =====
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
+local VictoryFX = require(RS:WaitForChild("VictoryFX"))
 local TweenService = game:GetService("TweenService")
 local SoundService = game:GetService("SoundService")
 local CAS = game:GetService("ContextActionService")
@@ -14,6 +15,8 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local myUserId = player.UserId
 local oppUserId: number? = nil
+
+local didShowStartOnce = false
 
 -- Hands 상태 모듈(안전 로드)
 local HandsState
@@ -192,7 +195,7 @@ local function ensureBigTextGui(pGui: PlayerGui): TextLabel
 		lbl.TextColor3 = Color3.fromRGB(255, 255, 0)
 		lbl.TextStrokeColor3 = Color3.fromRGB(255, 0, 0)
 		lbl.TextStrokeTransparency = 0.2
-		lbl.Text = "게임 시작!"
+		lbl.Text = "Game Start!"
 		lbl.ZIndex = 1000
 		
 		local stroke = Instance.new("UIStroke")
@@ -220,8 +223,8 @@ local function flashStartText(pGui: PlayerGui, text: string?): number
 	if strokeObj then
 		TweenService:Create(strokeObj, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Transparency = 0}):Play()
 	end
-	local hold = 0.7
-	task.wait(0.2 + hold)
+
+	task.wait(0.2)
 	local tOut = TweenService:Create(lbl, TweenInfo.new(0.35, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {TextTransparency = 1})
 	tOut:Play()
 	if strokeObj then
@@ -229,7 +232,7 @@ local function flashStartText(pGui: PlayerGui, text: string?): number
 	end
 	tOut.Completed:Wait()
 	lbl.Visible = false
-	return 0.2 + hold + 0.35
+	return 0.2 + 0.35
 end
 
 -- ===== Waiting GUI (최상단 + 폴백) =====
@@ -250,7 +253,7 @@ local function ensureWaitingGui(): (ScreenGui, TextLabel)
 	lbl.AnchorPoint = Vector2.new(0.5, 0.5)
 	lbl.Position = UDim2.fromScale(0.5, 0.85)
 	lbl.Size = UDim2.fromOffset(600, 60)
-	lbl.Text = "다른 플레이어를 기다리는 중…"
+	lbl.Text = "Waiting for players…"
 	lbl.TextScaled = true
 	lbl.BackgroundTransparency = 0.3
 	lbl.BackgroundColor3 = Color3.new(0, 0, 0)
@@ -459,7 +462,48 @@ local function setButtonsLocked(state: boolean)
 	end
 end
 
--- ===== Result popup =====
+-- ===== Result icon responsive styling =====
+local BASE_SHORT_EDGE = 1179  -- iPhone 14 Pro 세로 기준
+
+
+local function _vpShort()
+	local cam = workspace.CurrentCamera
+	local vs = cam and cam.ViewportSize or Vector2.new(BASE_SHORT_EDGE, 2556)
+	return math.min(vs.X, vs.Y)
+end
+
+local function _resultPx()
+	-- 기준 140px, 기기 작으면 축소 / 크면 과대 확장 방지
+	local px = math.floor(140 * _vpShort() / BASE_SHORT_EDGE)
+	return math.clamp(px, 130, 150)
+end
+
+local function styleResultImage(img: ImageLabel?)
+	if not (img and img.Parent) then return end
+
+	-- 테두리(검은색) 제거
+	for _, ch in ipairs(img:GetChildren()) do
+		if ch:IsA("UIStroke") then ch:Destroy() end
+	end
+
+	-- 비율 고정 + 원본비 유지
+	img.ScaleType = Enum.ScaleType.Fit
+	local ar = img:FindFirstChildOfClass("UIAspectRatioConstraint") or Instance.new("UIAspectRatioConstraint")
+	ar.AspectRatio = 1
+	ar.DominantAxis = Enum.DominantAxis.Width
+	ar.Parent = img
+
+	-- 최대 크기 캡 + 즉시 스냅
+	local cap = img:FindFirstChildOfClass("UISizeConstraint") or Instance.new("UISizeConstraint")
+	local px = _resultPx()
+	cap.MaxSize = Vector2.new(px, px)
+	cap.MinSize = Vector2.new(0, 0)
+	cap.Parent = img
+	img.Size = UDim2.fromOffset(px, px)
+end
+
+
+-- 기존 함수 바디 교체
 local function ensurePopImage(which: "top"|"bottom"): ImageLabel
 	local root = ensureLayer("RPS_Pop")
 	local name = (which == "top") and "Top" or "Bottom"
@@ -469,17 +513,15 @@ local function ensurePopImage(which: "top"|"bottom"): ImageLabel
 		img.Name = name
 		img.AnchorPoint = Vector2.new(0.5, 0.5)
 		img.Position = UDim2.fromScale(0.5, (which == "top") and 0.22 or 0.82)
-		img.Size = UDim2.fromOffset(220, 220)
 		img.BackgroundTransparency = 1
 		img.Visible = false
-		local stroke = Instance.new("UIStroke")
-		stroke.Thickness = 2
-		stroke.Color = Color3.new(0,0,0)
-		stroke.Parent = img
 		img.Parent = root
 	end
+	-- ★ 생성/재사용 시마다 스타일 보증
+	styleResultImage(img)
 	return img
 end
+
 
 -- Hands 스킨 → 기본보드 폴백
 local function pickHandImage(uid: number?, choice: "paper"|"rock"|"scissors"): string
@@ -518,29 +560,32 @@ local function showResult(myChoice: string?, oppChoice: string?, outcome: string
 	local bottomImg = ensurePopImage("bottom")
 	local topImg    = ensurePopImage("top")
 
-	-- 내 아이콘
+	-- 아이콘 설정 직후에 두 줄 추가
 	if myChoice then
 		local img = pickHandImage(myUserId, myChoice :: any)
 		bottomImg.Image = img
 		bottomImg.Visible = (img ~= "")
+		styleResultImage(bottomImg)         -- ★ 추가
 	else
 		bottomImg.Visible = false
 	end
 
-	-- 상대 아이콘
 	if oppChoice then
 		local img = pickHandImage(oppUserId, oppChoice :: any)
 		topImg.Image = img
 		topImg.Visible = (img ~= "")
+		styleResultImage(topImg)            -- ★ 추가
 	else
 		topImg.Visible = false
 	end
+	
 
 	-- 결과 텍스트
 	local lbl = ensureBigLabel("RPS_Result")
 	lbl.TextTransparency = 0
 	if outcome == "win" then
-		lbl.Text = "승리!";  lbl.TextColor3 = Color3.fromRGB(80, 255, 120)
+		lbl.Text = "Win!";  lbl.TextColor3 = Color3.fromRGB(80, 255, 120)
+		VictoryFX.play(player, "VICTORY!")
 		-- 승리 SFX
 		local sfxWin = SFXF:FindFirstChild("BlockWin") :: Sound?
 		if sfxWin then
@@ -550,7 +595,7 @@ local function showResult(myChoice: string?, oppChoice: string?, outcome: string
 			task.delay(s.TimeLength, function() s:Destroy() end)
 		end
 	elseif outcome == "lose" then
-		lbl.Text = "패배!";  lbl.TextColor3 = Color3.fromRGB(255, 90, 90)
+		lbl.Text = "Lose!";  lbl.TextColor3 = Color3.fromRGB(255, 90, 90)
 		-- 패배 SFX
 		local sfxLose = SFXF:FindFirstChild("BlockLose") :: Sound?
 		if sfxLose then
@@ -560,7 +605,7 @@ local function showResult(myChoice: string?, oppChoice: string?, outcome: string
 			task.delay(s.TimeLength, function() s:Destroy() end)
 		end
 	else
-		lbl.Text = "무승부!"; lbl.TextColor3 = Color3.fromRGB(255, 226, 0)
+		lbl.Text = "Draw!"; lbl.TextColor3 = Color3.fromRGB(255, 226, 0)
 	end
 	lbl.Visible = true
 	pulseLabel(lbl); shimmerText(lbl)
@@ -570,6 +615,20 @@ local function showResult(myChoice: string?, oppChoice: string?, outcome: string
 		topImg.Visible = false
 		bottomImg.Visible = false
 	end)
+end
+
+do
+	local cam = workspace.CurrentCamera
+	if cam then
+		cam:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+			local pop = playerGui:FindFirstChild("RPS_Pop") :: ScreenGui?
+			if not pop then return end
+			local top = pop:FindFirstChild("Top") :: ImageLabel?
+			local bottom = pop:FindFirstChild("Bottom") :: ImageLabel?
+			styleResultImage(top)
+			styleResultImage(bottom)
+		end)
+	end
 end
 
 -- ===== Camera =====
@@ -605,22 +664,12 @@ uiEvent.OnClientEvent:Connect(function(action: string)
 	end
 end)
 
+
 roundStart.OnClientEvent:Connect(function(roundNum: number, duration: number)
 	currentRound = roundNum
 	selected = nil
 
-	-- 보드 표시 규칙
-	local br = playerGui:FindFirstChild("board_runtime") :: ScreenGui?
-	if roundNum == 1 then
-		if br then br.Enabled = false end
-		locked = true
-	else
-		ensureBoard()
-		if boardGui then boardGui.Enabled = true end
-		setButtonsLocked(false)
-	end
-
-	-- 팝업 초기화
+	-- 팝업(결과 아이콘) 초기화는 공통으로 먼저
 	do
 		local pop = playerGui:FindFirstChild("RPS_Pop") :: ScreenGui?
 		if pop then
@@ -631,8 +680,35 @@ roundStart.OnClientEvent:Connect(function(roundNum: number, duration: number)
 		end
 	end
 
-	task.spawn(function() runCountdown(math.floor(duration)) end)
+	local br = playerGui:FindFirstChild("board_runtime") :: ScreenGui?
+
+	if roundNum == 1 then
+		-- 라운드1: 보드 감추고 카운트다운만 진행 (Game Start 표시 금지)
+		if br then br.Enabled = false end
+		locked = true
+
+		task.spawn(function()
+			runCountdown(math.floor(duration))
+		end)
+
+	else
+		-- 라운드2 이상: 보드 활성화 후, "Game Start" 1회 표시 -> 그 다음 카운트다운
+		ensureBoard()
+		if boardGui then boardGui.Enabled = true end
+		setButtonsLocked(false)
+
+		task.spawn(function()
+			if not didShowStartOnce then
+				-- Game Start를 보드가 보이는 타이밍에 1회만 노출
+				flashStartText(playerGui, "Game Start!")
+				didShowStartOnce = true
+			end
+			-- Game Start 표시가 끝난 뒤 카운트다운 시작
+			runCountdown(math.floor(duration))
+		end)
+	end
 end)
+
 
 startEvent.OnClientEvent:Connect(function(seatA: Seat, seatB: Seat, p1Id: number?, p2Id: number?)
 	-- 게임 시작 演出
@@ -648,8 +724,11 @@ startEvent.OnClientEvent:Connect(function(seatA: Seat, seatB: Seat, p1Id: number
 
 	local targetCF, targetFov = computeCameraTarget(seatA, seatB)
 	tweenCameraTo(targetCF, targetFov, 0.6)
+	
+	-- ★ 변경: 시작 시에는 "Game Start" 텍스트를 표시하지 않음
+	didShowStartOnce = false  -- 새 매치 시작마다 초기화
 
-	local _total = flashStartText(playerGui, "게임 시작!")
+	--local _total = flashStartText(playerGui, "Start!")
 	if SFX.Spring.IsPlaying then SFX.Spring:Stop() end
 	SFX.Start.TimePosition = 0
 	SFX.Start:Play()
@@ -672,11 +751,11 @@ cancelledEv.OnClientEvent:Connect(function(_reason: string)
 	SFX.Spring.TimePosition = 0
 	SFX.Spring:Play()
 	CAS:UnbindAction("RPS_CancelAction")
+	didShowStartOnce = false
 end)
 
 resultEv.OnClientEvent:Connect(function(roundNum: number, myChoice: string?, oppChoice: string?, outcome: string)
 	if roundNum == 1 then return end
 	if roundNum ~= currentRound then return end
 	showResult(myChoice, oppChoice, outcome)
-	if SFX.Result then SFX.Result.TimePosition = 0; SFX.Result:Play() end
 end)

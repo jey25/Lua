@@ -13,13 +13,16 @@ event.OnClientEvent:Connect(function()
 	screenGui.Parent = player:WaitForChild("PlayerGui")
 
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1,0,1,0)
+	label.Size = UDim2.new(0, 200, 0, 50)
 	label.BackgroundTransparency = 1
-	label.Text = "게임 종료"
+	label.Text = "Game End"
 	label.TextScaled = true
-	label.TextColor3 = Color3.new(1,0,0)
+	label.Font = Enum.Font.FredokaOne
+	label.TextColor3 = Color3.fromRGB(255, 255, 0)
+	label.TextStrokeColor3 = Color3.fromRGB(255, 0, 0)
+	label.TextStrokeTransparency = 0.2
 	label.Parent = screenGui
-
+	
 	task.wait(2) -- 2초 후
 
 	-- 2) "나가기" 안내창 띄우기
@@ -34,7 +37,7 @@ event.OnClientEvent:Connect(function()
 	local title = Instance.new("TextLabel")
 	title.Size = UDim2.new(1,0,0.6,0)
 	title.BackgroundTransparency = 1
-	title.Text = "게임이 종료되었습니다.\nRoblox 홈 화면으로 나가주세요."
+	title.Text = "Game End\nIf there is no block, recharge when reconnecting"
 	title.TextScaled = true
 	title.TextColor3 = Color3.new(1,1,1)
 	title.Parent = frame
@@ -42,7 +45,7 @@ event.OnClientEvent:Connect(function()
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(0.6,0,0.3,0)
 	btn.Position = UDim2.new(0.2,0,0.65,0)
-	btn.Text = "확인"
+	btn.Text = "OK"
 	btn.TextScaled = true
 	btn.BackgroundColor3 = Color3.fromRGB(200,0,0)
 	btn.TextColor3 = Color3.new(1,1,1)
