@@ -219,14 +219,16 @@ local function ensureCharAttach(character: Model, attachName: string, offset: Ve
 	return aChar
 end
 
+-- 안전 Follow 제약 패치
 local function addFollowConstraintWithOffset(pet: Model, character: Model, offset: Vector3, attachName: string)
 	local petPP = ensurePrimaryPart(pet)
 	local hrp = character:FindFirstChild("HumanoidRootPart") :: BasePart
 	if not (petPP and hrp) then return end
 
+	-- 기존 Align/Attachment 제거
 	cleanupPetConstraints(pet)
-	petPP:SetNetworkOwner(nil)
 
+	-- Attachments 생성
 	local aPet = Instance.new("Attachment")
 	aPet.Name = "PetAttach"
 	aPet.Parent = petPP
@@ -239,6 +241,7 @@ local function addFollowConstraintWithOffset(pet: Model, character: Model, offse
 	local aChar = ensureCharAttach(character, attachName, offset)
 	if not aChar then return end
 
+	-- AlignPosition
 	local ap = Instance.new("AlignPosition")
 	ap.Attachment0 = aPet
 	ap.Attachment1 = aChar
@@ -246,40 +249,43 @@ local function addFollowConstraintWithOffset(pet: Model, character: Model, offse
 	ap.RigidityEnabled = false
 	ap.MaxForce = 1e6
 	ap.Responsiveness = 80
+	ap.Enabled = false
 	ap.Parent = petPP
 
+	-- AlignOrientation
 	local ao = Instance.new("AlignOrientation")
 	ao.Attachment0 = aPet
 	ao.Attachment1 = aChar
 	ao.RigidityEnabled = false
 	ao.MaxTorque = 1e6
 	ao.Responsiveness = 60
+	ao.Enabled = false
 	ao.Parent = petPP
+
+	-- 초기 위치 안전 이동
+	pet:PivotTo(hrp.CFrame * CFrame.new(offset))
+
+	-- Align 활성화
+	ap.Enabled = true
+	ao.Enabled = true
 end
 
-
-
--- 완전 교체용: ServerScriptService/PetManager.server.lua 내 spawnPet
+-- spawnPet 안전 패치 (기존 이름 유지)
 local function spawnPet(player: Player, petName: string)
-
 	if alreadySpawned(player, petName) then return end
 	local character = player.Character or player.CharacterAdded:Wait()
 	local template = petModels:FindFirstChild(petName)
-
 	if not template then
 		warn("Pet model not found: " .. tostring(petName))
 		return
 	end
 
-	-- 슬롯/기본 오프셋 계산 (기존 유지)
 	local slot = nextSlot(player)
 	local offset = getFollowOffsetForSlot(slot)
 
-	-- ▼ 지면 밀착: 모델 Attribute > 전역 상수 > 기본값(-0.7) 우선순위
 	local attrNudge = template:GetAttribute("GroundNudgeY")
-	local globalNudge = (typeof(PET_GROUND_NUDGE_Y) == "number") and PET_GROUND_NUDGE_Y or nil
 	local nudgeY = (typeof(attrNudge) == "number" and attrNudge)
-		or (globalNudge)
+		or (typeof(PET_GROUND_NUDGE_Y) == "number" and PET_GROUND_NUDGE_Y)
 		or -0.7
 	offset = offset + Vector3.new(0, nudgeY, 0)
 
@@ -291,8 +297,6 @@ local function spawnPet(player: Player, petName: string)
 	pet:SetAttribute("OwnerUserId", player.UserId)
 	pet:SetAttribute("PetId", petId)
 	pet:SetAttribute("Slot", slot)
-
-	-- 오프셋/부가정보 Attribute 저장 (재부착시 동일 높이 유지)
 	pet:SetAttribute("OffsetX", offset.X)
 	pet:SetAttribute("OffsetY", offset.Y)
 	pet:SetAttribute("OffsetZ", offset.Z)
@@ -301,15 +305,15 @@ local function spawnPet(player: Player, petName: string)
 
 	pet.Parent = workspace
 
-	-- 머리말풍선/HP바 등 GUI 템플릿 부착
+	-- GUI 템플릿 부착
 	local petGui = petGuiTemplate:Clone()
 	petGui.Parent = pet
 
-	-- 모델을 PrimaryPart 기준으로 단단히 묶고 물리 설정
+	-- 모델 weld + 물리 세팅
 	weldModelToPrimary(pet)
 	local pp = ensurePrimaryPart(pet)
 	if not pp then
-		warn("No PrimaryPart after weld for pet:", petName)
+		warn("No PrimaryPart for pet: " .. petName)
 		pet:Destroy()
 		return
 	end
@@ -317,18 +321,18 @@ local function spawnPet(player: Player, petName: string)
 	pp.CanCollide = false
 	pp.Massless = true
 
-	-- 최초 위치: 캐릭터 뒤/좌우 offset 위치
+	-- 최초 위치
 	local hrp = character:WaitForChild("HumanoidRootPart")
 	pet:PivotTo(hrp.CFrame * CFrame.new(offset))
 
-	-- 따라가기 제약(AlignPosition/Orientation) 생성 + 오프셋 반영
+	-- Follow 제약
 	addFollowConstraintWithOffset(pet, character, offset, attachName)
 
-	-- 세션 보유 리스트에 등록
+	-- PlayerPets 등록
 	local list = getOrInitPetList(player)
 	table.insert(list, { pet = pet, slot = slot, offset = offset, attachName = attachName })
 
-	-- 캐릭터 리스폰 시 재부착(저장된 오프셋 그대로 사용)
+	-- 캐릭터 리스폰 시 재부착
 	player.CharacterAdded:Connect(function(newChar)
 		task.defer(function()
 			if pet and pet.Parent then
@@ -343,9 +347,9 @@ local function spawnPet(player: Player, petName: string)
 		end)
 	end)
 
-	-- 펫별 퀘스트 시작 신호
 	PetQuestEvent:FireClient(player, "StartQuest", { petName = petName, petId = petId })
 end
+
 
 
 

@@ -9,7 +9,7 @@ local player = Players.LocalPlayer
 local event  = ReplicatedStorage:WaitForChild("ClockUpdateEvent") :: RemoteEvent
 
 -- ===== Tweakable (아이폰 14 Pro 기준) =====
-local TOP_MARGIN_PX     = 2     -- 상단 여백(안전영역 아래에서 추가)
+local TOP_MARGIN_PX     = 10     -- 상단 여백(안전영역 아래에서 추가)
 local BASE_SHORT_EDGE   = 1179   -- iPhone 14 Pro 세로모드의 짧은 변(기준 스케일)
 local MIN_SCALE         = 0.82   -- 더 작은 기기에서 축소 한계
 local MAX_SCALE         = 1.00   -- 너무 커지지 않게 상한
@@ -27,9 +27,10 @@ end
 local gui = Instance.new("ScreenGui")
 gui.Name = "ClockGui"
 gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = false -- 상단 안전영역(노치/상단바) 자동 회피
+gui.IgnoreGuiInset = true -- ← 최상단까지 붙이려면 true
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = player:WaitForChild("PlayerGui")
+
 
 -- 프레임(우측 상단 고정)
 local frame = Instance.new("Frame")

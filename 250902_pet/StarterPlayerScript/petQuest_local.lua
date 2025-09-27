@@ -16,6 +16,38 @@ local WangCancelClick = RemoteFolder:WaitForChild("WangCancelClick")
 -- Billboard GUI 이름 (펫 모델 하위에 붙는 Gui 이름)
 local PET_GUI_NAME = "petGui"
 
+-- === HUD 크기/위치 튜닝(좌측 상단, 반응형 축소) ===
+local HUD_LEFT_PX      = 12
+local HUD_TOP_PX       = 10
+local BASE_SHORT_EDGE  = 1179  -- iPhone 14 Pro 기준
+local HUD_MIN_SCALE    = 0.80
+local HUD_MAX_SCALE    = 1.00
+
+
+local function hudScale(): number
+	local cam = workspace.CurrentCamera
+	local vs  = cam and cam.ViewportSize or Vector2.new(BASE_SHORT_EDGE, 2556)
+	local short = math.min(vs.X, vs.Y)
+	return math.clamp(short / BASE_SHORT_EDGE, HUD_MIN_SCALE, HUD_MAX_SCALE)
+end
+
+local function applyQuestHudLayout(bg: Frame, label: TextLabel)
+	local s = hudScale()
+	local width  = math.floor(260 * s)
+	local height = math.floor(40  * s)
+
+	bg.Size     = UDim2.new(0, width, 0, height)
+
+	-- 기존: UDim2.new(0, HUD_LEFT_PX, 0, HUD_TOP_PX)
+	-- 변경: 왼쪽(0) + 약간 여백, 세로는 화면 0.25 지점쯤 (= 위에서 25%)
+	bg.Position = UDim2.new(0, HUD_LEFT_PX, 0.25, 0)
+
+	label.Size     = UDim2.new(1, -16, 1, 0)
+	label.Position = UDim2.new(0, 8, 0, 0)
+end
+
+
+
 -- ========= [펫 Billboard 탐색 및 관리] =========
 local bubble: BillboardGui? = nil
 local textLabel: TextLabel? = nil
@@ -135,7 +167,7 @@ local function getOrCreateHud()
 		screenGui = Instance.new("ScreenGui")
 		screenGui.Name = "PetHUD"
 		screenGui.ResetOnSpawn = false
-		screenGui.IgnoreGuiInset = true
+		screenGui.IgnoreGuiInset = false  -- (변경) 상단 안전영역 존중
 		screenGui.Parent = playerGui
 	end
 
@@ -143,8 +175,8 @@ local function getOrCreateHud()
 	if not bg then
 		bg = Instance.new("Frame")
 		bg.Name = "BG"
-		bg.Size = UDim2.new(0, 320, 0, 52)
-		bg.Position = UDim2.new(0, 20, 0.4, 0)
+		bg.Size = UDim2.new(0, 260, 0, 40)           -- (변경) 기본 크기 축소
+		bg.Position = UDim2.new(0, 12, 0, 10)        -- (변경) 좌측 상단으로 올림
 		bg.BackgroundColor3 = Color3.fromRGB(0,0,0)
 		bg.BackgroundTransparency = 0.35
 		bg.BorderSizePixel = 0
@@ -154,6 +186,12 @@ local function getOrCreateHud()
 		corner.CornerRadius = UDim.new(0, 10)
 		corner.Parent = bg
 	end
+	
+	-- (선택) 좀 더 소프트하게 보이도록 스트로크/패딩 추가
+	local stroke = bg:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke")
+	stroke.Thickness = 1; stroke.Transparency = 0.85; stroke.Color = Color3.fromRGB(255,255,255); stroke.Parent = bg
+	local pad = bg:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0,8); pad.PaddingRight = UDim.new(0,8); pad.Parent = bg
 
 	local label = bg:FindFirstChild("Text") :: TextLabel
 	if not label then
@@ -165,11 +203,29 @@ local function getOrCreateHud()
 		label.TextColor3 = Color3.fromRGB(234, 234, 234)
 		label.Font = Enum.Font.SourceSansBold
 		label.TextScaled = true
+		label.TextScaled = true                          -- 유지
+		local maxSz = label:FindFirstChildOfClass("UITextSizeConstraint") or Instance.new("UITextSizeConstraint")
+		maxSz.MaxTextSize = 22                           -- (추가) 너무 커지는 거 방지
+		maxSz.MinTextSize = 14                           -- (선택) 너무 작아지지 않게
+		maxSz.Parent = label
 		label.TextXAlignment = Enum.TextXAlignment.Left
 		label.Text = ""                   -- ✅ 기본 텍스트 없음
 		label.Parent = bg
 	end
+	
+	-- getOrCreateHud() 맨 끝쯤에 추가
+	applyQuestHudLayout(bg, label)
+
+	local cam = workspace.CurrentCamera
+	if cam and not bg:GetAttribute("HudLayoutHooked") then
+		bg:SetAttribute("HudLayoutHooked", true)
+		cam:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+			applyQuestHudLayout(bg, label)
+		end)
+	end
+	
 	return screenGui, bg, label
+	
 end
 
 
@@ -208,14 +264,15 @@ local function showMarkerOn(target: Instance)
 	local bb = Instance.new("BillboardGui")
 	bb.Name = "QuestMarker_Local"
 	bb.AlwaysOnTop = true
-	bb.Size = UDim2.new(0, 52, 0, 52)
+	bb.Size = UDim2.new(0, 44, 0, 44)        -- (기존 52→44)
+	
 
 	local offsetY = 4
 	if target:IsA("Model") then
 		local ok, size = pcall(function() return (target :: Model):GetExtentsSize() end)
 		if ok and size then offsetY = math.max(3, size.Y * 0.55) end
 	end
-	bb.StudsOffsetWorldSpace = Vector3.new(0, offsetY, 0)
+	bb.StudsOffsetWorldSpace = Vector3.new(0, offsetY + 1.0, 0)  -- (조금 더 위)
 	bb.Parent = base
 
 	local tl = Instance.new("TextLabel")
