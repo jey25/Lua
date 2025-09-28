@@ -28,20 +28,20 @@ end
 local QUEST_CONFIG = {
 	["nightwatch_zoechickie"] = {
 		Distance = 20,
-		BubbleText = "거기 오빠, 시원한 마실 거 좀 가지고 있어?",
+		BubbleText = "거기, 시원한 마실 거 좀 가지고 있어?",
 		Rewards = {
 			Exp = 150,
 			--Coin = 20,
 			Bubble = "고마워! 혹시 검은 지붕 교회 앞 건물 가 봤어?"
 		}
 	},
-	["QuestNPC2"] = {
+	["Crimson"] = {
 		Distance = 20,
 		BubbleText = "너, 좋은 걸 가지고 있는 것 같은데?",
 		Rewards = {
 			Exp = 150,
 			--Coin = 50,
-			Bubble = "캬~ 꿀맛인데? 비밀인데, 경찰서 무기 관리가 허술하더라고"
+			Bubble = "꿀맛인데? 이건 비밀인데, 경찰서 무기 관리가 허술하더라고"
 		}
 	},
 }
@@ -82,10 +82,10 @@ local function giveRewards(player: Player, npcName: string)
 		if npcModel and npcModel:FindFirstChild("Head") then
 			local bubble = BubbleTemplate:Clone()
 			bubble.Adornee = npcModel.Head
-			bubble.StudsOffset = Vector3.new(0, 3, 0) -- 머리 위로 띄우기
+			bubble.StudsOffset = Vector3.new(0, 4, 0) -- 머리 위로 띄우기
 			bubble.Parent = npcModel.Head
 			bubble.TextLabel.Text = rewards.Bubble
-			game:GetService("Debris"):AddItem(bubble, 3)
+			game:GetService("Debris"):AddItem(bubble, 4)
 		end
 	end
 
@@ -137,7 +137,7 @@ for npcName, cfg in pairs(QUEST_CONFIG) do
 								bubble.TextLabel.Text = cfg.BubbleText
 
 								-- 일정 시간 후 제거
-								task.delay(3, function()
+								task.delay(5, function()
 									if bubble and bubble.Parent then
 										bubble:Destroy()
 									end
