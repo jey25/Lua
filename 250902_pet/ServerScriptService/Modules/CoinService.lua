@@ -13,6 +13,10 @@ CoinUpdate.Name = "CoinUpdate"
 local CoinPopupEvent = Remotes:FindFirstChild("CoinPopupEvent") or Instance.new("RemoteEvent", Remotes)
 CoinPopupEvent.Name = "CoinPopupEvent"
 
+-- ✅ 추가: 클라이언트 최초 동기화를 위한 RemoteFunction
+local GetCoinState = Remotes:FindFirstChild("GetCoinState") or Instance.new("RemoteFunction", Remotes)
+GetCoinState.Name = "GetCoinState"
+
 local PlayerDataService = require(script.Parent:WaitForChild("PlayerDataService"))
 
 local CoinService = {}
@@ -118,8 +122,18 @@ function CoinService:OnLevelChanged(player: Player, a: number, b: number?)
 			-- Award 내부에서 CoinPopupEvent를 쏘므로 머리 위 아이콘 표시됨
 		end
 	end
+
+	local balance = PlayerDataService:GetCoins(player)
+	fireUpdate(player, balance)
 end
 
+-- ✅ 추가: 최초 동기화용 RemoteFunction 응답 (balance, maxBalance)
+GetCoinState.OnServerInvoke = function(player: Player)
+	CoinService:_ensureLoaded(player)
+	local balance = PlayerDataService:GetCoins(player)
+	local maxBalance = CoinService:GetMaxFor(player)
+	return balance, maxBalance
+end
 
 -- PlayerAdded에서 초기 코인 동기화
 Players.PlayerAdded:Connect(function(plr)

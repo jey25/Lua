@@ -39,7 +39,7 @@ local function createHUD()
 	-- 교체
 	dock.AnchorPoint = Vector2.new(0, 1)
 	dock.Position    = UDim2.new(0, 8, 1, -12)          -- 좌하단 + 여백
-	
+
 	dock.Size = UDim2.new(1, 0, 0, 40)
 	dock.Parent = screen
 
@@ -50,9 +50,9 @@ local function createHUD()
 	list.SortOrder = Enum.SortOrder.LayoutOrder
 	list.Padding = UDim.new(0, 12)
 	list.Parent = dock
-	
+
 	-- ▼ 코인 라벨 (Level 왼쪽)
-	
+
 	local coinLabel = Instance.new("TextLabel")
 	coinLabel.Name = "CoinLabel"
 	coinLabel.BackgroundTransparency = 0.1
@@ -60,16 +60,22 @@ local function createHUD()
 	coinLabel.TextColor3 = Color3.fromRGB(255, 255, 180)
 	coinLabel.TextScaled = true
 	coinLabel.Font = Enum.Font.GothamBold
-	coinLabel.Text = "0"
-	coinLabel.Size = UDim2.fromOffset(90, 36)
+	-- (교체) coinLabel 초기값 및 사이즈
+	coinLabel.Text = "0/0"         -- ← 숫자/최대 표기
+	coinLabel.Size = UDim2.fromOffset(110, 36)  -- 90 → 110 (자리 확보)
 	coinLabel.LayoutOrder = 0
 	coinLabel.Parent = dock
 	coinLabel.TextXAlignment = Enum.TextXAlignment.Right
 	coinLabel.AnchorPoint = Vector2.new(0.5, 0.5)
 	coinLabel.Position = UDim2.new(0.52, 0, 0.5, 0) -- 0.5 → 0.52로 조정
 	local coinCorner = Instance.new("UICorner"); coinCorner.CornerRadius = UDim.new(0,8); coinCorner.Parent = coinLabel
+	-- (추가 권장) 너무 커지지 않게 텍스트 제한
+	local coinTS = Instance.new("UITextSizeConstraint")
+	coinTS.MinTextSize = 12
+	coinTS.MaxTextSize = 28
+	coinTS.Parent = coinLabel
 
-	
+
 	-- 아이콘(템플릿 복제)
 	local coinClone = CoinTpl:Clone() :: ImageLabel
 	coinClone.Name = "CoinIcon"
@@ -96,7 +102,7 @@ local function createHUD()
 	levelLabel.TextXAlignment = Enum.TextXAlignment.Right
 	levelLabel.ClipsDescendants = true
 	local levelCorner = Instance.new("UICorner"); levelCorner.CornerRadius = UDim.new(0,8); levelCorner.Parent = levelLabel
-	
+
 
 	-- 아이콘(템플릿 복제)
 	local starClone = StarTpl:Clone() :: ImageLabel
@@ -107,7 +113,7 @@ local function createHUD()
 	starClone.Position = UDim2.new(0, 10, 0.5, 0)  -- 왼쪽으로 밀착, 세로 중앙
 	starClone.ZIndex = 3
 	starClone.Parent = levelLabel
-	
+
 
 	-- 가운데: EXP 바
 	local barFrame = Instance.new("Frame")
@@ -154,7 +160,7 @@ local function createHUD()
 	affFrame.ClipsDescendants = true         -- 모서리 밖 삐짐 방지
 	affFrame.Parent = dock
 	local affCorner = Instance.new("UICorner"); affCorner.CornerRadius = UDim.new(0, 8); affCorner.Parent = affFrame
-	
+
 	-- ☆ 텍스트/필 전용 컨테이너 (패딩은 여기에만)
 	local inner = Instance.new("Frame")
 	inner.Name = "Inner"
@@ -195,7 +201,7 @@ local function createHUD()
 	local affTS = Instance.new("UITextSizeConstraint"); affTS.MinTextSize = 12; affTS.MaxTextSize = 18; affTS.Parent = affText
 
 	-- 하트 아이콘(패딩 영향 X → AffBar의 직속 자식)
-	
+
 	local heart = Instance.new("ImageLabel")
 	local heartClone = HeartTpl:Clone()
 	heartClone.Name = "HeartIcon"
@@ -218,7 +224,6 @@ local levelLabel = dock:WaitForChild("LevelLabel") :: TextLabel
 local bar        = dock:WaitForChild("ExpBar") :: Frame
 local fill       = bar:WaitForChild("Fill") :: Frame
 local expText    = bar:WaitForChild("ExpText") :: TextLabel
--- ... (AffBar 참조는 기존 그대로)
 
 
 -- ▼ 추가: 애정도 참조
@@ -230,6 +235,30 @@ local affText = inner:WaitForChild("AffText") :: TextLabel
 
 -- 스무스 애니메이션
 local TweenService = game:GetService("TweenService")
+
+-- ▼▼▼ 여기서부터 추가 (코인 상태/갱신) ▼▼▼
+local coin = {
+	value = 0,
+	max   = 5, -- 기본값 (서버/속성으로 즉시 덮어써짐)
+}
+
+local function refreshCoins()
+	-- 안전 보호: 최대가 0이면 0/0로 표기
+	local m = tonumber(coin.max) or 0
+	local v = tonumber(coin.value) or 0
+	coinLabel.Text = (m > 0) and (("%d/%d"):format(v, m)) or ("0/0")
+end
+
+local function setCoins(n:number?)
+	coin.value = tonumber(n) or 0
+	refreshCoins()
+end
+
+local function setCoinMax(m:number?)
+	coin.max = tonumber(m) or coin.max
+	refreshCoins()
+end
+-- ▲▲▲ 추가 끝 ▲▲▲
 
 
 local function tweenFill(ratio: number)
@@ -246,20 +275,46 @@ local function tweenAff(ratio: number)
 end
 
 
--- 코인 표시
-local function setCoins(n:number?)
-	coinLabel.Text = ("%d"):format(tonumber(n) or 0)
-end
-
--- Remotes/CoinUpdate 수신 → HUD에만 반영
+-- (교체) Remotes/CoinUpdate 수신 → 현재/최대 모두 처리
 task.spawn(function()
 	local remotes = ReplicatedStorage:WaitForChild("RemoteEvents")
 	local coinUpdate = remotes:WaitForChild("CoinUpdate")
-	coinUpdate.OnClientEvent:Connect(function(newAmount)
-		setCoins(newAmount)
+
+	-- coinUpdate는 숫자(현재값) 또는 {value=, max=} 테이블 중 아무거나 올 수 있게 처리
+	coinUpdate.OnClientEvent:Connect(function(a, b)
+		-- a가 테이블이면 {value,max} 형태 지원
+		if typeof(a) == "table" then
+			if a.value ~= nil then setCoins(a.value) end
+			if a.max   ~= nil then setCoinMax(a.max) end
+			return
+		end
+		-- 숫자 2개로 오면: a = 현재코인, b = 최대치
+		if typeof(a) == "number" then setCoins(a) end
+		if b ~= nil then setCoinMax(b) end
 	end)
+
+
+	-- (선택) 별도의 최대치 이벤트도 지원
+	local coinMaxUpdate = remotes:FindFirstChild("CoinMaxUpdate")
+	if coinMaxUpdate and coinMaxUpdate:IsA("RemoteEvent") then
+		coinMaxUpdate.OnClientEvent:Connect(function(newMax)
+			setCoinMax(newMax)
+		end)
+	end
 end)
 
+
+-- (추가) 속성 훅
+player:GetAttributeChangedSignal("Coins"):Connect(function()
+	setCoins(player:GetAttribute("Coins"))
+end)
+player:GetAttributeChangedSignal("CoinMax"):Connect(function()
+	setCoinMax(player:GetAttribute("CoinMax"))
+end)
+
+-- (추가) 초기 1회 반영
+setCoinMax(player:GetAttribute("CoinMax"))
+setCoins(player:GetAttribute("Coins"))
 
 
 -- 공통: 부드러운 외곽선
