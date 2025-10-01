@@ -64,6 +64,17 @@ local WangEvent = remoteFolder:FindFirstChild("WangEvent") or Instance.new("Remo
 WangEvent.Name = "WangEvent"
 
 
+-- 🔹 [Marker] 루트 모델 찾기 & 키 상수
+local function getRootModelFrom(inst: Instance): Model?
+	local m = inst:FindFirstAncestorOfClass("Model")
+	while m and m.Parent and m.Parent:IsA("Model") do
+		m = m.Parent
+	end
+	return m
+end
+
+local MARKER_KEY = "streetfood"  -- Hide 시에도 동일 키 사용
+
 -- ===== 유틸 =====
 local function getAnyBasePart(inst: Instance): BasePart?
 	if inst:IsA("BasePart") then return inst end
@@ -269,9 +280,22 @@ ProxRelay.OnServerEvent:Connect(function(player, action: "enter"|"exit", prompt:
 
 	if action == "enter" then
 		StreetFoodEvent:FireClient(player, "Bubble", { text = PROXIMITY_TEXT })
-		lockPet(player)           -- 근접 시 펫 고정
+		lockPet(player)
 
-		-- 🔊 발견 SFX (그 플레이어에게만) + 간단 쿨다운
+		-- 🔹 [Marker] 이 플레이어에게만 해당 food 모델 위에 Marker 표시
+		local rootForMarker = getRootModelFrom(prompt)
+		if rootForMarker then
+			WangEvent:FireClient(player, "ShowMarker", {
+				target      = rootForMarker,
+				key         = MARKER_KEY,
+				preset      = "Click Icon",   -- 클라 MarkerClient 기본 프리셋
+				offsetY     = 2.0,           -- 모델 위로 살짝 띄움
+				pulse       = true,          -- 맥동 ON
+				-- size / image 등 필요 시 여기서 추가 지정 가능
+			})
+		end
+
+		-- 🔊 SFX (쿨다운 유지)
 		local now = os.clock()
 		if (LastEnterSfxAt[player] or -1e9) + ENTER_SFX_COOLDOWN <= now then
 			local tpl = resolveEnterSfxTemplate()
@@ -280,6 +304,7 @@ ProxRelay.OnServerEvent:Connect(function(player, action: "enter"|"exit", prompt:
 				LastEnterSfxAt[player] = now
 			end
 		end
+
 
 	elseif action == "exit" then
 		-- 요구사항상: 근접 이탈 후에도 계속 고정 유지 (언락은 트리거 시점에만)
@@ -316,8 +341,14 @@ ProximityPromptService.PromptTriggered:Connect(function(prompt, player)
 			player:SetAttribute("ExpMultiplier", 1)
 		end
 	end)
+	
+	-- 🔹 [Marker] 먼저 숨김 (이후 ServerStorage로 이동되면 클라에서 참조가 사라질 수 있으므로)
+	WangEvent:FireClient(player, "HideMarker", {
+		target = rootModel,
+		key    = MARKER_KEY,
+	})
 
-	-- ✅ StreetFood 완료 처리: 비활성화/이펙트/언락
+	-- ✅ StreetFood 완료 처리
 	setActive(rootModel, false)
 	unlockPet(player)
 	StreetFoodEvent:FireClient(player, "Bubble", { text = CLICK_RESTORE_TEXT })
