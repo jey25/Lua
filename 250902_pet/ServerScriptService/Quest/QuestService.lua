@@ -8,6 +8,9 @@ local ExperienceService = require(ServerScriptService:WaitForChild("ExperienceSe
 local ClearModule = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("ClearModule"))
 local CoinService = require(script.Parent:WaitForChild("CoinService"))
 
+-- 🆕 Jumper 배지 지급용
+local BadgeManager = require(ServerScriptService:WaitForChild("BadgeManager"))
+
 -- BillboardGui 템플릿
 local BubbleTemplate = ReplicatedStorage:WaitForChild("BubbleTemplates"):WaitForChild("Plain")
 
@@ -22,7 +25,6 @@ if not BottleChanged then
 	BottleChanged.Name = "BottleChanged"
 	BottleChanged.Parent = QuestRemotes
 end
-
 
 -- NPC & 보상 설정
 local QUEST_CONFIG = {
@@ -65,6 +67,9 @@ local function RemoveBottle(player: Player)
 	BottleChanged:FireClient(player, false)
 end
 
+-- 🆕 동일 틱/중복 호출 방지용 락
+local jumperAwardLock: {[number]: boolean} = {}
+
 -- 보상 지급 처리
 local function giveRewards(player: Player, npcName: string)
 	local cfg = QUEST_CONFIG[npcName]
@@ -82,15 +87,45 @@ local function giveRewards(player: Player, npcName: string)
 		if npcModel and npcModel:FindFirstChild("Head") then
 			local bubble = BubbleTemplate:Clone()
 			bubble.Adornee = npcModel.Head
-			bubble.StudsOffset = Vector3.new(0, 4, 0) -- 머리 위로 띄우기
+			bubble.StudsOffset = Vector3.new(0, 4, 0)
 			bubble.Parent = npcModel.Head
 			bubble.TextLabel.Text = rewards.Bubble
 			game:GetService("Debris"):AddItem(bubble, 4)
 		end
 	end
 
+	-- ✅ 퀘스트 클리어 이펙트(기존)
 	ClearModule.showClearEffect(player)
+
+	-- ✅ Jumper 배지: nightwatch_zoechickie만, "처음 한 번만" 지급
+	if npcName == "nightwatch_zoechickie" then
+		local uid = player.UserId
+		if not jumperAwardLock[uid] then
+			jumperAwardLock[uid] = true
+			task.spawn(function()
+				-- 이미 보유면 스킵(= 토스트/이펙트도 안 보냄)
+				local has = false
+				local okHas, errHas = pcall(function()
+					has = BadgeManager.HasRobloxBadge(player, BadgeManager.Keys.Jumper)
+				end)
+				if not okHas then warn("[QuestService] HasRobloxBadge error:", errHas) end
+
+				if not has then
+					local okAward, errAward = pcall(function()
+						-- TryAward 내부에서 서버→클라로 토스트를 쏨
+						-- 클라는 BadgeClient가 받아서 Billboard + BadgeEffect를 재생
+						BadgeManager.TryAward(player, BadgeManager.Keys.Jumper)
+					end)
+					if not okAward then
+						warn("[QuestService] TryAward(Jumper) failed:", errAward)
+					end
+				end
+				jumperAwardLock[uid] = nil
+			end)
+		end
+	end
 end
+
 
 -- NPC 세팅
 for npcName, cfg in pairs(QUEST_CONFIG) do

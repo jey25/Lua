@@ -12,6 +12,35 @@ local PlayerDataService = require(script.Parent:WaitForChild("PlayerDataService"
 local CoinService = require(script.Parent:WaitForChild("CoinService"))
 
 
+--플레이어와 펫의 충돌 방지 처리
+local PhysicsService = game:GetService("PhysicsService")
+
+-- 한 번만 실행
+local function ensureCollisionGroups()
+	local function safeCreate(name)
+		if not pcall(function() PhysicsService:CreateCollisionGroup(name) end) then
+			-- 이미 있으면 무시
+		end
+	end
+	safeCreate("Players")
+	safeCreate("Pets")
+
+	-- Players ↔ Pets 충돌 금지, Pets ↔ Pets도 금지(원하면 true로 바꿔도 됨)
+	PhysicsService:CollisionGroupSetCollidable("Players", "Pets", false)
+	PhysicsService:CollisionGroupSetCollidable("Pets", "Pets",   false)
+end
+
+ensureCollisionGroups()
+
+local function setCollisionGroupRecursive(inst: Instance, groupName: string)
+	for _, d in ipairs(inst:GetDescendants()) do
+		if d:IsA("BasePart") then
+			PhysicsService:SetPartCollisionGroup(d, groupName)
+		end
+	end
+end
+
+
 -- Shared Remotes
 local RemoteEvents = ReplicatedStorage:FindFirstChild("RemoteEvents") or Instance.new("Folder", ReplicatedStorage)
 RemoteEvents.Name = "RemoteEvents"
@@ -46,19 +75,21 @@ ShowArrowEvent.Name = "ShowArrow"
 local PET_GUI_NAME = "petGui"  -- ReplicatedStorage 내 GUI 이름(펫 머리 위 등)
 local petGuiTemplate: Instance = ReplicatedStorage:WaitForChild(PET_GUI_NAME)
 -- ▼▼ 추가: 펫이 살짝 더 낮아지도록 전역 기본값(음수면 아래로)
-local PET_GROUND_NUDGE_Y = -0.7   -- 추천 범위: -0.3 ~ -1.2 (모델에 따라 조절)
+local PET_GROUND_NUDGE_Y = -0.3   -- 추천 범위: -0.3 ~ -1.2 (모델에 따라 조절)
 
-local COLS = 2
-local X_OFFSET = 2.5
-local Y_OFFSET = -1.5
-local Z_START  = -2.5
-local Z_STEP   = 1.8
+-- 거리 상수는 그대로 사용
+local SIDE_DIST   = 3.2
+local BACK_DIST   = 3.6   -- ▶ 뒤쪽은 +값을 넣습니다
+local FRONT_DIST  = 3.6   -- ▶ 앞쪽은 -값으로 사용합니다
+local SLIGHT_X    = 1.2
+local Y_OFFSET    = -1.5
 
 -- 클라/서버 동일 요구 조건(레벨/코인)
 local PET_LEVEL_REQ = { golden_dog=100, Skeleton_Dog=150, Robot_Dog=200 }
 local PET_COIN_COST = { golden_dog=15,  Skeleton_Dog=20,  Robot_Dog=25  }
 
-local ACTIVE_MAX = 3
+-- 맨 위 근처
+local ACTIVE_MAX = 5  -- 기존 3 → 5로
 
 -- 런타임 보유 펫(세션용)
 -- PlayerPets[userId] = { {pet=model, slot=1, attachName="CharAttach_<id>", offset=Vector3}, ... }
@@ -68,16 +99,40 @@ local PlayerPets: { [number]: { { pet: Model, slot: number, attachName: string, 
 
 -- Helpers -------------------------------------------------------
 
-
 local function getFollowOffsetForSlot(slot: number): Vector3
-	local index = math.max(1, math.floor(slot))
-	local row = math.floor((index - 1) / COLS)
-	local col = (index - 1) % COLS
-	local x = (col == 0) and X_OFFSET or -X_OFFSET
+	local s = math.max(1, math.floor(slot))
 	local y = Y_OFFSET
-	local z = Z_START - (row * Z_STEP)
-	return Vector3.new(x, y, z)
+
+	if s == 1 then
+		return Vector3.new( SIDE_DIST, y,  0)            -- 오른쪽
+	elseif s == 2 then
+		return Vector3.new(-SIDE_DIST, y,  0)            -- 왼쪽
+	elseif s == 3 then
+		return Vector3.new( SLIGHT_X, y,  BACK_DIST)     -- 뒤 + 오른쪽(살짝)
+	elseif s == 4 then
+		return Vector3.new(-SLIGHT_X, y,  BACK_DIST)     -- 뒤 + 왼쪽(살짝)
+	elseif s == 5 then
+		return Vector3.new(0, y, -FRONT_DIST)            -- 정면 앞
+	end
+
+	-- 6번 이상 폴백(원형 확장): 뒤/뒤/앞 패턴 반복
+	local ringIndex = s - 5
+	local ring = 1 + math.floor((ringIndex-1)/3)
+	local posInTriad = ((ringIndex-1) % 3) + 1
+
+	local radiusZBack  = BACK_DIST  + (ring-1) * 1.0
+	local radiusXSide  = SLIGHT_X   + (ring-1) * 0.6
+	local radiusZFront = FRONT_DIST + (ring-1) * 1.0
+
+	if posInTriad == 1 then           -- 뒤 + 오른쪽
+		return Vector3.new( radiusXSide, y,  radiusZBack)
+	elseif posInTriad == 2 then       -- 뒤 + 왼쪽
+		return Vector3.new(-radiusXSide, y,  radiusZBack)
+	else                              -- 앞
+		return Vector3.new(0, y, -radiusZFront)
+	end
 end
+
 
 local function getOrInitPetList(player: Player)
 	local list = PlayerPets[player.UserId]
@@ -108,6 +163,31 @@ local function ensurePrimaryPart(m: Model): BasePart?
 	if cand then m.PrimaryPart = cand end
 	return cand
 end
+
+-- ▼ 모델의 PrimaryPart 기준 '가장 낮은 지점'을 찾아
+--   발바닥이 지면 위로 desiredClearance 만큼 떠 있게 만드는 보정값(양수)을 계산
+local function computeLiftFromPrimary(m: Model, desiredClearance: number?): number
+	local pp = ensurePrimaryPart(m)
+	if not pp then return 0 end
+	local clearance = (typeof(desiredClearance) == "number") and desiredClearance or 0.2
+
+	-- PrimaryPart 좌표계에서 각 파트의 최저 Y를 구함
+	local lowestLocalY = 0
+	for _, d in ipairs(m:GetDescendants()) do
+		if d:IsA("BasePart") then
+			local localPos = pp.CFrame:PointToObjectSpace(d.Position)
+			local partLowest = localPos.Y - (d.Size.Y * 0.5)
+			if partLowest < lowestLocalY then
+				lowestLocalY = partLowest
+			end
+		end
+	end
+
+	-- lowestLocalY 가 음수면 PrimaryPart 아래로 그만큼 파츠가 내려와 있다는 뜻
+	-- 그 값을 뒤집어(+clearance)만큼 올려주면 발이 바닥 위로 올라옴
+	return (-lowestLocalY) + clearance
+end
+
 
 local function weldModelToPrimary(m: Model)
 	local pp = ensurePrimaryPart(m)
@@ -287,8 +367,10 @@ local function spawnPet(player: Player, petName: string)
 	local nudgeY = (typeof(attrNudge) == "number" and attrNudge)
 		or (typeof(PET_GROUND_NUDGE_Y) == "number" and PET_GROUND_NUDGE_Y)
 		or -0.7
-	offset = offset + Vector3.new(0, nudgeY, 0)
-
+	
+	local pet = template:Clone()
+	pet.Name = petName
+	
 	local petId = HttpService:GenerateGUID(false)
 	local attachName = "CharAttach_" .. petId
 
@@ -302,8 +384,15 @@ local function spawnPet(player: Player, petName: string)
 	pet:SetAttribute("OffsetZ", offset.Z)
 	pet:SetAttribute("AttachName", attachName)
 	pet:SetAttribute("GroundNudgeY", nudgeY)
+	
+	local autoLift = computeLiftFromPrimary(pet, 0.2)  -- 0.2 = 지면 위 여유(원하면 조절)
+	offset = offset + Vector3.new(0, nudgeY + autoLift, 0)
+	-- ⬆ 기존엔 nudgeY(고정치)만 더했는데, autoLift(모델마다 다른 보정)를 더해줌
 
 	pet.Parent = workspace
+	
+	--플레이어와 충돌 방지 위한 펫 그룹 생성
+	setCollisionGroupRecursive(pet, "Pets")
 
 	-- GUI 템플릿 부착
 	local petGui = petGuiTemplate:Clone()
@@ -469,7 +558,6 @@ end)
 -- 접속/퇴장 -------------------------------------------------------
 Players.PlayerAdded:Connect(function(player)
 	local data = PlayerDataService:Load(player)
-
 	local active = getActivePetsFromData(player, data)
 	local spawned = 0
 	for _, petName in ipairs(active) do
@@ -497,6 +585,13 @@ Players.PlayerAdded:Connect(function(player)
 	end
 end)
 
+
+Players.PlayerAdded:Connect(function(player)
+	player.CharacterAdded:Connect(function(char)
+		-- 액세서리/의상 파트 포함해서 전부 Players 그룹
+		setCollisionGroupRecursive(char, "Players")
+	end)
+end)
 
 
 Players.PlayerRemoving:Connect(function(plr)

@@ -27,7 +27,7 @@ type NpcCfg = {
 
 -- ▶ 여기만 채우면 됩니다. (NPC 이름 = 모델 이름)
 local NPC_CONFIGS: {[string]: NpcCfg} = {
-	["vendor_ninja(Lv.200)"] = {
+	["vendor_ninja(Lv.100)"] = {
 		templates = {"Plain"}, -- 템플릿 이름 예시
 		lines = {
 			"눈에 보이는 것만이 전부가 아니야",
@@ -179,10 +179,11 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	},
 
 	["nightwatch_blackcat"] = {
+		
 		templates = {"Plain"},
 		lines = {
-			"......",
-			"애송이와 말을 섞고 싶지 않아",
+			"너 개인은 강할지 몰라도, 팀을 이길 순 없어",
+			"애송이와는 말을 섞고 싶지 않아",
 			"언젠가 니가 더 강해진다면 상대해주지",
 		},
 		offsetY = 3.25,
@@ -1178,6 +1179,17 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 			"애정도가 낮게 유지되면 애들이 말을 안듣기 시작해",
 			"반려동물을 키우는 사람들이 많아지면 축제도 생기지 않을까?",
 			"오늘 저녁엔 뭐하고 놀지?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=30, max=60},
+	},
+	
+	["vendor_Chef"] = {
+		templates = {"Plain"},
+		lines = {
+			"비싼 와인을 마시지도 않고 놓고 가는 손님들이 있어",
+			"어서오세요~ 예약 하셨어요?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},

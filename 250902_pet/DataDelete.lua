@@ -26,6 +26,10 @@ removeKey("GameCoins_v2",      "p:"..tostring(USER_ID))  -- 코인 서비스(레
 removeKey("PlayerData",        tostring(USER_ID))        -- 더 레거시
 removeKey("PlayerData",        "u_"..tostring(USER_ID))  -- 더 레거시 보조
 removeKey("PetPout_v1",        "u_"..tostring(USER_ID))  -- ✅ PetZeroPout(삐짐 카운트)
+-- 🆕 배지/출석류 (있으면 제거, 없으면 그냥 통과)
+removeKey("BadgeState_v1",     "u_"..tostring(USER_ID)) -- BadgeManager 내부 DS
+removeKey("Attendance_v1",     "u_"..tostring(USER_ID)) -- 출석/누적일(Day)용을 이렇게 쓰고 있다면
+removeKey("PlayDay_v1",        "u_"..tostring(USER_ID)) -- 다른 이름을 쓰는 경우도 대비
 
 -- Play가 아니면(서버 런타임 아님) 여기서 종료: 영구 저장만 정리됨
 if not RunService:IsRunning() then
@@ -50,6 +54,9 @@ local function safeRequireModule(nameInSSS: string)
 	end
 	return modOrErr
 end
+
+local BadgeManager = (function() local m,_ = safeRequireModule("BadgeManager"); return m end)()
+
 
 -- PlayerDataService (필수)
 local PlayerDataService, errPDS = safeRequireModule("PlayerDataService")
@@ -97,23 +104,44 @@ PlayerDataService:SetVaccineCount(plr, 0)
 -- ================== 데이터 구조(owned/selected/active/buffs 등) 초기화 + 저장 ==================
 do
 	local d = PlayerDataService:Get(plr)
-	-- 완전 클린
-	d.ownedPets = {}                 -- 보유 펫 제거
-	d.selectedPetName = nil          -- 선택 펫 해제
-	-- 신규 모델 필드들
-	d.activePets = {}                -- ✅ 동시에 따라다닐 펫 목록 비우기
-	d.buffs = {}                     -- 버프 테이블 초기화
-	d.lastVaxAt = 0                  -- 백신 타임스탬프 초기화
+
+	-- 기존 초기화
+	d.ownedPets = {}
+	d.selectedPetName = nil
+	d.activePets = {}
+	d.buffs = {}
+	d.lastVaxAt = 0
 	d.nextVaxAt = 0
 
-	-- 서비스 레벨 API가 있으면 함께 호출(있을 때만)
+	-- 🆕 Day/출석/누적류: 필드가 있으면 0으로, 없으면 무시(안전)
+	-- (당신의 PlayerDataService 구조에 맞춰 필요한 키만 남겨도 됩니다)
+	local dayLikeKeys = {
+		"day","playDay","playDays","loginDay","attendanceDays",
+		"dailyStreak","streak","lastLoginDay",
+	}
+	for _, k in ipairs(dayLikeKeys) do
+		if d[k] ~= nil then d[k] = 0 end
+	end
+
+	-- 🆕 로그인 타임스탬프류 초기화(있으면)
+	for _, k in ipairs({"firstLoginUnix","lastLoginUnix","dailyClaimUnix"}) do
+		if d[k] ~= nil then d[k] = 0 end
+	end
+
+	-- 🆕 일일/출석/업적/퀘스트 등 테이블류(있으면 비움)
+	for _, k in ipairs({"attendance","daily","achievements","quests","questProgress"}) do
+		if d[k] ~= nil then d[k] = {} end
+	end
+
+	-- 서비스 API가 있으면 호출
 	if PlayerDataService.SetActivePets then
 		pcall(function() PlayerDataService:SetActivePets(plr, {}) end)
 	end
 
 	PlayerDataService:MarkDirty(plr)
-	PlayerDataService:Save(plr.UserId, "manual-reset") -- 즉시 저장
+	PlayerDataService:Save(plr.UserId, "manual-reset")
 end
+
 
 -- ================== 버프/속성 런타임 초기화 ==================
 -- 1) BuffService가 있으면 모듈에서 통합 리셋

@@ -14,7 +14,7 @@ if not LevelSync then
 	LevelSync.Parent = ReplicatedStorage
 end
 
--- ✅ 안전 로더(단일)만 사용
+-- ✅ 안전 로더(단일)만 사용 - CoinService
 local CoinService: any
 do
 	local ok, modOrErr = pcall(function()
@@ -27,6 +27,22 @@ do
 	else
 		warn("[ExperienceService] require(CoinService) failed:", modOrErr)
 		CoinService = nil
+	end
+end
+
+-- ✅ [NEW] 안전 로더 - BadgeManager
+local BadgeManager: any
+do
+	local ok, modOrErr = pcall(function()
+		local inst = ServerScriptService:WaitForChild("BadgeManager", 10)
+		assert(inst and inst:IsA("ModuleScript"), ("BadgeManager must be ModuleScript, got %s"):format(inst and inst.ClassName or "nil"))
+		return require(inst)
+	end)
+	if ok then
+		BadgeManager = modOrErr
+	else
+		warn("[ExperienceService] require(BadgeManager) failed:", modOrErr)
+		BadgeManager = nil
 	end
 end
 
@@ -45,16 +61,13 @@ local function initPlayerState(player: Player)
 
 	-- 🔒 방탄: 세션 시작 시 기본 배율 확정
 	player:SetAttribute("ExpMultiplier", 1)
-	-- (원하면) 속도 관련도 초기화
-	-- player:SetAttribute("SpeedMultiplier", 1)
-
 	player:SetAttribute("Level", level)
 	player:SetAttribute("Exp", exp)
 	player:SetAttribute("ExpToNext", goal)
 
 	lastLevel[player] = level
 
-	-- 레벨 변화 감시 → 코인 보상 연동
+	-- 레벨 변화 감시 → 코인 보상 연동(기존 동작 유지)
 	player:GetAttributeChangedSignal("Level"):Connect(function()
 		local oldLv = lastLevel[player] or level
 		local newLv = math.max(1, tonumber(player:GetAttribute("Level")) or oldLv)
@@ -68,6 +81,33 @@ local function initPlayerState(player: Player)
 	end)
 
 	LevelSync:FireClient(player, { Level = level, Exp = exp, ExpToNext = goal })
+end
+
+-- ✅ [NEW] 레벨 마일스톤 배지 지급(레벨 업 루프에서 호출)
+local function tryAwardLevelMilestoneBadge(player: Player, level: number)
+	if not BadgeManager then return end
+
+	local key: string? = nil
+	if BadgeManager.Keys then
+		if level == 10 then key = BadgeManager.Keys.Level10
+		elseif level == 100 then key = BadgeManager.Keys.Level100
+		elseif level == 200 then key = BadgeManager.Keys.Level200
+		end
+	else
+		-- 폴백(문자열 키)
+		if level == 10 then key = "level10"
+		elseif level == 100 then key = "level100"
+		elseif level == 200 then key = "level200"
+		end
+	end
+	if not key then return end
+
+	local ok, err = pcall(function()
+		BadgeManager.TryAward(player, key) -- 내부에서 토스트/언락 동기화까지 처리
+	end)
+	if not ok then
+		warn(("[ExperienceService] Badge award failed at LV %d: %s"):format(level, tostring(err)))
+	end
 end
 
 local function addExp(player: Player, amount: number)
@@ -88,10 +128,16 @@ local function addExp(player: Player, amount: number)
 		exp -= goal
 		level += 1
 
+		-- (기존) 레벨 보상: 10단위 코인 보상
 		if CoinService and type(CoinService.Award) == "function" then
 			if level % 10 == 0 then
 				CoinService:Award(player, ("LV_%d"):format(level))
 			end
+		end
+
+		-- ✅ [NEW] 배지 지급: 10/100/200 도달 시
+		if level == 10 or level == 100 or level == 200 then
+			tryAwardLevelMilestoneBadge(player, level)
 		end
 
 		goal = ExpToNext(level)

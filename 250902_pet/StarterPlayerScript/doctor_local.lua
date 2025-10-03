@@ -9,14 +9,14 @@ local NPCClickTemplate = ReplicatedStorage:WaitForChild("NPCClick")      -- Scre
 local PetDoctorTemplate = ReplicatedStorage:WaitForChild("petdoctor")    -- ScreenGui (Children: hi, Inoculation, result, toosoon)
 local DoctorTryVaccinate = ReplicatedStorage:WaitForChild("DoctorTryVaccinate") :: RemoteFunction
 local RemoteFolder = ReplicatedStorage:WaitForChild("RemoteEvents")
-local VaccinationFX = RemoteFolder:WaitForChild("VaccinationFX", 10)
-if not VaccinationFX then
-	warn("[Vaccination] VaccinationFX RemoteEvent not found within 10s; FX will be skipped.")
-end
+--local VaccinationFX = RemoteFolder:WaitForChild("VaccinationFX", 10)
+--if not VaccinationFX then
+--	warn("[Vaccination] VaccinationFX RemoteEvent not found within 10s; FX will be skipped.")
+--end
 -- NPC 위치
 local npc_doctor = workspace.World.Building["Pet Hospital"].Doctor
 local interactionDistance = 5
-
+local playedFX = false  -- 파일 상단 어딘가에 지역변수로
 
 -- 우측 상단 카운트 미니 UI (클라 표시용)
 local maxVaccinations = 5
@@ -215,20 +215,20 @@ local function showInteractButton()
 						local mins  = totalMins % 60
 
 						local parts = {}
-						if days > 0 then table.insert(parts, string.format("%d일", days)) end
-						if hours > 0 or days > 0 then table.insert(parts, string.format("%d시간", hours)) end
-						table.insert(parts, string.format("%d분", mins)) -- 분은 항상 노출
+						if days > 0 then table.insert(parts, string.format("%d day", days)) end
+						if hours > 0 or days > 0 then table.insert(parts, string.format("%d hour", hour)) end
+						table.insert(parts, string.format("%d min", mins)) -- 분은 항상 노출
 
-						return ("다음 접종까지 %s 남음"):format(table.concat(parts, " "))
+						return ("left until next vaccination %s"):format(table.concat(parts, " "))
 					end
 
 					local msg: string
 					if result and result.reason == "wait" and typeof(result.wait) == "number" then
 						msg = formatRemain(result.wait)
 					elseif result and result.reason == "max" then
-						msg = "최대 접종 횟수에 도달했습니다."
+						msg = "The maximum number of vaccinations"
 					else
-						msg = "지금은 접종할 수 없어요."
+						msg = "I can't get vaccinated yet"
 					end
 					msgLabel.Text = msg
 				end
@@ -269,27 +269,44 @@ local function playClearFXWithModule(player: Player): boolean
 	if not okReq or type(ClearModule) ~= "table" or type(ClearModule.showClearEffect) ~= "function" then
 		return false
 	end
-
-	local character = player.Character or player.CharacterAdded:Wait()
-	-- 모듈이 Player를 받는 구현도 있을 수 있어 둘 다 시도
-	local okCall, ret = pcall(function()
-		return ClearModule.showClearEffect(character) or ClearModule.showClearEffect(player)
+	local okCall = pcall(function()
+		ClearModule.showClearEffect(player) -- ✅ player만 넘기기
 	end)
-	-- 모듈이 성공/실패를 true/false로 돌려주지 않는 경우도 있어 okCall만 신뢰
-	return okCall and (ret ~= false)
+	return okCall
 end
 
 
-if VaccinationFX then
-	VaccinationFX.OnClientEvent:Connect(function(data)
-		-- data.count 같은 값 확인 가능
-		print("VaccinationFX event received. Count:", data and data.count)
 
-		if not playClearFXWithModule(LocalPlayer) then
-			runClearEffect()
-		end
-	end)
+-- (기존) local VaccinationFX = RemoteFolder:WaitForChild("VaccinationFX", 10)
+-- (기존) if VaccinationFX then VaccinationFX.OnClientEvent:Connect(function(data) ... end) end
+
+local function bindVaccinationFX(ev)
+	if ev and ev:IsA("RemoteEvent") and ev.Name == "VaccinationFX" then
+		ev.OnClientEvent:Connect(function(data)
+			print("VaccinationFX event received. Count:", data and data.count)
+			-- 안전하게 이펙트 실행
+			if not playClearFXWithModule(LocalPlayer) then
+				runClearEffect()
+			end
+		end)
+	end
 end
+
+local fx = RemoteFolder:FindFirstChild("VaccinationFX")
+if fx then bindVaccinationFX(fx) end
+RemoteFolder.ChildAdded:Connect(bindVaccinationFX)
+
+
+--if VaccinationFX then
+--	VaccinationFX.OnClientEvent:Connect(function(data)
+--		-- data.count 같은 값 확인 가능
+--		print("VaccinationFX event received. Count:", data and data.count)
+
+--		if not playClearFXWithModule(LocalPlayer) then
+--			runClearEffect()
+--		end
+--	end)
+--end
 
 
 

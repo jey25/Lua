@@ -1,7 +1,5 @@
 -- LocalScript: EpicTreat NPC
--- 레벨 10 이상일 때 NPC 근처에서 NPCClick 버튼 노출 → 클릭 시 EpicTreatGui 열림
--- 각 상품 Select 클릭 → 서버 RF로 구매 시도(레벨/코인 검증 및 차감) → 성공/실패 반영
--- 실패 시 버튼 흔들림/에러 SFX, 성공 시 창 즉시 닫힘 (재구매 제한 없음)
+-- 레벨 10 이상만 상점 열기 가능, duckbone(Jump up) 버튼은 Jumper 배지 보유자만 활성화
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -14,12 +12,12 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local REQUIRED_LEVEL = 10
 local INTERACTION_DISTANCE = 5
 
--- NPC 경로(환경에 맞게 수정)
+-- NPC 경로
 local npc = workspace:WaitForChild("NPC_LIVE"):WaitForChild("xiaoleung")
 
 -- 템플릿
-local NPCClickTemplate = ReplicatedStorage:WaitForChild("NPCClick")          :: ScreenGui
-local EpicTreatTemplate = ReplicatedStorage:WaitForChild("EpicTreatGui")     :: ScreenGui
+local NPCClickTemplate = ReplicatedStorage:WaitForChild("NPCClick")      :: ScreenGui
+local EpicTreatTemplate = ReplicatedStorage:WaitForChild("EpicTreatGui") :: ScreenGui
 
 -- 리모트
 local RemotesFolder = ReplicatedStorage:FindFirstChild("RemoteEvents") or Instance.new("Folder", ReplicatedStorage)
@@ -29,20 +27,20 @@ CoinUpdate.Name = "CoinUpdate"
 
 local TreatFolder = ReplicatedStorage:FindFirstChild("TreatEvents") or Instance.new("Folder", ReplicatedStorage)
 TreatFolder.Name = "TreatEvents"
-local TryBuyTreat = TreatFolder:FindFirstChild("TryBuyTreat") or Instance.new("RemoteFunction", TreatFolder)
-TryBuyTreat.Name = "TryBuyTreat" -- 서버 스크립트에서 실제 로직 구현
+local TryBuyTreat     = TreatFolder:WaitForChild("TryBuyTreat")     :: RemoteFunction
+local GetTreatUnlocks = TreatFolder:WaitForChild("GetTreatUnlocks") :: RemoteFunction -- ★ Jumper 배지 언락 질의
 
 -- SFX(옵션)
 local SFXFolder = ReplicatedStorage:FindFirstChild("SFX")
 
 -- ===== 상품 요구조건(클라/서버 동일 테이블) =====
--- 필요값은 마음대로 조정하세요
-local TREAT_LEVEL_REQ = { Munchies = 20, DogGum = 10,  Snack = 10 }
-local TREAT_COIN_COST = { Munchies = 2, DogGum = 1,  Snack = 1 }
+local TREAT_LEVEL_REQ = { Munchies = 30, duckbone = 20, DogGum = 10,  Snack = 10 }
+local TREAT_COIN_COST = { Munchies = 5,  duckbone = 3,  DogGum = 3,   Snack = 1 }
 
 -- ===== 상태 =====
 local activeButtonGui : ScreenGui? = nil
 local currentCoins = 0
+local badgeUnlocks = { duckbone = false, jumpup = false } -- 서버 응답 캐시
 
 -- 편의
 local function levelOK() return (tonumber(LocalPlayer:GetAttribute("Level")) or 1) >= REQUIRED_LEVEL end
@@ -51,7 +49,25 @@ local function canAfford(name: string) return currentCoins >= (TREAT_COIN_COST[n
 local function meetsLevel(name: string) return getLevel() >= (TREAT_LEVEL_REQ[name] or math.huge) end
 local function isOpen(name: string) return PlayerGui:FindFirstChild(name) ~= nil end
 
--- 에러 사운드 & 흔들림 (이전 GUI와 동일 느낌)
+-- 아이템 키 유틸
+local function canon(s: string): string
+	local v = string.lower(s or "")
+	v = (v:gsub("%s+", "")):gsub("_", "")
+	return v
+end
+local function needsJumper(itemName: string): boolean
+	local k = canon(itemName)
+	return (k == "duckbone" or k == "jumpup")
+end
+local function isBadgeUnlocked(itemName: string): boolean
+	if not needsJumper(itemName) then return true end
+	return badgeUnlocks.duckbone or badgeUnlocks.jumpup
+end
+local function canEnable(itemName: string): boolean
+	return meetsLevel(itemName) and canAfford(itemName) and isBadgeUnlocked(itemName)
+end
+
+-- 에러 사운드 & 흔들림
 local function playDenySfx()
 	if not SFXFolder then return end
 	local s = SFXFolder:FindFirstChild("Error")
@@ -75,7 +91,7 @@ local function shakeGui(obj: GuiObject)
 	obj:SetAttribute("Shaking", false)
 end
 
--- 버튼 상태 렌더 (문구/색상)
+-- 버튼 상태 렌더
 local ENABLED_COLOR   = Color3.fromRGB(39,174,96)
 local DISABLED_COLOR  = Color3.fromRGB(120,120,120)
 local ENABLED_TXTCLR  = Color3.fromRGB(255,255,255)
@@ -96,7 +112,11 @@ local function setButtonState(btn: TextButton, enabled: boolean, itemName: strin
 		local parts = {}
 		if not meetsLevel(itemName) then table.insert(parts, ("Lv %d"):format(TREAT_LEVEL_REQ[itemName] or 0)) end
 		if not canAfford(itemName)   then table.insert(parts, ("C %d"):format(TREAT_COIN_COST[itemName] or 0)) end
-		btn.Text = table.concat(parts, " • ")
+		-- ★ duckbone 배지 조건
+		if not isBadgeUnlocked(itemName) and needsJumper(itemName) then
+			table.insert(parts, "Badge")
+		end
+		btn.Text = (#parts > 0) and table.concat(parts, " • ") or "Locked"
 		btn.TextColor3 = DISABLED_TXTCLR
 		btn.BackgroundColor3 = DISABLED_COLOR
 		btn.TextTransparency = 0.1
@@ -109,10 +129,9 @@ local function setButtonState(btn: TextButton, enabled: boolean, itemName: strin
 	end
 end
 
--- 코인 브로드캐스트 수신 → 버튼 리프레시
+-- 코인 갱신 시 버튼 리프레시
 CoinUpdate.OnClientEvent:Connect(function(balance)
 	currentCoins = tonumber(balance) or currentCoins
-	-- 열려있으면 리프레시
 	local gui = PlayerGui:FindFirstChild("EpicTreatGui_runtime")
 	if not gui then return end
 	local root = gui:FindFirstChild("Frame") or gui:FindFirstChildOfClass("Frame")
@@ -122,15 +141,30 @@ CoinUpdate.OnClientEvent:Connect(function(balance)
 			local btn = node:FindFirstChild("Select", true)
 			if btn and btn:IsA("TextButton") then
 				local name = node.Name
-				setButtonState(btn, meetsLevel(name) and canAfford(name), name)
+				setButtonState(btn, canEnable(name), name)
 			end
 		end
 	end
 end)
 
--- GUI 열기
+-- ★ 배지 언락 상태 질의
+local function refreshBadgeUnlocks()
+	local ok, resp = pcall(function()
+		return GetTreatUnlocks:InvokeServer()
+	end)
+	if ok and typeof(resp) == "table" then
+		badgeUnlocks.duckbone = resp.duckbone and true or false
+		badgeUnlocks.jumpup   = resp.jumpup and true or false
+	end
+end
+
+-- GUI 열기 (레벨 10 이상만)
 local function openTreatGui()
+	if not levelOK() then return end -- ★ 이중 방어
 	if isOpen("EpicTreatGui_runtime") then return end
+
+	-- 배지 언락 동기화
+	refreshBadgeUnlocks()
 
 	local gui = EpicTreatTemplate:Clone()
 	gui.Name = "EpicTreatGui_runtime"
@@ -154,38 +188,35 @@ local function openTreatGui()
 			if btn and btn:IsA("TextButton") then
 				local itemName = node.Name
 
-				-- 초기 상태
-				setButtonState(btn, meetsLevel(itemName) and canAfford(itemName), itemName)
+				-- 초기 상태(레벨/코인/배지 반영)
+				setButtonState(btn, canEnable(itemName), itemName)
 
 				btn.MouseButton1Click:Connect(function()
-					-- 가능 여부 최종 체크
-					if not (meetsLevel(itemName) and canAfford(itemName)) then
-						shakeGui(node)
-						playDenySfx()
-						setButtonState(btn, meetsLevel(itemName) and canAfford(itemName), itemName)
+					if not canEnable(itemName) then
+						shakeGui(node); playDenySfx()
+						setButtonState(btn, canEnable(itemName), itemName)
 						return
 					end
 
-					-- 서버 구매 시도 (레벨/코인 서버 검증 + 차감 + 효과)
 					local resp
 					local ok = pcall(function()
 						resp = TryBuyTreat:InvokeServer({ item = itemName })
 					end)
 
 					if ok and typeof(resp) == "table" and resp.ok then
-						-- 서버에서 차감 후 최신 코인 잔액 동기
 						if resp.coins ~= nil then
 							currentCoins = tonumber(resp.coins) or currentCoins
 						end
-						gui:Destroy() -- 성공 시 즉시 닫기
+						gui:Destroy()
 					else
-						shakeGui(node)
-						playDenySfx()
-						-- 서버 응답 기반으로 재표시
+						shakeGui(node); playDenySfx()
 						if resp and resp.coins ~= nil then
 							currentCoins = tonumber(resp.coins) or currentCoins
 						end
-						setButtonState(btn, meetsLevel(itemName) and canAfford(itemName), itemName)
+						if resp and resp.reason == "LockedByBadge" then
+							refreshBadgeUnlocks()
+						end
+						setButtonState(btn, canEnable(itemName), itemName)
 					end
 				end)
 			end
@@ -204,14 +235,22 @@ local function showInteractButton()
 
 	local btn = g:FindFirstChild("NPCClick", true)
 	if btn and btn:IsA("GuiButton") then
+		btn.AutoButtonColor = true
+		btn.Active = true
+		btn.Modal = false
 		btn.MouseButton1Click:Connect(function()
+			-- ★ 레벨 10 미만이면 버튼은 떠 있어도 동작하지 않음
+			if not levelOK() then
+				shakeGui(btn); playDenySfx()
+				return
+			end
 			if activeButtonGui then activeButtonGui:Destroy(); activeButtonGui = nil end
 			openTreatGui()
 		end)
 	end
 end
 
--- 레벨 변동 시 클릭버튼 숨김 처리
+-- 레벨 변동 시 클릭버튼 숨김 처리(옵션: 10 미만이면 숨김)
 LocalPlayer:GetAttributeChangedSignal("Level"):Connect(function()
 	if not levelOK() and activeButtonGui then
 		activeButtonGui:Destroy()
@@ -219,7 +258,7 @@ LocalPlayer:GetAttributeChangedSignal("Level"):Connect(function()
 	end
 end)
 
--- NPC 근접 루프
+-- NPC 근접 루프: 레벨 10 이상 + 거리 조건에서만 버튼 노출
 local function getNpcPos(model: Model)
 	if model.PrimaryPart then return model.PrimaryPart.Position end
 	return model:GetPivot().Position
@@ -236,8 +275,8 @@ task.spawn(function()
 		end
 		local ok, pos = pcall(getNpcPos, npc)
 		if not ok then continue end
-
 		local dist = (pos - hrp.Position).Magnitude
+
 		if dist <= INTERACTION_DISTANCE and levelOK() and not isOpen("EpicTreatGui_runtime") then
 			if not activeButtonGui then showInteractButton() end
 		else

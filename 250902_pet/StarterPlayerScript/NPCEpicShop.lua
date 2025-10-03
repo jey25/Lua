@@ -8,7 +8,7 @@ local PlayerGui          = LocalPlayer:WaitForChild("PlayerGui")
 local REQUIRED_LEVEL = 100
 local INTERACTION_DISTANCE = 5
 
-local npc_epic = workspace:WaitForChild("NPC_LIVE"):WaitForChild("vendor_ninja(Lv.200)")
+local npc_epic = workspace:WaitForChild("NPC_LIVE"):WaitForChild("vendor_ninja(Lv.100)")
 
 -- 템플릿들
 local NPCClickTemplate       = ReplicatedStorage:WaitForChild("NPCClick")              :: ScreenGui
@@ -157,7 +157,8 @@ local function setButtonState(btn: TextButton, enabled: boolean, petName: string
 	btn.AutoButtonColor = enabled
 
 	if enabled then
-		btn.Text = "Select"
+		local cost = PET_COIN_COST[petName] or 0
+		btn.Text = ("%d coin %s"):format(cost, SELECT_TEXT)  -- <- 여기 추가
 		btn.TextColor3 = ENABLED_TXTCLR
 		btn.BackgroundColor3 = ENABLED_COLOR
 		btn.TextTransparency = 0
@@ -174,6 +175,7 @@ local function setButtonState(btn: TextButton, enabled: boolean, petName: string
 		btn.TextTransparency = 0.1
 		btn.BackgroundTransparency = 0.15
 	end
+
 
 	local parentImg = btn.Parent
 	if parentImg and parentImg:IsA("ImageLabel") then
@@ -269,39 +271,39 @@ local function wireEpicSelectionGui(selectionGui: ScreenGui)
 		end
 	end
 
-				-- Close → 닫기
-local closeBtn = root:FindFirstChild("Close")
-if closeBtn and closeBtn:IsA("TextButton") then
-	table.insert(cons, closeBtn.MouseButton1Click:Connect(function()
-		selectionGui:Destroy()
+	-- Close → 닫기
+	local closeBtn = root:FindFirstChild("Close")
+	if closeBtn and closeBtn:IsA("TextButton") then
+		table.insert(cons, closeBtn.MouseButton1Click:Connect(function()
+			selectionGui:Destroy()
+			for _, c in ipairs(cons) do pcall(function() c:Disconnect() end) end
+		end))
+	end
+
+	-- 레벨/코인 변동 시 즉시 갱신
+	table.insert(cons, LocalPlayer:GetAttributeChangedSignal("Level"):Connect(refreshButtons))
+	if LevelSync and LevelSync:IsA("RemoteEvent") then
+		table.insert(cons, LevelSync.OnClientEvent:Connect(function(payload)
+			if typeof(payload) == "table" and payload.Level then
+				LocalPlayer:SetAttribute("Level", payload.Level)
+				refreshButtons()
+			end
+		end))
+	end
+	if CoinUpdate and CoinUpdate:IsA("RemoteEvent") then
+		table.insert(cons, CoinUpdate.OnClientEvent:Connect(function(balance)
+			currentCoins = tonumber(balance) or currentCoins
+			refreshButtons()
+		end))
+	end
+
+	-- 초기 반영
+	refreshButtons()
+
+	-- 안전 정리
+	table.insert(cons, selectionGui.Destroying:Connect(function()
 		for _, c in ipairs(cons) do pcall(function() c:Disconnect() end) end
 	end))
-end
-
--- 레벨/코인 변동 시 즉시 갱신
-table.insert(cons, LocalPlayer:GetAttributeChangedSignal("Level"):Connect(refreshButtons))
-if LevelSync and LevelSync:IsA("RemoteEvent") then
-	table.insert(cons, LevelSync.OnClientEvent:Connect(function(payload)
-		if typeof(payload) == "table" and payload.Level then
-			LocalPlayer:SetAttribute("Level", payload.Level)
-			refreshButtons()
-		end
-	end))
-end
-if CoinUpdate and CoinUpdate:IsA("RemoteEvent") then
-	table.insert(cons, CoinUpdate.OnClientEvent:Connect(function(balance)
-		currentCoins = tonumber(balance) or currentCoins
-		refreshButtons()
-	end))
-end
-
--- 초기 반영
-refreshButtons()
-
--- 안전 정리
-table.insert(cons, selectionGui.Destroying:Connect(function()
-	for _, c in ipairs(cons) do pcall(function() c:Disconnect() end) end
-end))
 end
 
 -- 필요 시 외부에서 호출할 수 있게
