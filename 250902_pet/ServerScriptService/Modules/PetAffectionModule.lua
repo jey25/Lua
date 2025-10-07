@@ -18,14 +18,10 @@ if not remoteFolder then
 end
 
 
-local AffectionSync = ReplicatedStorage:FindFirstChild("PetAffectionSync") or Instance.new("RemoteEvent", ReplicatedStorage)
+local AffectionSync = remoteFolder:FindFirstChild("PetAffectionSync") or Instance.new("RemoteEvent")
 AffectionSync.Name = "PetAffectionSync"
+AffectionSync.Parent = remoteFolder
 
-if not AffectionSync then
-	AffectionSync = Instance.new("RemoteEvent")
-	AffectionSync.Name = "PetAffectionSync"
-	AffectionSync.Parent = remoteFolder
-end
 
 -- [추가] StreetFood와 동일한 클라 액션을 재사용(버블/사운드)
 local StreetFoodEvent = remoteFolder:FindFirstChild("StreetFoodEvent")
@@ -420,13 +416,13 @@ local function scheduleDecay(player: Player)
 		-- 퀘스트 미클리어로 감소 1
 		local val = player:GetAttribute("PetAffection") or 0
 		local maxv = player:GetAttribute("PetAffectionMax") or DEFAULT_MAX
-		
+
 		if val > 0 then
 			val -= 1
 			player:SetAttribute("PetAffection", val)
 			player:SetAttribute("PetAffectionLastChangeUnix", now())
 			broadcast(player, val, maxv, decSec)
-			
+
 			-- ▼▼ 추가: 감소로 MAX 미만이 되면 하트 숨김
 			if val < maxv then
 				HeartToken[player] = (HeartToken[player] or 0) + 1
@@ -599,7 +595,7 @@ local function initPlayer(player: Player)
 	-- [추가] MAX 관련 유지시간, 마지막 MAX 타임스탬프
 	player:SetAttribute("PetAffectionMaxHoldSec", DEFAULT_MAX_HOLD_SEC)
 	player:SetAttribute("PetAffectionMaxReachedUnix", lastMax)
-	
+
 	-- initPlayer 내부 설정들에 이어서 ▼▼ 추가
 	player:SetAttribute("PetAffectionZeroHoldSec", DEFAULT_ZERO_HOLD_SEC)
 	player:SetAttribute("PetAffectionMinReachedUnix",

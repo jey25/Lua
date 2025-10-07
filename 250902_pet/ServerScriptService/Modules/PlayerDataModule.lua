@@ -32,6 +32,7 @@ local store = DataStoreService:GetDataStore(DS_NAME)
 type OwnedPet = { affection: number, vaccines: { count: number } }
 type BuffInfo = { expiresAt: number, params: { [string]: any } }
 
+-- type PlayerData = {...} 정의에 필드 추가
 type PlayerData = {
 	coins: number,
 	level: number,
@@ -40,20 +41,25 @@ type PlayerData = {
 	vaccineCount: number,
 	ownedPets: { [string]: OwnedPet },
 	buffs: { [string]: BuffInfo },
+	lettersRead: {[string]: boolean}?, -- ★ 추가: Letter 진행(키→true)
 	lastVaxAt: number?,
 	nextVaxAt: number?,
 	activePets: { string }?,
+	civicStatus: string?, -- "none" | "good" | "suspicious"
 }
 
+-- DEFAULT 에도 추가
 local DEFAULT: PlayerData = {
 	coins = 0, level = 1, exp = 0,
 	selectedPetName = nil,
 	vaccineCount = 0,
 	ownedPets = {},
 	buffs = {},
+	lettersRead = {}, -- ★ 추가
 	lastVaxAt = 0,
 	nextVaxAt = 0,
 	activePets = {},
+	civicStatus = "none",
 }
 
 local PlayerDataService = {}
@@ -84,6 +90,25 @@ local function isStringArray(a: any): boolean
 	end
 	return true
 end
+
+local function sanitizeLettersMap(anyMap: any): {[string]: boolean}
+	local out: {[string]: boolean} = {}
+	if type(anyMap) ~= "table" then return out end
+	for k, v in pairs(anyMap) do
+		if type(k) == "string" and v == true then
+			out[k] = true
+		end
+	end
+	return out
+end
+
+-- Utils 부근에 추가
+local function normalizeCivicStatus(s: any): string
+	s = tostring(s or "none")
+	if s == "good" or s == "suspicious" then return s end
+	return "none"
+end
+
 
 local function sanitizeOwnedPets(tbl: any): { [string]: OwnedPet }
 	local owned: { [string]: OwnedPet } = {}
@@ -152,6 +177,8 @@ local function mergeDefault(dataAny: any): PlayerData
 
 	-- Buffs: may be ignored depending on PERSIST_BUFFS
 	merged.buffs = sanitizeBuffsMap(merged.buffs)
+	merged.civicStatus = normalizeCivicStatus(merged.civicStatus)
+	merged.lettersRead = sanitizeLettersMap(merged.lettersRead)
 
 	return merged
 end
@@ -195,6 +222,13 @@ function PlayerDataService:Load(player: Player): PlayerData
 	player:SetAttribute("Exp", data.exp)
 	player:SetAttribute("ExpToNext", 0)
 	player:SetAttribute("VaccinationCount", data.vaccineCount)
+	
+	-- PlayerDataService:Load 마지막의 HUD attribute 설정 직후에 추가
+	local cs = data.civicStatus or "none"
+	player:SetAttribute("CivicStatus", cs)
+	player:SetAttribute("IsGoodCitizen", cs == "good")
+	player:SetAttribute("IsSuspiciousPerson", cs == "suspicious")
+
 
 	return data
 end
@@ -233,6 +267,10 @@ function PlayerDataService:Save(userId: number, reason: string?): boolean
 			old.lastVaxAt = clampNonNeg(tonumber(data.lastVaxAt) or 0)
 			old.nextVaxAt = clampNonNeg(tonumber(data.nextVaxAt) or 0)
 			old.activePets = deepCopy(data.activePets or {})
+			-- Save() 의 updateOnce() 내부에서 overwrite 부분에 추가
+			old.civicStatus = normalizeCivicStatus(data.civicStatus)
+			old.lettersRead = sanitizeLettersMap(data.lettersRead)
+
 
 			if PERSIST_BUFFS then
 				old.buffs = sanitizeBuffsMap(data.buffs)
@@ -276,6 +314,33 @@ function PlayerDataService:GetOwnedPetNames(player: Player): {string}
 	return arr
 end
 
+-- PlayerDataService.lua (public API 섹션에 추가)
+function PlayerDataService:ResetCivicStatus(player: Player)
+	local d = self:Get(player)
+	d.civicStatus = "none"
+	player:SetAttribute("CivicStatus", "none")
+	player:SetAttribute("IsGoodCitizen", false)
+	player:SetAttribute("IsSuspiciousPerson", false)
+	self:MarkDirty(player)
+end
+
+
+function PlayerDataService:GetCivicStatus(player: Player): string
+	return normalizeCivicStatus(self:Get(player).civicStatus)
+end
+
+function PlayerDataService:SetCivicStatus(player: Player, status: string)
+	status = normalizeCivicStatus(status)
+	local d = self:Get(player)
+	d.civicStatus = status
+	-- 속성으로도 즉시 노출 (클라/다른 NPC 분기 용이)
+	player:SetAttribute("CivicStatus", status)
+	player:SetAttribute("IsGoodCitizen", status == "good")
+	player:SetAttribute("IsSuspiciousPerson", status == "suspicious")
+	self:MarkDirty(player)
+end
+
+
 function PlayerDataService:GetActivePets(player: Player): {string}
 	local d = self:Get(player)
 	return sanitizeActivePets(d.activePets, d.ownedPets)
@@ -286,6 +351,24 @@ function PlayerDataService:SetActivePets(player: Player, names: {string})
 	d.activePets = sanitizeActivePets(names, d.ownedPets)
 	self:MarkDirty(player)
 end
+
+-- PlayerDataService.lua 내 Public getters / setters 근처에 추가
+function PlayerDataService:GetVaccineCount(player: Player): number
+	return clampNonNeg(tonumber(self:Get(player).vaccineCount) or 0)
+end
+
+function PlayerDataService:IncVaccineCount(player: Player, by: number?): number
+	local d = self:Get(player)
+	d.vaccineCount = clampNonNeg((d.vaccineCount or 0) + (by or 1))
+	-- HUD 동기화도 같이
+	local attr = d.vaccineCount
+	if player and player.Parent then
+		player:SetAttribute("VaccinationCount", attr)
+	end
+	self:MarkDirty(player)
+	return d.vaccineCount
+end
+
 
 -- Vaccination timestamps
 function PlayerDataService:GetLastVaxAt(player: Player): number
@@ -383,6 +466,41 @@ function PlayerDataService:SetSelectedPet(player: Player, petName: string?)
 	d.selectedPetName = petName
 	self:MarkDirty(player)
 end
+
+-- Letter 진행 읽기
+function PlayerDataService:GetLettersRead(player: Player): {[string]: boolean}
+	local d = self:Get(player)
+	return sanitizeLettersMap(d.lettersRead)
+end
+
+-- 특정 Letter 키를 읽음 처리. (이미 읽었으면 changed=false)
+function PlayerDataService:MarkLetterRead(player: Player, key: string): (boolean, number)
+	if type(key) ~= "string" or key == "" then return false, 0 end
+	local d = self:Get(player)
+	d.lettersRead = d.lettersRead or {}
+	if d.lettersRead[key] then
+		-- 이미 기록 있음
+		local cnt = 0
+		for _, v in pairs(d.lettersRead) do if v then cnt += 1 end end
+		return false, cnt
+	end
+	d.lettersRead[key] = true
+	self:MarkDirty(player)
+	-- 카운트 반환
+	local cnt = 0
+	for _, v in pairs(d.lettersRead) do if v then cnt += 1 end end
+	return true, cnt
+end
+
+function PlayerDataService:GetLetterReadCount(player: Player): number
+	local d = self:Get(player)
+	local cnt = 0
+	for _, v in pairs(d.lettersRead or {}) do
+		if v then cnt += 1 end
+	end
+	return cnt
+end
+
 
 -- =====================
 -- Autosave & lifecycle

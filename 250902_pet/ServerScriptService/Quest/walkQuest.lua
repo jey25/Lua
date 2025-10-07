@@ -16,7 +16,7 @@ local SFXFolder = ReplicatedStorage:WaitForChild("SFX") -- 여기에 템플릿�
 
 local walkStartTimes = {7, 15, 18, 21}   -- 정각 시작
 local WALK_WINDOW_HOURS = 1               -- 창 길이(게임 시계 기준)
-local walkDuration = 20                  -- 존 내 누적 필요시간(초)
+local walkDuration = 30                  -- 존 내 누적 필요시간(초)
 local walkZones = Workspace:WaitForChild("WalkZones")
 
 -- 맨 위 require들 아래에 추가
@@ -31,7 +31,7 @@ local isWalkTime = false
 local activeUntilClock: number? = nil
 
 -- 보상/패널티 기본값 (원하는 값으로 조정)
-local WALK_XP_REWARD_DEFAULT         = 250   -- 클리어 시 EXP 증가량
+local WALK_XP_REWARD_DEFAULT         = 300   -- 클리어 시 EXP 증가량
 local WALK_AFFECTION_GAIN_DEFAULT    = 2     -- 클리어 시 어펙션 증가량
 local WALK_AFFECTION_PENALTY_DEFAULT = 1     -- 실패(미클리어 종료) 시 어펙션 감소량
 

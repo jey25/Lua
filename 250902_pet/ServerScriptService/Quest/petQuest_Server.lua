@@ -10,7 +10,7 @@ local remoteFolder = ReplicatedStorage:WaitForChild("RemoteEvents")
 local PetQuestEvent = remoteFolder:WaitForChild("PetQuestEvent")
 
 -- 설정
-local INTERVAL = 10
+local INTERVAL = 60
 local WORLD = Workspace:WaitForChild("World", 10)
 local DOG_ITEMS = WORLD and WORLD:FindFirstChild("dogItems")
 
@@ -54,13 +54,13 @@ local quests = {
 
 -- 퀘스트 보상
 local QUEST_REWARDS = {
-	["Feed the Dog"]         = 150,
-	["Play the Ball"]        = 150,
+	["Feed the Dog"]         = 100,
+	["Play the Ball"]        = 100,
 	["Pet the Dog"]          = 100,
-	["Put the Dog to Sleep"] = 150,
-	["Play a Game"]          = 200,
-	["Take the Dog to the Vet"] = 200,
-	["Buy the Dog Food"]     = 200,
+	["Put the Dog to Sleep"] = 100,
+	["Play a Game"]          = 100,
+	["Take the Dog to the Vet"] = 100,
+	["Buy the Dog Food"]     = 100,
 }
 
 -- Play the Ball 전용 폴더
@@ -126,6 +126,29 @@ local function ensurePrimaryOrAnyPart(model: Model): BasePart?
 	return model:FindFirstChildWhichIsA("BasePart", true)
 end
 
+-- ✅ 이름으로 전부 수집 (DOG_ITEMS 하위)
+local function collectNamedDescendants(root: Instance?, name: string): {Instance}
+	local out = {}
+	if not root then return out end
+	for _, inst in ipairs(root:GetDescendants()) do
+		if (inst:IsA("Model") or inst:IsA("BasePart")) and inst.Name == name then
+			table.insert(out, inst)
+		end
+	end
+	return out
+end
+
+-- ✅ 워크스페이스 전역에서 동일 이름 BasePart 수집 (영역용)
+local function collectWorkspaceAreas(name: string): {BasePart}
+	local out = {}
+	for _, inst in ipairs(Workspace:GetDescendants()) do
+		if inst:IsA("BasePart") and inst.Name == name then
+			table.insert(out, inst)
+		end
+	end
+	return out
+end
+
 -- ✅ 펫 클릭용 히트박스 생성/재사용
 local function ensurePetClickTarget(pet: Model): BasePart?
 	local base = ensurePrimaryOrAnyPart(pet)
@@ -157,7 +180,7 @@ local function ensurePetClickTarget(pet: Model): BasePart?
 	return hitbox
 end
 
--- 중복 연결 방지형 ClickDetector
+-- 중복 연결 방지형 ClickDetector (PlayBall 전용으로 계속 사용)
 local function ensureClickDetectorOnce(target: Instance, callback: (Player)->())
 	if not target then return end
 	local base : BasePart? = nil
@@ -183,7 +206,7 @@ local function ensureClickDetectorOnce(target: Instance, callback: (Player)->())
 	end)
 end
 
--- 서버에서 공용 오브젝트 클릭 세팅
+-- 서버에서 공용 오브젝트 클릭 세팅 (단일 용 - 기존 호환용)
 local function ensureClickDetector(target: Instance, callback: (Player)->())
 	if not target then return end
 	local base : BasePart? = nil
@@ -204,25 +227,49 @@ local function ensureClickDetector(target: Instance, callback: (Player)->())
 	end)
 end
 
+-- ✅ 다중 이름 지원용: 지정 key로 1회만 와이어링, 클릭된 인스턴스까지 콜백 전달
+local function ensureClickDetectorOnceWithKey(target: Instance, keyAttr: string, callback: (Player, Instance)->())
+	if not target then return end
+	local base : BasePart? = target:IsA("BasePart") and target
+		or (target:IsA("Model") and ensurePrimaryOrAnyPart(target)) or nil
+	if not base then return end
+
+	local cd = base:FindFirstChildOfClass("ClickDetector")
+	if not cd then
+		cd = Instance.new("ClickDetector")
+		cd.MaxActivationDistance = 10
+		cd.Parent = base
+	end
+
+	if cd:GetAttribute(keyAttr) then return end
+	cd:SetAttribute(keyAttr, true)
+
+	cd.MouseClick:Connect(function(player)
+		if player and player.Parent then
+			callback(player, target) -- 클릭된 ‘그’ 인스턴스 전달
+		end
+	end)
+end
+
 -- ========= 타깃 탐색/가용성 판단 =========
 
 -- 퀘스트별 타깃 리스트 반환
 local function getQuestTargetsFor(player: Player, questName: string): {Instance}
 	if questName == "Feed the Dog" then
-		return { DOG_ITEMS and DOG_ITEMS:FindFirstChild("FoodItem") }
+		return collectNamedDescendants(DOG_ITEMS, "FoodItem")
 	elseif questName == "Play the Ball" then
 		local list = collectTargetsInFolder(PLAY_BALL_ITEMS)
 		local single = DOG_ITEMS and DOG_ITEMS:FindFirstChild("BallItem")
 		if single then table.insert(list, single) end
 		return list
 	elseif questName == "Take the Dog to the Vet" then
-		return { DOG_ITEMS and DOG_ITEMS:FindFirstChild("DogMedicine") }
+		return collectNamedDescendants(DOG_ITEMS, "DogMedicine")
 	elseif questName == "Buy the Dog Food" then
-		return { DOG_ITEMS and DOG_ITEMS:FindFirstChild("DogFood") }
+		return collectNamedDescendants(DOG_ITEMS, "DogFood")
 	elseif questName == "Put the Dog to Sleep" then
-		return { Workspace:FindFirstChild("SleepArea") }
+		return collectWorkspaceAreas("SleepArea")
 	elseif questName == "Play a Game" then
-		return { Workspace:FindFirstChild("FunArea") }
+		return collectWorkspaceAreas("FunArea")
 	elseif questName == "Pet the Dog" then
 		-- 🔧 기존 버그: table(map) 반환하던 것 수정 → 배열(Model들)
 		return getPetsOf(player)
@@ -321,6 +368,11 @@ local function completeQuestForPet(player: Player, petId: string, questName: str
 	if ActiveQuestByPet[petId] ~= questName then return end
 	ActiveQuestByPet[petId] = nil
 
+	-- 방어적: 소유자 확인(선택적 강화)
+	if PetOwner[petId] and PetOwner[petId] ~= player then
+		return
+	end
+
 	local reward = QUEST_REWARDS[questName] or 0
 	if reward > 0 then Experience.AddExp(player, reward) end
 
@@ -329,6 +381,10 @@ local function completeQuestForPet(player: Player, petId: string, questName: str
 
 	-- 마커 숨김
 	local targets = getQuestTargetsFor(player, questName)
+	if questName == "Pet the Dog" then
+		local m = OwnerPets[player.UserId] and OwnerPets[player.UserId][petId]
+		targets = m and { m } or {}
+	end
 	PetQuestEvent:FireClient(player, "HideQuestMarkers", {
 		quest = questName, targets = targets, petId = petId
 	})
@@ -388,23 +444,25 @@ local function onPetClicked(player: Player, petModel: Model)
 	end
 end
 
-local function onFoodClicked(player: Player)
-	local pid = pickActivePetFor(player, "Feed the Dog", DOG_ITEMS and DOG_ITEMS:FindFirstChild("FoodItem"))
+-- 아래 콜백들은 다중 동일 이름 오브젝트 지원을 위해 클릭된 인스턴스를 함께 받음
+local function onFoodClicked(player: Player, inst: Instance)
+	local pid = pickActivePetFor(player, "Feed the Dog", inst)
 	if pid then completeQuestForPet(player, pid, "Feed the Dog") end
 end
 
-local function onBallClicked(player: Player)
-	local pid = pickActivePetFor(player, "Play the Ball", PLAY_BALL_ITEMS or (DOG_ITEMS and DOG_ITEMS:FindFirstChild("BallItem")))
+local function onBallClicked(player: Player, inst: Instance)
+	-- PlayBall은 기존 ensureClickDetectorOnce로 player만 넘길 수도 있음 → inst 없으면 nil 허용
+	local pid = pickActivePetFor(player, "Play the Ball", inst)
 	if pid then completeQuestForPet(player, pid, "Play the Ball") end
 end
 
-local function onMedicineClicked(player: Player)
-	local pid = pickActivePetFor(player, "Take the Dog to the Vet", DOG_ITEMS and DOG_ITEMS:FindFirstChild("DogMedicine"))
+local function onMedicineClicked(player: Player, inst: Instance)
+	local pid = pickActivePetFor(player, "Take the Dog to the Vet", inst)
 	if pid then completeQuestForPet(player, pid, "Take the Dog to the Vet") end
 end
 
-local function onDogFoodClicked(player: Player)
-	local pid = pickActivePetFor(player, "Buy the Dog Food", DOG_ITEMS and DOG_ITEMS:FindFirstChild("DogFood"))
+local function onDogFoodClicked(player: Player, inst: Instance)
+	local pid = pickActivePetFor(player, "Buy the Dog Food", inst)
 	if pid then completeQuestForPet(player, pid, "Buy the Dog Food") end
 end
 
@@ -415,51 +473,79 @@ end
 
 -- ========= 와이어링 =========
 
--- PlayBall 전용 폴더 와이어링
+-- PlayBall 전용 폴더 와이어링 (기존 동작 유지: 모든 하위에 1회 와이어링)
 if PLAY_BALL_ITEMS then
 	-- 최초 일괄
 	for _, inst in ipairs(PLAY_BALL_ITEMS:GetDescendants()) do
 		if inst:IsA("Model") or inst:IsA("BasePart") then
-			ensureClickDetectorOnce(inst, onBallClicked)
+			ensureClickDetectorOnce(inst, function(player)
+				onBallClicked(player, inst)
+			end)
 		end
 	end
 	-- 런타임 추가
 	PLAY_BALL_ITEMS.DescendantAdded:Connect(function(inst)
 		if inst:IsA("Model") or inst:IsA("BasePart") then
-			ensureClickDetectorOnce(inst, onBallClicked)
+			ensureClickDetectorOnce(inst, function(player)
+				onBallClicked(player, inst)
+			end)
 		end
 	end)
 end
 
--- 단일 아이템들
+-- 단일 아이템들 → 동일 이름 여러 개 전부 와이어링으로 확장
 if DOG_ITEMS then
-	ensureClickDetector(DOG_ITEMS:FindFirstChild("FoodItem"), onFoodClicked)
-	ensureClickDetector(DOG_ITEMS:FindFirstChild("BallItem"), onBallClicked)
-	ensureClickDetector(DOG_ITEMS:FindFirstChild("DogMedicine"), onMedicineClicked)
-	ensureClickDetector(DOG_ITEMS:FindFirstChild("DogFood"), onDogFoodClicked)
-end
+	-- 초기 일괄: FoodItem / DogMedicine / DogFood 모두
+	for _, inst in ipairs(collectNamedDescendants(DOG_ITEMS, "FoodItem")) do
+		ensureClickDetectorOnceWithKey(inst, "Wired_FoodItem", onFoodClicked)
+	end
+	for _, inst in ipairs(collectNamedDescendants(DOG_ITEMS, "DogMedicine")) do
+		ensureClickDetectorOnceWithKey(inst, "Wired_DogMedicine", onMedicineClicked)
+	end
+	for _, inst in ipairs(collectNamedDescendants(DOG_ITEMS, "DogFood")) do
+		ensureClickDetectorOnceWithKey(inst, "Wired_DogFood", onDogFoodClicked)
+	end
 
--- 영역들
-if SleepArea and SleepArea:IsA("BasePart") then
-	SleepArea.Touched:Connect(function(hit)
-		local char = hit and hit:FindFirstAncestorOfClass("Model")
-		if not char then return end
-		local player = Players:GetPlayerFromCharacter(char)
-		if player then
-			touchedArea("Put the Dog to Sleep", player, SleepArea)
+	-- 런타임 추가
+	DOG_ITEMS.DescendantAdded:Connect(function(inst)
+		if not (inst:IsA("Model") or inst:IsA("BasePart")) then return end
+		if inst.Name == "FoodItem" then
+			ensureClickDetectorOnceWithKey(inst, "Wired_FoodItem", onFoodClicked)
+		elseif inst.Name == "DogMedicine" then
+			ensureClickDetectorOnceWithKey(inst, "Wired_DogMedicine", onMedicineClicked)
+		elseif inst.Name == "DogFood" then
+			ensureClickDetectorOnceWithKey(inst, "Wired_DogFood", onDogFoodClicked)
 		end
 	end)
 end
 
-if FunArea and FunArea:IsA("BasePart") then
-	FunArea.Touched:Connect(function(hit)
-		local char = hit and hit:FindFirstAncestorOfClass("Model")
-		if not char then return end
-		local player = Players:GetPlayerFromCharacter(char)
-		if player then
-			touchedArea("Play a Game", player, FunArea)
-		end
-	end)
+-- 영역들: SleepArea / FunArea 전부 와이어링
+for _, area in ipairs(collectWorkspaceAreas("SleepArea")) do
+	if not area:GetAttribute("Wired_SleepArea") then
+		area:SetAttribute("Wired_SleepArea", true)
+		area.Touched:Connect(function(hit)
+			local char = hit and hit:FindFirstAncestorOfClass("Model")
+			if not char then return end
+			local player = Players:GetPlayerFromCharacter(char)
+			if player then
+				touchedArea("Put the Dog to Sleep", player, area)
+			end
+		end)
+	end
+end
+
+for _, area in ipairs(collectWorkspaceAreas("FunArea")) do
+	if not area:GetAttribute("Wired_FunArea") then
+		area:SetAttribute("Wired_FunArea", true)
+		area.Touched:Connect(function(hit)
+			local char = hit and hit:FindFirstAncestorOfClass("Model")
+			if not char then return end
+			local player = Players:GetPlayerFromCharacter(char)
+			if player then
+				touchedArea("Play a Game", player, area)
+			end
+		end)
+	end
 end
 
 -- ✅ 펫 클릭 와이어링
@@ -518,9 +604,27 @@ for _, inst in ipairs(Workspace:GetDescendants()) do
 	tryWirePetClick(inst)
 end
 
--- 이후 새로 들어오는 것들
+-- 이후 새로 들어오는 것들 (펫 + 영역)
 Workspace.DescendantAdded:Connect(function(inst)
+	-- 펫
 	tryWirePetClick(inst)
+
+	-- 영역: SleepArea / FunArea
+	if inst:IsA("BasePart") and inst.Name == "SleepArea" and not inst:GetAttribute("Wired_SleepArea") then
+		inst:SetAttribute("Wired_SleepArea", true)
+		inst.Touched:Connect(function(hit)
+			local char = hit and hit:FindFirstAncestorOfClass("Model"); if not char then return end
+			local player = Players:GetPlayerFromCharacter(char)
+			if player then touchedArea("Put the Dog to Sleep", player, inst) end
+		end)
+	elseif inst:IsA("BasePart") and inst.Name == "FunArea" and not inst:GetAttribute("Wired_FunArea") then
+		inst:SetAttribute("Wired_FunArea", true)
+		inst.Touched:Connect(function(hit)
+			local char = hit and hit:FindFirstAncestorOfClass("Model"); if not char then return end
+			local player = Players:GetPlayerFromCharacter(char)
+			if player then touchedArea("Play a Game", player, inst) end
+		end)
+	end
 end)
 
 -- 선택 이벤트 (참고 플래그)

@@ -6,7 +6,10 @@ local Workspace = game:GetService("Workspace")
 
 local ExperienceService = require(ServerScriptService:WaitForChild("ExperienceService"))
 local ClearModule = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("ClearModule"))
-local CoinService = require(script.Parent:WaitForChild("CoinService"))
+local CoinService = require(ServerScriptService:WaitForChild("CoinService"))
+-- 파일 상단 require들 근처에 [ADD]
+local BuffService = require(ServerScriptService:WaitForChild("BuffService"))
+
 
 -- 🆕 Jumper 배지 지급용
 local BadgeManager = require(ServerScriptService:WaitForChild("BadgeManager"))
@@ -30,20 +33,20 @@ end
 local QUEST_CONFIG = {
 	["nightwatch_zoechickie"] = {
 		Distance = 20,
-		BubbleText = "거기, 시원한 마실 거 좀 가지고 있어?",
+		BubbleText = "Hey, do you have anything cold to drink?",
 		Rewards = {
-			Exp = 150,
+			Exp = 400,
 			--Coin = 20,
-			Bubble = "고마워! 혹시 검은 지붕 교회 앞 건물 가 봤어?"
+			Bubble = "Have you ever been to the building in front of the Black Roof Church?"
 		}
 	},
 	["Crimson"] = {
 		Distance = 20,
-		BubbleText = "너, 좋은 걸 가지고 있는 것 같은데?",
+		BubbleText = "You seem to have something good?",
 		Rewards = {
-			Exp = 150,
+			Exp = 400,
 			--Coin = 50,
-			Bubble = "꿀맛인데? 이건 비밀인데, 경찰서 무기 관리가 허술하더라고"
+			Bubble = "Police station's weapons management is lax."
 		}
 	},
 }
@@ -96,6 +99,11 @@ local function giveRewards(player: Player, npcName: string)
 
 	-- ✅ 퀘스트 클리어 이펙트(기존)
 	ClearModule.showClearEffect(player)
+	
+	if npcName == "nightwatch_zoechickie" then
+		-- 상점과 동일: 50 -> 80 (정확히 1.6배)
+		BuffService:ApplyBuff(player, "JumpUp", 30*60, { mult = 80/50 }, "JUMP UP! (30m)")
+	end
 
 	-- ✅ Jumper 배지: nightwatch_zoechickie만, "처음 한 번만" 지급
 	if npcName == "nightwatch_zoechickie" then
@@ -127,68 +135,114 @@ local function giveRewards(player: Player, npcName: string)
 end
 
 
--- NPC 세팅
-for npcName, cfg in pairs(QUEST_CONFIG) do
-	local npc = Workspace:WaitForChild("NPC_LIVE"):FindFirstChild(npcName)
-	if npc and npc:FindFirstChild("Head") then
-		local head = npc.Head
+-- === NPC 세팅 (나중에 스폰되는 NPC도 대응) ===
+local NPC_FOLDER = Workspace:WaitForChild("NPC_LIVE")
 
-		-- ProximityPrompt 추가
-		local prompt = Instance.new("ProximityPrompt")
-		prompt.ActionText = "Deliver Bottle"
-		prompt.ObjectText = npcName
-		prompt.KeyboardKeyCode = Enum.KeyCode.E
-		prompt.RequiresLineOfSight = false
-		prompt.MaxActivationDistance = cfg.Distance
-		prompt.HoldDuration = 0.2
-		prompt.Enabled = false
-		prompt.Parent = head
+-- 같은 NPC 인스턴스에 중복 세팅 방지 (약한 참조)
+local prepared: {[Instance]: boolean} = setmetatable({}, { __mode = "k" })
 
-		-- Prompt 실행 시
-		prompt.Triggered:Connect(function(player)
-			if not player:GetAttribute("HasBottle") then return end
-			RemoveBottle(player)
-			giveRewards(player, npcName)
-		end)
+local function startWatchFor(player: Player, head: BasePart, cfg)
+	local function onChar(char: Model)
+		task.spawn(function()
+			local bubbleShown = false
+			while char.Parent do
+				task.wait(0.5)
 
-		-- 플레이어 근접 감시 (HasBottle 여부)
-		Players.PlayerAdded:Connect(function(player)
-			player.CharacterAdded:Connect(function(char)
-				task.spawn(function()
-					local bubbleShown = false -- 한 번만 표시
-					while char.Parent do
-						task.wait(0.5)
-						if not char.PrimaryPart then continue end
-						local dist = (head.Position - char.PrimaryPart.Position).Magnitude
-						if dist <= cfg.Distance and player:GetAttribute("HasBottle") then
-							prompt.Enabled = true
-							if not bubbleShown then
-								bubbleShown = true
-								local bubble = BubbleTemplate:Clone()
-								bubble.Name = "QuestBubble"
-								bubble.Adornee = head
-								bubble.StudsOffset = Vector3.new(0, 3, 0)
-								bubble.Parent = head
-								bubble.TextLabel.Text = cfg.BubbleText
+				-- NPC가 사라지면 정리
+				if not (head and head.Parent) then
+					break
+				end
 
-								-- 일정 시간 후 제거
-								task.delay(5, function()
-									if bubble and bubble.Parent then
-										bubble:Destroy()
-									end
-								end)
-							end
-						else
-							prompt.Enabled = false
-							bubbleShown = false -- 범위 벗어나면 다음 근접 시 다시 표시 가능
-						end
+				local hrp = char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
+				if not (hrp and hrp:IsA("BasePart")) then
+					continue
+				end
+
+				local dist = (head.Position - hrp.Position).Magnitude
+				if dist <= cfg.Distance and player:GetAttribute("HasBottle") then
+					if not bubbleShown then
+						bubbleShown = true
+						local bubble = BubbleTemplate:Clone()
+						bubble.Name = "QuestBubble"
+						bubble.Adornee = head
+						bubble.StudsOffset = Vector3.new(0, 3, 0)
+						bubble.Parent = head
+						bubble.TextLabel.Text = cfg.BubbleText
+						game:GetService("Debris"):AddItem(bubble, 5)
 					end
-				end)
-			end)
+				else
+					bubbleShown = false
+				end
+			end
 		end)
+	end
 
+	-- 이미 스폰된 캐릭터에도 즉시 감시 시작
+	if player.Character then onChar(player.Character) end
+	player.CharacterAdded:Connect(onChar)
+end
+
+local function setupNPC(npcName: string, cfg, npcModel: Model)
+	if prepared[npcModel] then return end
+	prepared[npcModel] = true
+
+	-- Head를 안전하게 기다림
+	local head = npcModel:FindFirstChild("Head") or npcModel:WaitForChild("Head", 10)
+	if not (head and head:IsA("BasePart")) then
+		prepared[npcModel] = nil
+		return
+	end
+
+	-- ProximityPrompt 생성 (항상 켜두고, 트리거 시 서버에서 HasBottle 검사)
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Deliver Bottle"
+	prompt.ObjectText = npcName
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.RequiresLineOfSight = false
+	prompt.MaxActivationDistance = cfg.Distance
+	prompt.HoldDuration = 0.2
+	prompt.Enabled = true
+	prompt.Parent = head
+
+	prompt.Triggered:Connect(function(player)
+		if not player:GetAttribute("HasBottle") then return end
+		RemoveBottle(player)
+		giveRewards(player, npcName)
+	end)
+
+	-- 모든 플레이어 감시 시작 + 이후 입장자도 커버
+	for _, p in ipairs(Players:GetPlayers()) do
+		startWatchFor(p, head, cfg)
+	end
+	Players.PlayerAdded:Connect(function(p)
+		startWatchFor(p, head, cfg)
+	end)
+
+	-- 이 NPC 인스턴스가 삭제되면 준비 플래그 해제
+	npcModel.AncestryChanged:Connect(function(_, parent)
+		if not parent then
+			prepared[npcModel] = nil
+		end
+	end)
+end
+
+-- 1) 지금 이미 존재하는 NPC들 세팅
+for npcName, cfg in pairs(QUEST_CONFIG) do
+	local m = NPC_FOLDER:FindFirstChild(npcName)
+	if m and m:IsA("Model") then
+		setupNPC(npcName, cfg, m)
 	end
 end
+
+-- 2) 앞으로 새로 생기는 NPC도 세팅
+NPC_FOLDER.ChildAdded:Connect(function(child)
+	if not child:IsA("Model") then return end
+	local cfg = QUEST_CONFIG[child.Name]
+	if cfg then
+		setupNPC(child.Name, cfg, child)
+	end
+end)
+
 
 return {
 	GiveBottle = GiveBottle,

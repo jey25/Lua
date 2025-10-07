@@ -7,29 +7,28 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local petModels = ReplicatedStorage:WaitForChild("Pets")
 local SFXFolder = ReplicatedStorage:WaitForChild("SFX")
+
+-- PetManager.server.lua 맨 위 유틸/상수 근처에 추가
+local _lastPetSelectAt: {[number]: number} = {}
+
 -- Requires
 local PlayerDataService = require(script.Parent:WaitForChild("PlayerDataService"))
 local CoinService = require(script.Parent:WaitForChild("CoinService"))
+local BadgeManager = require(script.Parent:WaitForChild("BadgeManager"))  -- ✅ 배지 체크용
 
-
---플레이어와 펫의 충돌 방지 처리
+-- 플레이어/펫 충돌 방지
 local PhysicsService = game:GetService("PhysicsService")
 
--- 한 번만 실행
 local function ensureCollisionGroups()
-	local function safeCreate(name)
-		if not pcall(function() PhysicsService:CreateCollisionGroup(name) end) then
-			-- 이미 있으면 무시
-		end
+	local function safeCreate(name: string)
+		pcall(function() PhysicsService:CreateCollisionGroup(name) end)
 	end
 	safeCreate("Players")
 	safeCreate("Pets")
 
-	-- Players ↔ Pets 충돌 금지, Pets ↔ Pets도 금지(원하면 true로 바꿔도 됨)
 	PhysicsService:CollisionGroupSetCollidable("Players", "Pets", false)
-	PhysicsService:CollisionGroupSetCollidable("Pets", "Pets",   false)
+	PhysicsService:CollisionGroupSetCollidable("Pets",   "Pets", false)
 end
-
 ensureCollisionGroups()
 
 local function setCollisionGroupRecursive(inst: Instance, groupName: string)
@@ -39,7 +38,6 @@ local function setCollisionGroupRecursive(inst: Instance, groupName: string)
 		end
 	end
 end
-
 
 -- Shared Remotes
 local RemoteEvents = ReplicatedStorage:FindFirstChild("RemoteEvents") or Instance.new("Folder", ReplicatedStorage)
@@ -52,7 +50,7 @@ if not PetEvents then
 	PetEvents.Parent = ReplicatedStorage
 end
 
-local PetQuestEvent = RemoteEvents:FindFirstChild("PetQuestEvent") or Instance.new("RemoteEvent", RemoteEvents)
+local PetQuestEvent  = RemoteEvents:FindFirstChild("PetQuestEvent") or Instance.new("RemoteEvent", RemoteEvents)
 PetQuestEvent.Name = "PetQuestEvent"
 
 local TrySelectEpicPet = PetEvents:FindFirstChild("TrySelectEpicPet") or Instance.new("RemoteFunction", PetEvents)
@@ -70,32 +68,33 @@ PetSelectedEvent.Name = "PetSelected"
 local ShowArrowEvent = PetEvents:FindFirstChild("ShowArrow") or Instance.new("RemoteEvent", PetEvents)
 ShowArrowEvent.Name = "ShowArrow"
 
-
 -- Constants
-local PET_GUI_NAME = "petGui"  -- ReplicatedStorage 내 GUI 이름(펫 머리 위 등)
+local PET_GUI_NAME = "petGui"
 local petGuiTemplate: Instance = ReplicatedStorage:WaitForChild(PET_GUI_NAME)
--- ▼▼ 추가: 펫이 살짝 더 낮아지도록 전역 기본값(음수면 아래로)
-local PET_GROUND_NUDGE_Y = -0.3   -- 추천 범위: -0.3 ~ -1.2 (모델에 따라 조절)
 
--- 거리 상수는 그대로 사용
+-- ❗ 바닥 보정 제거: 단순히 전역(또는 모델 속성) nudge만 적용해서 약간 떠 있게 유지
+--   모델 개별 미세 조정이 필요하면 각 펫 모델에 Attribute "GroundNudgeY" 로 덮어써라.
+local PET_GROUND_NUDGE_Y = -0.4  -- 음수면 캐릭터 기준 아래쪽(약간 더 낮춘 느낌)
+
 local SIDE_DIST   = 3.2
-local BACK_DIST   = 3.6   -- ▶ 뒤쪽은 +값을 넣습니다
-local FRONT_DIST  = 3.6   -- ▶ 앞쪽은 -값으로 사용합니다
+local BACK_DIST   = 3.6
+local FRONT_DIST  = 3.6
 local SLIGHT_X    = 1.2
 local Y_OFFSET    = -1.5
 
--- 클라/서버 동일 요구 조건(레벨/코인)
-local PET_LEVEL_REQ = { golden_dog=100, Skeleton_Dog=150, Robot_Dog=200 }
-local PET_COIN_COST = { golden_dog=15,  Skeleton_Dog=20,  Robot_Dog=25  }
+-- ✅ Demon_Dog 상수(이름/요구조건)
+local DEMON_NAME       = "Demon_Dog"
+local DEMON_LEVEL_REQ  = 250
+local DEMON_COIN_COST  = 30
 
--- 맨 위 근처
-local ACTIVE_MAX = 5  -- 기존 3 → 5로
+local PET_LEVEL_REQ = { golden_dog=100, Skeleton_Dog=150, Robot_Dog=200, [DEMON_NAME]=DEMON_LEVEL_REQ }  -- ✅
+local PET_COIN_COST = { golden_dog=15,  Skeleton_Dog=20,  Robot_Dog=25,  [DEMON_NAME]=DEMON_COIN_COST }  -- ✅
 
--- 런타임 보유 펫(세션용)
--- PlayerPets[userId] = { {pet=model, slot=1, attachName="CharAttach_<id>", offset=Vector3}, ... }
-local PlayerPets: { [number]: { { pet: Model, slot: number, attachName: string, offset: Vector3 } } } = {}
+local ACTIVE_MAX = 5
 
-
+-- 런타임 보유 목록
+type PetInfo = { pet: Model, slot: number, attachName: string, offset: Vector3 }
+local PlayerPets: { [number]: { PetInfo } } = {}
 
 -- Helpers -------------------------------------------------------
 
@@ -104,18 +103,17 @@ local function getFollowOffsetForSlot(slot: number): Vector3
 	local y = Y_OFFSET
 
 	if s == 1 then
-		return Vector3.new( SIDE_DIST, y,  0)            -- 오른쪽
+		return Vector3.new( SIDE_DIST, y,  0)
 	elseif s == 2 then
-		return Vector3.new(-SIDE_DIST, y,  0)            -- 왼쪽
+		return Vector3.new(-SIDE_DIST, y,  0)
 	elseif s == 3 then
-		return Vector3.new( SLIGHT_X, y,  BACK_DIST)     -- 뒤 + 오른쪽(살짝)
+		return Vector3.new( SLIGHT_X, y,  BACK_DIST)
 	elseif s == 4 then
-		return Vector3.new(-SLIGHT_X, y,  BACK_DIST)     -- 뒤 + 왼쪽(살짝)
+		return Vector3.new(-SLIGHT_X, y,  BACK_DIST)
 	elseif s == 5 then
-		return Vector3.new(0, y, -FRONT_DIST)            -- 정면 앞
+		return Vector3.new(0, y, -FRONT_DIST)
 	end
 
-	-- 6번 이상 폴백(원형 확장): 뒤/뒤/앞 패턴 반복
 	local ringIndex = s - 5
 	local ring = 1 + math.floor((ringIndex-1)/3)
 	local posInTriad = ((ringIndex-1) % 3) + 1
@@ -124,15 +122,14 @@ local function getFollowOffsetForSlot(slot: number): Vector3
 	local radiusXSide  = SLIGHT_X   + (ring-1) * 0.6
 	local radiusZFront = FRONT_DIST + (ring-1) * 1.0
 
-	if posInTriad == 1 then           -- 뒤 + 오른쪽
+	if posInTriad == 1 then
 		return Vector3.new( radiusXSide, y,  radiusZBack)
-	elseif posInTriad == 2 then       -- 뒤 + 왼쪽
+	elseif posInTriad == 2 then
 		return Vector3.new(-radiusXSide, y,  radiusZBack)
-	else                              -- 앞
+	else
 		return Vector3.new(0, y, -radiusZFront)
 	end
 end
-
 
 local function getOrInitPetList(player: Player)
 	local list = PlayerPets[player.UserId]
@@ -145,14 +142,15 @@ end
 
 local function alreadySpawned(player: Player, petName: string): boolean
 	for _, info in ipairs(getOrInitPetList(player)) do
-		if info.pet and info.pet.Parent and info.pet.Name == petName then return true end
+		if info.pet and info.pet.Parent and info.pet.Name == petName then
+			return true
+		end
 	end
 	return false
 end
 
 local function nextSlot(player: Player): number
-	local list = getOrInitPetList(player)
-	return #list + 1
+	return #getOrInitPetList(player) + 1
 end
 
 local function ensurePrimaryPart(m: Model): BasePart?
@@ -162,6 +160,29 @@ local function ensurePrimaryPart(m: Model): BasePart?
 		or m:FindFirstChildWhichIsA("BasePart")
 	if cand then m.PrimaryPart = cand end
 	return cand
+end
+
+local function weldModelToPrimary(m: Model)
+	local pp = ensurePrimaryPart(m)
+	if not pp then return end
+	for _, d in ipairs(m:GetDescendants()) do
+		if d:IsA("BasePart") and d ~= pp then
+			d.Anchored = false
+			for _, j in ipairs(d:GetJoints()) do
+				if j:IsA("Weld") or j:IsA("WeldConstraint") then j:Destroy() end
+			end
+			local wc = Instance.new("WeldConstraint")
+			wc.Part0 = pp
+			wc.Part1 = d
+			wc.Parent = pp
+			d.CanCollide = false
+			d.Massless = true
+			d.CustomPhysicalProperties = PhysicalProperties.new(0.1, 0.3, 0.5)
+		end
+	end
+	pp.Anchored = false
+	pp.CanCollide = false
+	pp.Massless = true
 end
 
 -- ▼ 모델의 PrimaryPart 기준 '가장 낮은 지점'을 찾아
@@ -188,46 +209,20 @@ local function computeLiftFromPrimary(m: Model, desiredClearance: number?): numb
 	return (-lowestLocalY) + clearance
 end
 
-
-local function weldModelToPrimary(m: Model)
-	local pp = ensurePrimaryPart(m)
-	if not pp then return end
-	for _, d in ipairs(m:GetDescendants()) do
-		if d:IsA("BasePart") and d ~= pp then
-			d.Anchored = false
-			for _, j in ipairs(d:GetJoints()) do
-				if j:IsA("Weld") or j:IsA("WeldConstraint") then j:Destroy() end
-			end
-			local wc = Instance.new("WeldConstraint")
-			wc.Part0 = pp
-			wc.Part1 = d
-			wc.Parent = pp
-			d.CanCollide = false
-			d.Massless = true
-			d.CustomPhysicalProperties = PhysicalProperties.new(0.1, 0.3, 0.5)
-		end
-	end
-	pp.Anchored = false
-	pp.CanCollide = false
-	pp.Massless = true
-end
-
 local function uniqAppend(list: {string}, name: string)
 	for _, v in ipairs(list) do if v == name then return end end
 	table.insert(list, name)
 end
 
 local function trimToCap(list: {string}, cap: number)
-	while #list > cap do table.remove(list, 1) end -- FIFO
+	while #list > cap do table.remove(list, 1) end
 end
 
 local function getActivePetsFromData(player: Player, data): {string}
-	-- 1순위: 저장된 activePets
 	if data and typeof(data.activePets) == "table" then
 		return table.clone(data.activePets)
 	end
 
-	-- 2순위: 서비스 메서드
 	if PlayerDataService.GetActivePets then
 		local ok, ap = pcall(function() return PlayerDataService:GetActivePets(player) end)
 		if ok and typeof(ap) == "table" then
@@ -235,13 +230,11 @@ local function getActivePetsFromData(player: Player, data): {string}
 		end
 	end
 
-	-- 3순위 폴백: selected + owned (ACTIVE_MAX까지)
 	local res = {}
 	if data and data.selectedPetName then
 		uniqAppend(res, data.selectedPetName)
 	end
 
-	-- ✅ owned 목록은 딕셔너리이므로 key를 배열화
 	local ownedNames = {}
 	if data and type(data.ownedPets) == "table" then
 		for name, _ in pairs(data.ownedPets) do
@@ -256,7 +249,7 @@ local function getActivePetsFromData(player: Player, data): {string}
 
 	for _, name in ipairs(ownedNames) do
 		if #res >= ACTIVE_MAX then break end
-		if name ~= data.selectedPetName then
+		if not (data and name == data.selectedPetName) then
 			uniqAppend(res, name)
 		end
 	end
@@ -265,15 +258,12 @@ local function getActivePetsFromData(player: Player, data): {string}
 	return res
 end
 
-
 local function setActivePets(player: Player, names: {string})
 	trimToCap(names, ACTIVE_MAX)
 	if PlayerDataService.SetActivePets then
 		pcall(function() PlayerDataService:SetActivePets(player, names) end)
 	end
 end
-
-
 
 local function cleanupPetConstraints(m: Model)
 	local pp = ensurePrimaryPart(m)
@@ -299,16 +289,13 @@ local function ensureCharAttach(character: Model, attachName: string, offset: Ve
 	return aChar
 end
 
--- 안전 Follow 제약 패치
 local function addFollowConstraintWithOffset(pet: Model, character: Model, offset: Vector3, attachName: string)
 	local petPP = ensurePrimaryPart(pet)
 	local hrp = character:FindFirstChild("HumanoidRootPart") :: BasePart
 	if not (petPP and hrp) then return end
 
-	-- 기존 Align/Attachment 제거
 	cleanupPetConstraints(pet)
 
-	-- Attachments 생성
 	local aPet = Instance.new("Attachment")
 	aPet.Name = "PetAttach"
 	aPet.Parent = petPP
@@ -321,7 +308,6 @@ local function addFollowConstraintWithOffset(pet: Model, character: Model, offse
 	local aChar = ensureCharAttach(character, attachName, offset)
 	if not aChar then return end
 
-	-- AlignPosition
 	local ap = Instance.new("AlignPosition")
 	ap.Attachment0 = aPet
 	ap.Attachment1 = aChar
@@ -332,7 +318,6 @@ local function addFollowConstraintWithOffset(pet: Model, character: Model, offse
 	ap.Enabled = false
 	ap.Parent = petPP
 
-	-- AlignOrientation
 	local ao = Instance.new("AlignOrientation")
 	ao.Attachment0 = aPet
 	ao.Attachment1 = aChar
@@ -342,17 +327,16 @@ local function addFollowConstraintWithOffset(pet: Model, character: Model, offse
 	ao.Enabled = false
 	ao.Parent = petPP
 
-	-- 초기 위치 안전 이동
 	pet:PivotTo(hrp.CFrame * CFrame.new(offset))
 
-	-- Align 활성화
 	ap.Enabled = true
 	ao.Enabled = true
 end
 
--- spawnPet 안전 패치 (기존 이름 유지)
+-- 🔙 바닥 보정 제거: 간단한 nudge만
 local function spawnPet(player: Player, petName: string)
 	if alreadySpawned(player, petName) then return end
+
 	local character = player.Character or player.CharacterAdded:Wait()
 	local template = petModels:FindFirstChild(petName)
 	if not template then
@@ -360,22 +344,20 @@ local function spawnPet(player: Player, petName: string)
 		return
 	end
 
-	local slot = nextSlot(player)
+	local slot   = nextSlot(player)
 	local offset = getFollowOffsetForSlot(slot)
 
 	local attrNudge = template:GetAttribute("GroundNudgeY")
 	local nudgeY = (typeof(attrNudge) == "number" and attrNudge)
 		or (typeof(PET_GROUND_NUDGE_Y) == "number" and PET_GROUND_NUDGE_Y)
-		or -0.7
-	
-	local pet = template:Clone()
-	pet.Name = petName
-	
-	local petId = HttpService:GenerateGUID(false)
-	local attachName = "CharAttach_" .. petId
+		or -0.4
 
 	local pet = template:Clone()
 	pet.Name = petName
+
+	local petId = HttpService:GenerateGUID(false)
+	local attachName = "CharAttach_" .. petId
+
 	pet:SetAttribute("OwnerUserId", player.UserId)
 	pet:SetAttribute("PetId", petId)
 	pet:SetAttribute("Slot", slot)
@@ -384,21 +366,18 @@ local function spawnPet(player: Player, petName: string)
 	pet:SetAttribute("OffsetZ", offset.Z)
 	pet:SetAttribute("AttachName", attachName)
 	pet:SetAttribute("GroundNudgeY", nudgeY)
-	
-	local autoLift = computeLiftFromPrimary(pet, 0.2)  -- 0.2 = 지면 위 여유(원하면 조절)
+
+	-- ✅ 모델 기하를 보고 자동 상승치 계산 (발이 박히지 않도록)
+	local autoLift = computeLiftFromPrimary(pet, 0.2)
 	offset = offset + Vector3.new(0, nudgeY + autoLift, 0)
-	-- ⬆ 기존엔 nudgeY(고정치)만 더했는데, autoLift(모델마다 다른 보정)를 더해줌
 
 	pet.Parent = workspace
-	
-	--플레이어와 충돌 방지 위한 펫 그룹 생성
+
 	setCollisionGroupRecursive(pet, "Pets")
 
-	-- GUI 템플릿 부착
 	local petGui = petGuiTemplate:Clone()
 	petGui.Parent = pet
 
-	-- 모델 weld + 물리 세팅
 	weldModelToPrimary(pet)
 	local pp = ensurePrimaryPart(pet)
 	if not pp then
@@ -410,18 +389,14 @@ local function spawnPet(player: Player, petName: string)
 	pp.CanCollide = false
 	pp.Massless = true
 
-	-- 최초 위치
 	local hrp = character:WaitForChild("HumanoidRootPart")
 	pet:PivotTo(hrp.CFrame * CFrame.new(offset))
 
-	-- Follow 제약
 	addFollowConstraintWithOffset(pet, character, offset, attachName)
 
-	-- PlayerPets 등록
 	local list = getOrInitPetList(player)
 	table.insert(list, { pet = pet, slot = slot, offset = offset, attachName = attachName })
 
-	-- 캐릭터 리스폰 시 재부착
 	player.CharacterAdded:Connect(function(newChar)
 		task.defer(function()
 			if pet and pet.Parent then
@@ -438,10 +413,6 @@ local function spawnPet(player: Player, petName: string)
 
 	PetQuestEvent:FireClient(player, "StartQuest", { petName = petName, petId = petId })
 end
-
-
-
-
 
 -- UI 화살표(첫 퀘스트) -------------------------------------------------------
 
@@ -498,23 +469,43 @@ TrySelectEpicPet.OnServerInvoke = function(player: Player, payload)
 	local petName = payload and payload.pet
 	if type(petName) ~= "string" then return {ok=false, err="bad_pet"} end
 
+	-- ✅ 서버 가드: 이미 보유한 펫은 재구매 불가
+	if PlayerDataService.HasOwnedPet and PlayerDataService:HasOwnedPet(player, petName) then
+		return {ok=false, err="already_owned", coins = CoinService:GetBalance(player)}
+	end
+
 	local template = petModels:FindFirstChild(petName)
 	if not template then return {ok=false, err="no_model"} end
 
+	-- ✅ Demon_Dog 전용 배지 게이트
+	if petName == DEMON_NAME then
+		local hasGT = false
+		local okCheck, _ = pcall(function()
+			hasGT = BadgeManager.HasRobloxBadge(player, BadgeManager.Keys.GreatTeam)
+		end)
+		if not okCheck then hasGT = false end
+		if not hasGT then
+			return {ok=false, err="no_badge", coins = CoinService:GetBalance(player)}
+		end
+	end
+
+	-- 레벨/코인 검증
 	local needLv = PET_LEVEL_REQ[petName] or math.huge
 	local lv = tonumber(player:GetAttribute("Level")) or 1
 	if lv < needLv then return {ok=false, err="low_level"} end
 
 	local cost = PET_COIN_COST[petName] or 0
-	if not CoinService:TrySpend(player, cost) then
-		return {ok=false, err="no_coins", coins = CoinService:GetBalance(player)}
+	if cost > 0 then
+		if not CoinService:TrySpend(player, cost) then
+			return {ok=false, err="no_coins", coins = CoinService:GetBalance(player)}
+		end
 	end
 
+	-- 소유/선택/스폰
 	PlayerDataService:AddOwnedPet(player, petName)
 	PlayerDataService:SetSelectedPet(player, petName)
 	spawnPet(player, petName)
 
-	-- ⬇ 추가
 	local dataNow = PlayerDataService:Load(player)
 	local active = getActivePetsFromData(player, dataNow)
 	uniqAppend(active, petName)
@@ -529,22 +520,36 @@ TrySelectEpicPet.OnServerInvoke = function(player: Player, payload)
 	return {ok=true, coins = CoinService:GetBalance(player)}
 end
 
-
 PetSelectedEvent.OnServerEvent:Connect(function(player: Player, petName: string)
-	-- 최초 선택 시 저장
+	-- [서버 가드] ① 파라미터 검사
+	if typeof(petName) ~= "string" or petName == "" then
+		return
+	end
+
+	-- [서버 가드] ② 존재하는 펫 모델인지 확인
+	local template = petModels:FindFirstChild(petName)
+	if not (template and template:IsA("Model")) then
+		return
+	end
+
+	-- [서버 가드] ③ 안티스팸(더블클릭/매크로 방지) - 2초 쿨다운
+	local now = os.clock()
+	local last = _lastPetSelectAt[player.UserId] or 0
+	if (now - last) < 2.0 then
+		return
+	end
+	_lastPetSelectAt[player.UserId] = now
+
+	-- ====== 기존 흐름 유지
 	PlayerDataService:AddOwnedPet(player, petName)
 	PlayerDataService:SetSelectedPet(player, petName)
-
-	-- PetSelectedEvent.OnServerEvent 내부:
 	spawnPet(player, petName)
 
-	-- ⬇ 추가
 	local dataNow = PlayerDataService:Load(player)
 	local active = getActivePetsFromData(player, dataNow)
 	uniqAppend(active, petName)
 	trimToCap(active, ACTIVE_MAX)
 	setActivePets(player, active)
-
 
 	local tpl = SFXFolder:FindFirstChild("Choice")
 	if tpl and tpl:IsA("Sound") then
@@ -553,10 +558,15 @@ PetSelectedEvent.OnServerEvent:Connect(function(player: Player, petName: string)
 	FirstQuestGui(player)
 end)
 
-
-
 -- 접속/퇴장 -------------------------------------------------------
 Players.PlayerAdded:Connect(function(player)
+	-- ✅ 접속 시 배지 보유 스냅샷을 속성으로 노출(클라 초기 표시 안정성)
+	local hasGT = false
+	pcall(function()
+		hasGT = BadgeManager.HasRobloxBadge(player, BadgeManager.Keys.GreatTeam)
+	end)
+	player:SetAttribute("HasGreatTeamBadge", hasGT)
+
 	local data = PlayerDataService:Load(player)
 	local active = getActivePetsFromData(player, data)
 	local spawned = 0
@@ -567,7 +577,6 @@ Players.PlayerAdded:Connect(function(player)
 		end
 	end
 
-	-- 폴백으로 구성했을 가능성 → 저장소에 정규화하여 밀어넣기
 	if PlayerDataService.SetActivePets then
 		pcall(function() PlayerDataService:SetActivePets(player, active) end)
 	end
@@ -575,7 +584,6 @@ Players.PlayerAdded:Connect(function(player)
 	if spawned == 0 then
 		if data.selectedPetName and petModels:FindFirstChild(data.selectedPetName) then
 			spawnPet(player, data.selectedPetName)
-			-- selected 1마리만 뜬 경우에도 activePets 초기화
 			if PlayerDataService.SetActivePets then
 				pcall(function() PlayerDataService:SetActivePets(player, { data.selectedPetName }) end)
 			end
@@ -585,14 +593,11 @@ Players.PlayerAdded:Connect(function(player)
 	end
 end)
 
-
 Players.PlayerAdded:Connect(function(player)
 	player.CharacterAdded:Connect(function(char)
-		-- 액세서리/의상 파트 포함해서 전부 Players 그룹
 		setCollisionGroupRecursive(char, "Players")
 	end)
 end)
-
 
 Players.PlayerRemoving:Connect(function(plr)
 	local list = PlayerPets[plr.UserId]
@@ -604,4 +609,5 @@ Players.PlayerRemoving:Connect(function(plr)
 		end
 	end
 	PlayerPets[plr.UserId] = nil
+	_lastPetSelectAt[plr.UserId] = nil -- (선택) 스팸 타임스탬프 정리
 end)

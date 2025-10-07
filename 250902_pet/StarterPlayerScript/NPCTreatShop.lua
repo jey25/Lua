@@ -45,24 +45,41 @@ local badgeUnlocks = { duckbone = false, jumpup = false } -- 서버 응답 캐�
 -- 편의
 local function levelOK() return (tonumber(LocalPlayer:GetAttribute("Level")) or 1) >= REQUIRED_LEVEL end
 local function getLevel() return tonumber(LocalPlayer:GetAttribute("Level")) or 1 end
-local function canAfford(name: string) return currentCoins >= (TREAT_COIN_COST[name] or math.huge) end
-local function meetsLevel(name: string) return getLevel() >= (TREAT_LEVEL_REQ[name] or math.huge) end
 local function isOpen(name: string) return PlayerGui:FindFirstChild(name) ~= nil end
 
--- 아이템 키 유틸
+-- 아이템 키 유틸 (원래 있던 canon 유지)
 local function canon(s: string): string
 	local v = string.lower(s or "")
 	v = (v:gsub("%s+", "")):gsub("_", "")
 	return v
 end
+
+-- ★ 추가: 표기 → 실제 테이블 키 매핑
+local function realKey(name: string): string
+	local k = canon(name)
+	if k == "munchies" then return "Munchies" end
+	if k == "doggum"   then return "DogGum"   end
+	if k == "snack"    then return "Snack"    end
+	if k == "duckbone" or k == "jumpup" then return "duckbone" end
+	return name -- 안전 fallback (이미 정확 키일 때)
+end
+
 local function needsJumper(itemName: string): boolean
 	local k = canon(itemName)
 	return (k == "duckbone" or k == "jumpup")
 end
+
+-- ★ 수정: 서버 속성도 인정 + 캐시 병행
 local function isBadgeUnlocked(itemName: string): boolean
 	if not needsJumper(itemName) then return true end
+	if LocalPlayer:GetAttribute("HasJumperBadge") == true then return true end
 	return badgeUnlocks.duckbone or badgeUnlocks.jumpup
 end
+
+-- ★ 수정: 비용/레벨 판단에 realKey 사용
+local function canAfford(name: string) return currentCoins >= (TREAT_COIN_COST[realKey(name)] or math.huge) end
+local function meetsLevel(name: string) return getLevel() >= (TREAT_LEVEL_REQ[realKey(name)] or math.huge) end
+
 local function canEnable(itemName: string): boolean
 	return meetsLevel(itemName) and canAfford(itemName) and isBadgeUnlocked(itemName)
 end
@@ -97,6 +114,7 @@ local DISABLED_COLOR  = Color3.fromRGB(120,120,120)
 local ENABLED_TXTCLR  = Color3.fromRGB(255,255,255)
 local DISABLED_TXTCLR = Color3.fromRGB(220,220,220)
 
+-- ★ 수정: 라벨 문구도 realKey 기준으로
 local function setButtonState(btn: TextButton, enabled: boolean, itemName: string)
 	btn.Active = true
 	btn.Selectable = enabled
@@ -109,12 +127,12 @@ local function setButtonState(btn: TextButton, enabled: boolean, itemName: strin
 		btn.TextTransparency = 0
 		btn.BackgroundTransparency = 0
 	else
+		local rk = realKey(itemName)
 		local parts = {}
-		if not meetsLevel(itemName) then table.insert(parts, ("Lv %d"):format(TREAT_LEVEL_REQ[itemName] or 0)) end
-		if not canAfford(itemName)   then table.insert(parts, ("C %d"):format(TREAT_COIN_COST[itemName] or 0)) end
-		-- ★ duckbone 배지 조건
+		if not meetsLevel(itemName) then table.insert(parts, ("Lv %d"):format(TREAT_LEVEL_REQ[rk] or 0)) end
+		if not canAfford(itemName)   then table.insert(parts, ("C %d"):format(TREAT_COIN_COST[rk] or 0)) end
 		if not isBadgeUnlocked(itemName) and needsJumper(itemName) then
-			table.insert(parts, "Badge")
+			table.insert(parts, "Jumper Badge")
 		end
 		btn.Text = (#parts > 0) and table.concat(parts, " • ") or "Locked"
 		btn.TextColor3 = DISABLED_TXTCLR
@@ -129,9 +147,8 @@ local function setButtonState(btn: TextButton, enabled: boolean, itemName: strin
 	end
 end
 
--- 코인 갱신 시 버튼 리프레시
-CoinUpdate.OnClientEvent:Connect(function(balance)
-	currentCoins = tonumber(balance) or currentCoins
+-- ▼ 공통 재렌더
+local function rerenderButtons()
 	local gui = PlayerGui:FindFirstChild("EpicTreatGui_runtime")
 	if not gui then return end
 	local root = gui:FindFirstChild("Frame") or gui:FindFirstChildOfClass("Frame")
@@ -145,9 +162,15 @@ CoinUpdate.OnClientEvent:Connect(function(balance)
 			end
 		end
 	end
+end
+
+-- 코인 갱신 시 버튼 리프레시
+CoinUpdate.OnClientEvent:Connect(function(balance)
+	currentCoins = tonumber(balance) or currentCoins
+	rerenderButtons()
 end)
 
--- ★ 배지 언락 상태 질의
+-- 배지 언락 상태 질의
 local function refreshBadgeUnlocks()
 	local ok, resp = pcall(function()
 		return GetTreatUnlocks:InvokeServer()
@@ -158,13 +181,18 @@ local function refreshBadgeUnlocks()
 	end
 end
 
+-- 서버가 HasJumperBadge 갱신 시 즉시 반영
+LocalPlayer:GetAttributeChangedSignal("HasJumperBadge"):Connect(function()
+	refreshBadgeUnlocks()
+	rerenderButtons()
+end)
+
 -- GUI 열기 (레벨 10 이상만)
 local function openTreatGui()
-	if not levelOK() then return end -- ★ 이중 방어
+	if not levelOK() then return end
 	if isOpen("EpicTreatGui_runtime") then return end
 
-	-- 배지 언락 동기화
-	refreshBadgeUnlocks()
+	refreshBadgeUnlocks() -- 서버와 동기화(서버가 HasJumperBadge도 세팅)
 
 	local gui = EpicTreatTemplate:Clone()
 	gui.Name = "EpicTreatGui_runtime"
@@ -175,20 +203,16 @@ local function openTreatGui()
 	local root = gui:FindFirstChild("Frame") or gui:FindFirstChildOfClass("Frame")
 	if not root then return end
 
-	-- 닫기
 	local closeBtn = root:FindFirstChild("Close", true)
 	if closeBtn and closeBtn:IsA("GuiButton") then
 		closeBtn.MouseButton1Click:Connect(function() gui:Destroy() end)
 	end
 
-	-- 버튼 와이어링
 	for _, node in ipairs(root:GetChildren()) do
 		if node:IsA("ImageLabel") then
 			local btn = node:FindFirstChild("Select", true)
 			if btn and btn:IsA("TextButton") then
 				local itemName = node.Name
-
-				-- 초기 상태(레벨/코인/배지 반영)
 				setButtonState(btn, canEnable(itemName), itemName)
 
 				btn.MouseButton1Click:Connect(function()
@@ -239,7 +263,6 @@ local function showInteractButton()
 		btn.Active = true
 		btn.Modal = false
 		btn.MouseButton1Click:Connect(function()
-			-- ★ 레벨 10 미만이면 버튼은 떠 있어도 동작하지 않음
 			if not levelOK() then
 				shakeGui(btn); playDenySfx()
 				return
@@ -250,15 +273,16 @@ local function showInteractButton()
 	end
 end
 
--- 레벨 변동 시 클릭버튼 숨김 처리(옵션: 10 미만이면 숨김)
+-- 레벨 변동 시 버튼 숨김/재렌더
 LocalPlayer:GetAttributeChangedSignal("Level"):Connect(function()
 	if not levelOK() and activeButtonGui then
 		activeButtonGui:Destroy()
 		activeButtonGui = nil
 	end
+	rerenderButtons()
 end)
 
--- NPC 근접 루프: 레벨 10 이상 + 거리 조건에서만 버튼 노출
+-- NPC 근접 루프
 local function getNpcPos(model: Model)
 	if model.PrimaryPart then return model.PrimaryPart.Position end
 	return model:GetPivot().Position

@@ -261,12 +261,6 @@ end
 -- ▲▲▲ 추가 끝 ▲▲▲
 
 
-local function tweenFill(ratio: number)
-	ratio = math.clamp(ratio, 0, 1)
-	TweenService:Create(fill, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-		{ Size = UDim2.new(ratio, 0, 1, 0) }):Play()
-end
-
 -- ▼ 애정도 전용
 local function tweenAff(ratio: number)
 	ratio = math.clamp(ratio, 0, 1)
@@ -617,7 +611,8 @@ local function refreshHUD()
 	levelLabel.Text = ("Lv %d"):format(curr.Level)
 	expText.Text = ("%d / %d"):format(curr.Exp, curr.ExpToNext)
 	local ratio = (curr.ExpToNext > 0) and (curr.Exp / curr.ExpToNext) or 0
-	tweenFill(ratio)
+	-- 권장:
+	tweenFillPretty(ratio)
 end
 
 local function refreshAff()
@@ -626,11 +621,12 @@ local function refreshAff()
 	tweenAff(r)
 end
 
+-- onLevelSync
 local function onLevelSync(payload)
 	if typeof(payload) ~= "table" then return end
-	if payload.Level then curr.Level = payload.Level end
-	if payload.Exp then curr.Exp = payload.Exp end
-	if payload.ExpToNext then curr.ExpToNext = payload.ExpToNext end
+	if payload.Level      ~= nil then curr.Level      = payload.Level      end
+	if payload.Exp        ~= nil then curr.Exp        = payload.Exp        end
+	if payload.ExpToNext  ~= nil then curr.ExpToNext  = payload.ExpToNext  end
 	refreshHUD()
 end
 
@@ -732,19 +728,24 @@ task.defer(function()
 end)
 
 
-
 -- 첫 그리기
 refreshHUD()
 refreshAff()
 
 
-
--- Attributes 변화를 직접 감지(선호 시)
+-- hookAttributes 내부 onChange
 local function hookAttributes()
 	local function onChange(attr)
-		if attr == "Level" then curr.Level = player:GetAttribute("Level") or curr.Level end
-		if attr == "Exp" then curr.Exp = player:GetAttribute("Exp") or curr.Exp end
-		if attr == "ExpToNext" then curr.ExpToNext = player:GetAttribute("ExpToNext") or curr.ExpToNext end
+		if attr == "Level" then
+			local v = player:GetAttribute("Level")
+			if v ~= nil then curr.Level = v end
+		elseif attr == "Exp" then
+			local v = player:GetAttribute("Exp")
+			if v ~= nil then curr.Exp = v end
+		elseif attr == "ExpToNext" then
+			local v = player:GetAttribute("ExpToNext")
+			if v ~= nil then curr.ExpToNext = v end
+		end
 		refreshHUD()
 	end
 	player:GetAttributeChangedSignal("Level"):Connect(function() onChange("Level") end)
@@ -752,7 +753,19 @@ local function hookAttributes()
 	player:GetAttributeChangedSignal("ExpToNext"):Connect(function() onChange("ExpToNext") end)
 end
 
+-- hookAttributes() 호출 직후, 혹은 그 전에 한 번만 수행
+local function applyXPFromAttributesOnce()
+	local lv  = player:GetAttribute("Level")
+	local ex  = player:GetAttribute("Exp")
+	local nxt = player:GetAttribute("ExpToNext")
+	if lv  ~= nil then curr.Level     = lv  end
+	if ex  ~= nil then curr.Exp       = ex  end
+	if nxt ~= nil then curr.ExpToNext = nxt end
+	refreshHUD()
+end
+
 hookAttributes()
 -- 첫 그리기(서버가 곧바로 LevelSync를 쏨)
 refreshHUD()
+applyXPFromAttributesOnce()  -- ★ 추가
 

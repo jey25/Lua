@@ -1,178 +1,169 @@
 --!strict
--- ================== 사용자 설정 ==================
-local USER_ID = 3857750238      -- 초기화 대상
-local SCOPE   = ""              -- DataStore 스코프(없으면 "")
+-- === 커맨드바에서 실행 ===
+local USER_ID = 3857750238
+local SCOPE   = ""
 
--- ================== 서비스 ==================
 local Players = game:GetService("Players")
-local DataStoreService = game:GetService("DataStoreService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerScriptService = game:GetService("ServerScriptService")
+local DSS     = game:GetService("DataStoreService")
+local RS      = game:GetService("ReplicatedStorage")
+local SSS     = game:GetService("ServerScriptService")
 local RunService = game:GetService("RunService")
 
--- ================== DataStore 키 제거 ==================
-local function _ds(scope) return (scope ~= "" and scope) or nil end
-local function removeKey(storeName: string, key: string)
-	local ds = DataStoreService:GetDataStore(storeName, _ds(SCOPE))
+local function _ds(scope:string) return (scope ~= "" and scope) or nil end
+local function removeKey(storeName:string, key:string)
+	local ds = DSS:GetDataStore(storeName, _ds(SCOPE))
 	local ok, err = pcall(function() ds:RemoveAsync(key) end)
-	print(("[DS] %s RemoveAsync(%s) -> %s %s"):format(storeName, key, tostring(ok), err or "")) 
+	print(("[DS] %s RemoveAsync(%s) -> %s %s"):format(storeName, key, tostring(ok), err or ""))
 	return ok
 end
 
--- 메인/레거시/부가 스토어 전부 제거
-removeKey("PlayerData_v2",     "u_"..tostring(USER_ID))  -- 메인 프로필(owned/selected/activePets 등)
-removeKey("PlayerProgress_v1", "u_"..tostring(USER_ID))  -- 레거시 EXP
-removeKey("GameCoins_v2",      "p:"..tostring(USER_ID))  -- 코인 서비스(레거시)
-removeKey("PlayerData",        tostring(USER_ID))        -- 더 레거시
-removeKey("PlayerData",        "u_"..tostring(USER_ID))  -- 더 레거시 보조
-removeKey("PetPout_v1",        "u_"..tostring(USER_ID))  -- ✅ PetZeroPout(삐짐 카운트)
--- 🆕 배지/출석류 (있으면 제거, 없으면 그냥 통과)
-removeKey("BadgeState_v1",     "u_"..tostring(USER_ID)) -- BadgeManager 내부 DS
-removeKey("Attendance_v1",     "u_"..tostring(USER_ID)) -- 출석/누적일(Day)용을 이렇게 쓰고 있다면
-removeKey("PlayDay_v1",        "u_"..tostring(USER_ID)) -- 다른 이름을 쓰는 경우도 대비
+-- 1) 영구 저장소 정리
+removeKey("PlayerData_v2",     "u_"..USER_ID)
+removeKey("PlayerProgress_v1", "u_"..USER_ID)
+removeKey("GameCoins_v2",      "p:"..USER_ID)
+removeKey("PlayerData",        tostring(USER_ID))
+removeKey("PlayerData",        "u_"..USER_ID)
+removeKey("PetPout_v1",        "u_"..USER_ID)
+removeKey("BadgeState_v1",     "u_"..USER_ID)
+removeKey("Attendance_v1",     "u_"..USER_ID)
+removeKey("PlayDay_v1",        "u_"..USER_ID)
 
--- Play가 아니면(서버 런타임 아님) 여기서 종료: 영구 저장만 정리됨
 if not RunService:IsRunning() then
-	print("[RESET] Not in Play (server). Persistent data cleared. Live state will reset next join.")
+	print("[RESET] Not in Play. Persistent cleared; fresh on next join.")
 	return
 end
 
--- ================== 모듈 안전 로드 ==================
-local function safeRequireModule(nameInSSS: string)
-	local inst = ServerScriptService:FindFirstChild(nameInSSS)
+-- 2) 모듈 로드
+local function safeRequire(name:string)
+	local inst = SSS:FindFirstChild(name)
 	if not inst then
-		for _, d in ipairs(ServerScriptService:GetDescendants()) do
-			if d:IsA("ModuleScript") and d.Name == nameInSSS then inst = d; break end
+		for _, d in ipairs(SSS:GetDescendants()) do
+			if d:IsA("ModuleScript") and d.Name == name then inst = d; break end
 		end
 	end
-	if not inst or not inst:IsA("ModuleScript") then
-		return nil, ("ModuleScript '%s' not found"):format(nameInSSS)
-	end
-	local ok, modOrErr = pcall(require, inst)
-	if not ok then
-		return nil, ("require(%s) failed: %s"):format(inst:GetFullName(), tostring(modOrErr))
-	end
-	return modOrErr
+	assert(inst and inst:IsA("ModuleScript"), "Module "..name.." not found")
+	local ok, mod = pcall(require, inst)
+	assert(ok, "require("..inst:GetFullName()..") failed: "..tostring(mod))
+	return mod
 end
 
-local BadgeManager = (function() local m,_ = safeRequireModule("BadgeManager"); return m end)()
+local PDS = safeRequire("PlayerDataService")
+local CoinService = (function() local ok,m=pcall(safeRequire,"CoinService"); return ok and m or nil end)()
+local BuffService = (function() local ok,m=pcall(safeRequire,"BuffService"); return ok and m or nil end)()
+-- === Zone 입장 기록(쿨타임) 초기화 ===
+local Affection = (function() local ok,m=pcall(safeRequire,"PetAffectionService"); return ok and m or nil end)()
 
-
--- PlayerDataService (필수)
-local PlayerDataService, errPDS = safeRequireModule("PlayerDataService")
-if not PlayerDataService then
-	error("[RESET] require(PlayerDataService) failed: "..tostring(errPDS))
-end
-
--- 선택 모듈들(있으면 사용)
-local CoinService = (function() local m,_ = safeRequireModule("CoinService"); return m end)()
-local BuffService = (function() local m,_ = safeRequireModule("BuffService"); return m end)()
-
--- ================== 대상 플레이어 ==================
+-- 3) 대상 플레이어
 local plr = Players:GetPlayerByUserId(USER_ID)
 if not plr then
-	print("[LIVE] Target player is offline. They will start clean next join.")
+	print("[LIVE] Player offline. Fresh on next join.")
 	return
 end
 
--- Remotes 준비(없으면 생성)
-local LevelSync = ReplicatedStorage:FindFirstChild("LevelSync") :: RemoteEvent?
-if not LevelSync then
-	local ev = Instance.new("RemoteEvent")
-	ev.Name = "LevelSync"
-	ev.Parent = ReplicatedStorage
-	LevelSync = ev
+-- 1) 항상 DS(저장소)도 초기화
+local okDS = Affection:ResetZoneCooldownsByUserId(USER_ID)
+
+if RunService:IsRunning() and plr and Affection and Affection.ResetZoneCooldowns then
+	-- 온라인 플레이어: 런타임+DS 동시 초기화
+	local ok1 = Affection:ResetZoneCooldowns(plr, {stopSession=true, save=true})
+	print("[RESET] ZoneCooldowns (runtime+DS) reset for", USER_ID, ok1)
+else
+	-- 오프라인이거나 API가 없을 때: DS만 초기화 (다른 필드는 보존)
+	local ds = DSS:GetDataStore("PetAffection_v1", _ds(SCOPE))
+	local ok2, err2 = pcall(function()
+		ds:UpdateAsync("u_"..USER_ID, function(old)
+			if type(old) ~= "table" then old = {} end
+			old.ZoneCooldowns = {}
+			return old
+		end)
+	end)
+	print(("[RESET] ZoneCooldowns(DS-only) -> %s %s"):format(tostring(ok2), err2 or ""))
 end
 
--- ================== 코인/레벨/EXP 초기화 ==================
-if CoinService and CoinService.SetBalance then
-	pcall(function() CoinService:SetBalance(plr, 0) end)
+local okRT = true
+if plr then
+	okRT = Affection:ResetZoneCooldowns(plr, { stopSession = true, save = true })
 end
 
-local function ExpToNext(level:number) return math.floor(100 + 50*(level-1)*(level-1)) end
-local newLevel, newExp = 1, 0
-local newGoal = ExpToNext(newLevel)
-PlayerDataService:SetLevelExp(plr, newLevel, newExp)
-plr:SetAttribute("Level", newLevel)
-plr:SetAttribute("Exp", newExp)
-plr:SetAttribute("ExpToNext", newGoal)
-if LevelSync then LevelSync:FireClient(plr, {Level=newLevel, Exp=newExp, ExpToNext=newGoal}) end
+print(("[ZONE RESET] DS=%s, RUNTIME=%s"):format(tostring(okDS), tostring(okRT)))
 
--- ================== 백신 카운트/스케줄 초기화 ==================
-PlayerDataService:SetVaccineCount(plr, 0)
+-- 4) 코인/레벨/EXP 0
+if CoinService and CoinService.SetBalance then pcall(function() CoinService:SetBalance(plr, 0) end) end
+if PDS.SetCoins then pcall(function() PDS:SetCoins(plr, 0) end) end
 
--- ================== 데이터 구조(owned/selected/active/buffs 등) 초기화 + 저장 ==================
+local function ExpToNext(l:number) return math.floor(100 + 50*(l-1)*(l-1)) end
+local L, E = 1, 0
+PDS:SetLevelExp(plr, L, E)
+plr:SetAttribute("Level", L)
+plr:SetAttribute("Exp", E)
+plr:SetAttribute("ExpToNext", ExpToNext(L))
+
+-- 5) 백신 카운트/쿨다운/마지막시각 완전 초기화 (+ HUD)
+assert(PDS.SetVaccineCount, "PDS:SetVaccineCount missing")
+PDS:SetVaccineCount(plr, 0)
+PDS:SetLastVaxAt(plr, 0)
+PDS:SetNextVaccinationAt(plr, 0)
+plr:SetAttribute("VaccinationCount", 0)
+
+-- 6) 프로필 필드 클린
 do
-	local d = PlayerDataService:Get(plr)
-
-	-- 기존 초기화
+	local d = PDS:Get(plr)
 	d.ownedPets = {}
 	d.selectedPetName = nil
 	d.activePets = {}
 	d.buffs = {}
 	d.lastVaxAt = 0
 	d.nextVaxAt = 0
+	-- ✅ 경찰 판정 관련 (프로필 측면)
+	d.civicStatus = "none"
 
-	-- 🆕 Day/출석/누적류: 필드가 있으면 0으로, 없으면 무시(안전)
-	-- (당신의 PlayerDataService 구조에 맞춰 필요한 키만 남겨도 됩니다)
-	local dayLikeKeys = {
-		"day","playDay","playDays","loginDay","attendanceDays",
-		"dailyStreak","streak","lastLoginDay",
-	}
-	for _, k in ipairs(dayLikeKeys) do
+	if d.vaccineCounts      ~= nil then d.vaccineCounts      = {} end
+	if d.petVaccineCounts   ~= nil then d.petVaccineCounts   = {} end
+	if d.petVax             ~= nil then d.petVax             = {} end
+	if d.affection          ~= nil then d.affection          = {} end
+	if d.petAffection       ~= nil then d.petAffection       = {} end
+	if d.petAffectionMaxMap ~= nil then d.petAffectionMaxMap = {} end
+	for _, k in ipairs({"day","playDay","playDays","loginDay","attendanceDays","dailyStreak","streak","lastLoginDay"}) do
 		if d[k] ~= nil then d[k] = 0 end
 	end
-
-	-- 🆕 로그인 타임스탬프류 초기화(있으면)
 	for _, k in ipairs({"firstLoginUnix","lastLoginUnix","dailyClaimUnix"}) do
 		if d[k] ~= nil then d[k] = 0 end
 	end
-
-	-- 🆕 일일/출석/업적/퀘스트 등 테이블류(있으면 비움)
 	for _, k in ipairs({"attendance","daily","achievements","quests","questProgress"}) do
 		if d[k] ~= nil then d[k] = {} end
 	end
 
-	-- 서비스 API가 있으면 호출
-	if PlayerDataService.SetActivePets then
-		pcall(function() PlayerDataService:SetActivePets(plr, {}) end)
-	end
+	if PDS.SetActivePets then pcall(function() PDS:SetActivePets(plr, {}) end) end
+	if PDS.SetBuffs then      pcall(function() PDS:SetBuffs(plr, {}) end) end
 
-	PlayerDataService:MarkDirty(plr)
-	PlayerDataService:Save(plr.UserId, "manual-reset")
-end
-
-
--- ================== 버프/속성 런타임 초기화 ==================
--- 1) BuffService가 있으면 모듈에서 통합 리셋
-local function resetBuffsRuntime(p: Player)
-	if BuffService and BuffService.ResetFor then
-		pcall(function() BuffService:ResetFor(p) end)
+	-- ✅ 경찰 판정 관련 (속성 측면)
+	if PDS.ResetCivicStatus then
+		pcall(function() PDS:ResetCivicStatus(plr) end)
 	else
-		-- 2) 모듈이 없으면 최소한의 런타임 리셋 수행
-		-- 멀티플라이어/표시값
-		p:SetAttribute("ExpMultiplier", 1)
-		p:SetAttribute("SpeedMultiplier", 1)
-
-		-- 이동속도 되돌리기
-		local hum = p.Character and p.Character:FindFirstChildOfClass("Humanoid")
-		if hum then
-			local base = tonumber(p:GetAttribute("BaseWalkSpeed")) or 16
-			hum.WalkSpeed = base
-		end
+		-- (구버전 호환) 모듈에 함수가 없다면 수동 초기화
+		plr:SetAttribute("CivicStatus", "none")
+		plr:SetAttribute("IsGoodCitizen", false)
+		plr:SetAttribute("IsSuspiciousPerson", false)
 	end
-end
-resetBuffsRuntime(plr)
 
--- ================== 월드 펫/부착물 제거 ==================
--- (A) 펫 모델 제거
+	PDS:MarkDirty(plr)
+	PDS:Save(plr.UserId, "manual-reset")
+end
+
+-- 7) 런타임 버프/속성 리셋
+if BuffService and BuffService.ResetFor then
+	pcall(function() BuffService:ResetFor(plr) end)
+else
+	plr:SetAttribute("ExpMultiplier", 1)
+	plr:SetAttribute("SpeedMultiplier", 1)
+	local hum = plr.Character and plr.Character:FindFirstChildOfClass("Humanoid")
+	if hum then hum.WalkSpeed = tonumber(plr:GetAttribute("BaseWalkSpeed")) or 16 end
+end
+
+-- 8) 월드에 떠 있는 펫/부착물 제거
 for _, m in ipairs(workspace:GetDescendants()) do
-	if m:IsA("Model") and m:GetAttribute("OwnerUserId") == USER_ID then
-		pcall(function() m:Destroy() end)
-	end
+	if m:IsA("Model") and m:GetAttribute("OwnerUserId") == USER_ID then pcall(function() m:Destroy() end) end
 end
-
--- (B) 캐릭터 HRP에 남아 있을 수 있는 펫 부착물 제거 (CharAttach_*, PetAttach 등)
 do
 	local char = plr.Character or plr.CharacterAdded:Wait()
 	local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -185,14 +176,9 @@ do
 	end
 end
 
--- ================== 기타 플레이어 속성 초기화 ==================
+-- 9) 기타 HUD 런타임
 plr:SetAttribute("PetAffection", 0)
 plr:SetAttribute("PetAffectionMax", 10)
-plr:SetAttribute("ExpMultiplier", 1)
-plr:SetAttribute("SpeedMultiplier", 1)
+plr:SetAttribute("PetAffectionMinReachedUnix", 0)
 
--- PetZeroPout 관련(아이콘 ON 조건 방지)
-plr:SetAttribute("PetAffectionMinReachedUnix", 0)  -- ZERO_REACHED_ATTR
--- ZERO_HOLD_ATTR 기본은 서버 로직에서 사용하므로, 여기선 건드리지 않되 '0 도달 시각'을 0으로
-
-print("[RESET] Done: coins=0, level=1, exp=0, vaccines=0, pets cleared, activePets cleared. Fresh start ready.")
+print("[RESET] COMPLETE: coins/level/exp/vax records cleared; pets/affection cleared; civicStatus reset.")

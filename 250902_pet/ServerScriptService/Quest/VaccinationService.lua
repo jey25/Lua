@@ -25,17 +25,19 @@ if not VaccinationFX then
 	VaccinationFX.Parent = RemoteEvents
 end
 
-local PlayerDataService = require(script.Parent:WaitForChild("PlayerDataService"))
-local CoinService       = require(script.Parent:WaitForChild("CoinService"))
-local ExperienceService = require(script.Parent:WaitForChild("ExperienceService"))
+local ServerScriptService = game:GetService("ServerScriptService")
+local PlayerDataService = require(ServerScriptService:WaitForChild("PlayerDataService"))
+local CoinService       = require(ServerScriptService:WaitForChild("CoinService"))
+local ExperienceService = require(ServerScriptService:WaitForChild("ExperienceService"))
+
 
 local VaccinationService = { _locks = {} :: {[number]: boolean} }
 
 local MAX_VACCINES  = 5
-local COOLDOWN_SECS = 14 * 24 * 60 * 60 -- 2주
+local COOLDOWN_SECS = 7 * 24 * 60 * 60 -- 2주
 
 -- ▶ 조절 가능한 값
-local EXP_PER_VACCINE = 350  -- 접종 1회 EXP
+local EXP_PER_VACCINE = 500  -- 접종 1회 EXP
 local AFFECTION_DECAY = 1    -- 접종 1회 애정도 감소
 
 -- 단일 처리 함수(성공/실패 모두 여기서 결정)
@@ -69,7 +71,15 @@ local function doVaccinate(player: Player)
 	PlayerDataService:SetLastVaxAt(player, nowTs)
 	PlayerDataService:SetNextVaccinationAt(player, nowTs + COOLDOWN_SECS)
 
-	if EXP_PER_VACCINE > 0 then pcall(function() ExperienceService.AddExp(player, EXP_PER_VACCINE) end) end
+	if EXP_PER_VACCINE > 0 then
+		local ok, err = pcall(function()
+			ExperienceService.AddExp(player, EXP_PER_VACCINE)
+		end)
+		if not ok then
+			warn("[VaccinationService] AddExp failed:", err)
+		end
+	end
+
 
 	-- 즉시 저장(쓰로틀 예외 허용됨)
 	PlayerDataService:Save(player.UserId, "vaccinate")

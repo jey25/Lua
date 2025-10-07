@@ -4,6 +4,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local ExperienceService = require(game.ServerScriptService:WaitForChild("ExperienceService"))
+local PetAffectionService = require(game.ServerScriptService:WaitForChild("PetAffectionService"))
+
 
 -- ==================== 설정 ====================
 local WANG_RADIUS            = 40      -- 근접 판정/프롬프트 반경
@@ -212,7 +214,7 @@ local function ensurePrompt(modelOrPart: Instance)
 	-- p.KeyboardKeyCode = Enum.KeyCode.F
 
 	model:SetAttribute("WangPrompted", true)
-	
+
 	-- ensurePrompt(modelOrPart) 마지막 부분에 추가/교체
 	if model:GetAttribute("WANG_Active") == nil then
 		model:SetAttribute("WANG_Active", true)
@@ -326,7 +328,7 @@ local function restoreFollow(player: Player, pet: Model, prevWalkSpeed: number?)
 	-- 1) 플레이어 캐릭터에 재부착(Align 재생성)
 	local character = player.Character or player.CharacterAdded:Wait()
 	reattachFollowToCharacter(pet, character)
-	
+
 	-- ▶ restoreFollow 내 reattachFollowToCharacter 호출 직후(또는 끝부분)에 추가(선택)
 	-- (이미 reattach에서 킥을 해주므로 생략해도 OK)
 	local off = Vector3.new(
@@ -360,7 +362,7 @@ local function restoreFollow(player: Player, pet: Model, prevWalkSpeed: number?)
 	if pp and not pp:GetAttribute("WANG_KeepAnchored") then
 		pp.Anchored = false
 	end
-	
+
 	pet:SetAttribute("AIState", nil)
 	pet:SetAttribute("BlockPetQuestClicks", false) -- ✅ 차단 해제
 
@@ -444,10 +446,15 @@ local function beginApproach(pet: Model, target: Instance)
 				if owner then
 					WangEvent:FireClient(owner, "Bubble", { text = TOUCH_TEXT })
 					stopAttractSfxLoop(owner)
-					
+
 					-- ⬇⬇ 추가: 도착 즉시 마커/이펙트 제거
 					WangEvent:FireClient(owner, "HideMarker", { target = pet, key = "wang_touch" })
 					WangEvent:FireClient(owner, "ClearEffect")
+					
+					--실패하면 애정도 감소
+					pcall(function()
+						PetAffectionService.Adjust(owner, -1, "wang_touch_fail")
+					end)
 				end
 				pet:SetAttribute("WangApproaching", false)
 
@@ -491,7 +498,7 @@ local function beginApproach(pet: Model, target: Instance)
 
 			task.wait(LOOP_DT)
 		end
-		
+
 		-- 종료 후 안전 복구(기존 그대로)
 		-- ⬇⬇ 추가: 어떤 종료 경로에서도 마커/이펙트가 남지 않도록 보장
 		do
@@ -621,11 +628,11 @@ end
 
 
 local function startSequence(player: Player, target: Instance)
-	
-	
+
+
 	local pet = findPlayersPet(player); if not pet then return end
 	if pet:GetAttribute("WangApproaching") then return end
-	
+
 	pet:SetAttribute("AIState", "wang_approach")
 	pet:SetAttribute("BlockPetQuestClicks", true)  -- ✅ 펫클릭 퀘스트 일시차단
 
@@ -638,7 +645,7 @@ local function startSequence(player: Player, target: Instance)
 
 	local resolvedTarget = normalizeTargetInstance(target)
 	if not resolvedTarget then return end
-	
+
 	-- Wang 추적 시작 시
 	WangEvent:FireClient(player, "ShowMarker", {
 		target = pet,
@@ -674,7 +681,7 @@ local function startSequence(player: Player, target: Instance)
 
 	-- ✅ ClickDetector 와이어링 없음 (Hitbox만 보장)
 	ensurePetClickTarget(pet)
-	
+
 	-- ✅ 루프 시작: 처음 발견 시점부터 주기적으로 SFX
 	startAttractSfxLoop(player, resolvedTarget)
 	beginApproach(pet, resolvedTarget)
@@ -687,20 +694,20 @@ WangCancelClick.OnServerEvent:Connect(function(player, clickedPart: Instance)
 	if clickedPart.Name ~= "PetClickHitbox" then return end
 
 	local st = State[player]
-	
+
 	if not st or not st.approaching then return end
 	if pet:GetAttribute("WangApproaching") ~= true then return end
 
 	st.clicks += 1
-	
+
 	-- ✅ 유효 클릭일 때 그 플레이어에게만 SFX 재생 지시
 	local tpl = SFXFolder:FindFirstChild("PetClick")
 	if tpl and tpl:IsA("Sound") then
 		-- 펫 클릭(click): 클릭 시 재생
 		WangEvent:FireClient(player, "PlaySfxTemplate", tpl, "click")
 	end
-	
-	
+
+
 	WangEvent:FireClient(player, "Bubble", { text = ("Cancel "..st.clicks.."/3") })
 
 	if st.clicks >= 3 then
@@ -709,12 +716,12 @@ WangCancelClick.OnServerEvent:Connect(function(player, clickedPart: Instance)
 
 		WangEvent:FireClient(player, "RestoreBubble")
 		restoreFollow(player, pet, st.lastWalkSpeed)
-		
+
 		WangEvent:FireClient(player, "HideMarker", { target = pet, key = "wang_touch" })
 
 		-- ✅ Wang은 '클리어' 시점에만 이펙트
 		WangEvent:FireClient(player, "ClearEffect")
-		ExperienceService.AddExp(player, 150)
+		ExperienceService.AddExp(player, 200)
 
 		-- ✅ 이번에 사용한 타겟 쿨타임 진입
 		local targetModel = resolveTargetModel(st.target or clickedPart)

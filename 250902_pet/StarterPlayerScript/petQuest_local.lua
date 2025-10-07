@@ -235,10 +235,39 @@ local function setQuestHudText(phrase: string)
 	bg.Visible = (label.Text ~= nil and label.Text ~= "")
 end
 
+-- 모델 아래에 BasePart가 하나도 없을 때 로컬용 앵커 파트를 만들어 반환
+local function ensureAnchorPartForModel(m: Model): BasePart?
+	-- 혹시라도 나중에 생긴 파츠가 있으면 그대로 사용
+	local exist = m:FindFirstChildWhichIsA("BasePart", true)
+	if exist then return exist end
 
+	-- 로컬 전용 투명 파트 생성
+	local p = Instance.new("Part")
+	p.Name = "__QuestMarkerAnchor_Local"
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	p.Transparency = 1
+	p.Size = Vector3.new(0.2, 0.2, 0.2)
 
--- ========= [퀘스트 마커 관리] =========
-local QuestMarkers: {[Instance]: BillboardGui} = {}
+	-- 위치 잡기: 가능하면 바운딩박스, 실패시 피벗, 그래도 안되면 약간 공중
+	local ok, cf, sz = pcall(function()
+		local cframe, size = m:GetBoundingBox()
+		return cframe, size
+	end)
+	if ok and cf then
+		p.CFrame = cf
+	else
+		local ok2, pivot = pcall(function() return m:GetPivot() end)
+		p.CFrame = ok2 and pivot or CFrame.new(0, 5, 0)
+	end
+
+	p.Parent = m -- 로컬만 보임
+	return p
+end
+
 
 local function getAnyBasePart(inst: Instance): BasePart?
 	if inst:IsA("BasePart") then return inst end
@@ -252,29 +281,114 @@ local function getAnyBasePart(inst: Instance): BasePart?
 	return nil
 end
 
+
+-- 기존: local QuestMarkers: {[Instance]: BillboardGui} = {}
+-- 교체: 앵커( Model 또는 BasePart )를 키로 사용
+local QuestMarkersByAnchor: {[Instance]: BillboardGui} = {}
+
+-- 기존 getRootModel 함수 삭제하고 이걸로 교체
+local function getRootModel(inst: Instance?): Model?
+	if not inst then return nil end
+	local m: Model? = (inst:IsA("Model") and inst) or inst:FindFirstAncestorOfClass("Model")
+	if not m then return nil end
+	-- 부모가 Model이면 끝까지 위로 상승
+	while m.Parent and m.Parent:IsA("Model") do
+		m = m.Parent :: Model
+	end
+	return m
+end
+
+
+-- 기존 getAnchor 함수 통째로 교체
+local function getAnchor(inst: Instance?): Instance?
+	if not inst then return nil end
+	local top = getRootModel(inst)
+	if top then return top end
+	-- 모델이 전혀 없을 때만 파츠로 대체
+	if inst:IsA("BasePart") then return inst end
+	local base = inst:FindFirstAncestorWhichIsA("BasePart") or getAnyBasePart(inst)
+	return base
+end
+
+
+-- 유틸: 입력 리스트를 앵커로 변환하며 중복 제거
+local function uniqueAnchorsFrom(list): {Instance}
+	if typeof(list) ~= "table" then return {} end
+	local seen: {[Instance]: boolean} = {}
+	local out: {Instance} = {}
+	for _, t in ipairs(list) do
+		if typeof(t) == "Instance" then
+			local a = getAnchor(t)
+			if a and not seen[a] then
+				seen[a] = true
+				table.insert(out, a)
+			end
+		end
+	end
+	return out
+end
+
+
 local function showMarkerOn(target: Instance)
 	if not target or not target.Parent then return end
-	if QuestMarkers[target] and QuestMarkers[target].Parent then
-		QuestMarkers[target].Enabled = true
+
+	local anchor = getAnchor(target)
+	if not anchor then return end
+
+	-- 이미 등록된 마커가 있으면 재사용
+	local existing = QuestMarkersByAnchor[anchor]
+	if existing and existing.Parent then
+		existing.Enabled = true
 		return
 	end
-	local base = getAnyBasePart(target)
+
+	-- 과거에 남아 있던 마커가 있으면 잡아서 재사용
+	local stray: BillboardGui? = nil
+	if anchor:IsA("Model") then
+		stray = (anchor :: Model):FindFirstChild("QuestMarker_Local", true)
+	elseif anchor:IsA("BasePart") then
+		stray = anchor:IsA("BasePart") and anchor:FindFirstChild("QuestMarker_Local") or nil
+	end
+	if stray and stray:IsA("BillboardGui") then
+		stray.Enabled = true
+		QuestMarkersByAnchor[anchor] = stray
+		return
+	end
+
+	local createdAnchor: BasePart? = nil  -- 추가
+
+	-- Billboard를 붙일 파츠 결정
+	local base: BasePart? = nil
+	if anchor:IsA("Model") then
+		base = getAnyBasePart(anchor)
+		if not base then
+			base = ensureAnchorPartForModel(anchor)  -- 추가: 폴백 생성
+			createdAnchor = base
+		end
+	elseif anchor:IsA("BasePart") then
+		base = anchor
+	end
 	if not base then return end
 
+
+	-- 생성
 	local bb = Instance.new("BillboardGui")
 	bb.Name = "QuestMarker_Local"
 	bb.AlwaysOnTop = true
-	bb.Size = UDim2.new(0, 44, 0, 44)        -- (기존 52→44)
-	
+	bb.Size = UDim2.new(0, 44, 0, 44)
 
+	-- 높이 오프셋 계산: Model이면 ExtentsSize, 아니면 파츠 높이
 	local offsetY = 4
-	if target:IsA("Model") then
-		local ok, size = pcall(function() return (target :: Model):GetExtentsSize() end)
+	if anchor:IsA("Model") then
+		local ok, size = pcall(function() return (anchor :: Model):GetExtentsSize() end)
 		if ok and size then offsetY = math.max(3, size.Y * 0.55) end
+	elseif anchor:IsA("BasePart") then
+		offsetY = math.max(2.5, (base.Size.Y or 1) * 0.5)
 	end
-	bb.StudsOffsetWorldSpace = Vector3.new(0, offsetY + 1.0, 0)  -- (조금 더 위)
+	bb.StudsOffsetWorldSpace = Vector3.new(0, offsetY + 1.0, 0)
 	bb.Parent = base
 
+	-- 안쪽 UI
 	local tl = Instance.new("TextLabel")
 	tl.BackgroundTransparency = 1
 	tl.Size = UDim2.fromScale(1, 1)
@@ -294,35 +408,77 @@ local function showMarkerOn(target: Instance)
 	bg.BackgroundTransparency = 0.35
 	bg.Size = UDim2.fromScale(1, 1)
 	bg.Parent = tl
+
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 24)
 	corner.Parent = bg
+
 	bg.ZIndex = 0
 	tl.ZIndex = 1
-
 	tl.Parent = bb
-	QuestMarkers[target] = bb
+
+	QuestMarkersByAnchor[anchor] = bb
+
+	-- 앵커 범위에서 중복 청소(선택)
+	if anchor:IsA("Model") then
+		for _, d in ipairs(anchor:GetDescendants()) do
+			if d ~= bb and d:IsA("BillboardGui") and d.Name == "QuestMarker_Local" then
+				d:Destroy()
+			end
+		end
+	elseif anchor:IsA("BasePart") then
+		for _, d in ipairs(anchor:GetChildren()) do
+			if d ~= bb and d:IsA("BillboardGui") and d.Name == "QuestMarker_Local" then
+				d:Destroy()
+			end
+		end
+	end
+
+	bb.Destroying:Once(function()
+		if QuestMarkersByAnchor[anchor] == bb then
+			QuestMarkersByAnchor[anchor] = nil
+		end
+		if createdAnchor and createdAnchor.Parent then
+			createdAnchor:Destroy() -- 로컬 더미 파트 청소
+		end
+	end)
+
 end
 
+
+
 local function hideMarkerOn(target: Instance)
-	local bb = QuestMarkers[target]
+	local anchor = getAnchor(target)
+	if not anchor then return end
+
+	local bb = QuestMarkersByAnchor[anchor]
 	if bb then
 		bb:Destroy()
-		QuestMarkers[target] = nil
+		QuestMarkersByAnchor[anchor] = nil
+		return
+	end
+
+	-- 매핑이 없어도 앵커 범위의 남은 마커 제거
+	if anchor:IsA("Model") then
+		local stray = anchor:FindFirstChild("QuestMarker_Local", true)
+		if stray and stray:IsA("BillboardGui") then stray:Destroy() end
+	elseif anchor:IsA("BasePart") then
+		local stray = anchor:FindFirstChild("QuestMarker_Local")
+		if stray and stray:IsA("BillboardGui") then stray:Destroy() end
 	end
 end
 
+
+-- 교체: 중복 제거 후 한 번만 생성/제거
 local function showMarkersOn(list)
-	if typeof(list) ~= "table" then return end
-	for _, t in ipairs(list) do
-		if typeof(t) == "Instance" then showMarkerOn(t) end
+	for _, anchor in ipairs(uniqueAnchorsFrom(list)) do
+		showMarkerOn(anchor)
 	end
 end
 
 local function hideMarkersOn(list)
-	if typeof(list) ~= "table" then return end
-	for _, t in ipairs(list) do
-		if typeof(t) == "Instance" then hideMarkerOn(t) end
+	for _, anchor in ipairs(uniqueAnchorsFrom(list)) do
+		hideMarkerOn(anchor)
 	end
 end
 
@@ -375,7 +531,6 @@ local function isMyPetModel(model: Instance?): boolean
 	if not petModel or not petModel:IsA("Model") then return false end
 	return petModel:GetAttribute("OwnerUserId") == LocalPlayer.UserId
 end
-
 
 
 

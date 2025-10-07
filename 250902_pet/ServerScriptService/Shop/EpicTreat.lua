@@ -3,20 +3,26 @@
 -- Treat 구매: 코인 차감 → 버프 적용 → 최신 잔액 반환
 -- Jumper 배지 보유자만 'duckbone / Jump up' 구매 가능(영구)
 
-local Players            = game:GetService("Players")
-local ReplicatedStorage  = game:GetService("ReplicatedStorage")
-local ServerScriptService= game:GetService("ServerScriptService")
-local HttpService        = game:GetService("HttpService")
+----------------------------------------------------------------
+-- Services
+----------------------------------------------------------------
+local Players             = game:GetService("Players")
+local ReplicatedStorage   = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 
--- 모듈
-local ExperienceService   = require(ServerScriptService:WaitForChild("ExperienceService"))
-local PetAffectionService = require(ServerScriptService:WaitForChild("PetAffectionService"))
-local CoinService         = require(ServerScriptService:WaitForChild("CoinService"))
-local BuffService         = require(ServerScriptService:WaitForChild("BuffService"))
-local BadgeManager        = require(ServerScriptService:WaitForChild("BadgeManager"))
+----------------------------------------------------------------
+-- Requires (project modules)
+----------------------------------------------------------------
+local ExperienceService    = require(ServerScriptService:WaitForChild("ExperienceService"))
+local PetAffectionService  = require(ServerScriptService:WaitForChild("PetAffectionService"))
+local CoinService          = require(ServerScriptService:WaitForChild("CoinService"))
+local BuffService          = require(ServerScriptService:WaitForChild("BuffService"))
+local BadgeManager         = require(ServerScriptService:WaitForChild("BadgeManager"))
 
-
--- Remotes(코인)
+----------------------------------------------------------------
+-- Remotes
+----------------------------------------------------------------
+-- Coins
 local RemotesFolder = ReplicatedStorage:FindFirstChild("RemoteEvents") or Instance.new("Folder")
 RemotesFolder.Name = "RemoteEvents"
 RemotesFolder.Parent = ReplicatedStorage
@@ -28,7 +34,7 @@ if not CoinUpdate then
 	CoinUpdate.Parent = RemotesFolder
 end
 
--- Treat Remotes
+-- Treat
 local TreatFolder = ReplicatedStorage:FindFirstChild("TreatEvents") or Instance.new("Folder")
 TreatFolder.Name = "TreatEvents"
 TreatFolder.Parent = ReplicatedStorage
@@ -40,7 +46,7 @@ if not TryBuyTreat then
 	TryBuyTreat.Parent = TreatFolder
 end
 
--- ★ 추가: GUI에서 버튼 활성화 여부 질의용
+-- GUI에서 배지 언락 여부/버튼 활성화 질의
 local GetTreatUnlocks = TreatFolder:FindFirstChild("GetTreatUnlocks") :: RemoteFunction
 if not GetTreatUnlocks then
 	GetTreatUnlocks = Instance.new("RemoteFunction")
@@ -48,113 +54,42 @@ if not GetTreatUnlocks then
 	GetTreatUnlocks.Parent = TreatFolder
 end
 
--- ─────────────────────────────────────────────────────────────
+-- Buff 토스트(옵션)
+local BuffEvents = ReplicatedStorage:FindFirstChild("BuffEvents")
+local BuffApplied   : RemoteEvent? = BuffEvents and BuffEvents:FindFirstChild("BuffApplied")   :: RemoteEvent
+local BuffExpired   : RemoteEvent? = BuffEvents and BuffEvents:FindFirstChild("BuffExpired")   :: RemoteEvent
 
--- 내부 키를 소문자/공백제거로 정규화
+----------------------------------------------------------------
+-- Utils
+----------------------------------------------------------------
 local function canonItem(s: any): string
-	local v = typeof(s)=="string" and s or ""
+	local v = typeof(s) == "string" and s or ""
 	v = string.lower(v)
-	v = (v:gsub("%s+", "")):gsub("_", "")
+	v = (v:gsub("[%s_%-]+", "")) -- 공백/언더바/하이픈 제거
 	return v
 end
 
--- 표시명 매핑(사전 정의 키)
--- 오른쪽 값이 실제 처리용 아이템 키
-local ITEM_KEYMAP: {[string]: string} = {
-	munchies = "Munchies",
-	doggum   = "DogGum",
-	snack    = "Snack",
-	duckbone = "duckbone",
-	jumpup   = "duckbone",  -- "Jump up" 버튼도 duckbone 버프로 처리
-}
-
--- 유효 아이템
-local VALID_ITEMS: {[string]: boolean} = { Munchies=true, DogGum=true, Snack=true, duckbone=true }
-
--- ★ 배지 게이트: 이 아이템들은 Jumper 배지 필요
-local BADGE_GATE: {[string]: boolean} = {
-	duckbone = true, -- (= Jump up)
-}
-
--- 레벨/코인 요구
-local TREAT_LEVEL_REQ = { Munchies = 30, duckbone = 20, DogGum = 10, Snack = 10 }
-local TREAT_COIN_COST = { Munchies = 5,  duckbone = 3,  DogGum = 3,  Snack = 1 }
-
--- 버프 파라미터
-local SPEED_BOOST_SECS = 1800
-local MUNCHIES_SECS    = 1800
-local AFFECTION_MAX    = 5
-
--- duckbone(jump up)
-local DUCKBONE_SECS        = 1800
-local DUCKBONE_BASE_POWER  = 50
-local DUCKBONE_BUFF_POWER  = 80
-local A_DUCK_UNTIL      = "DuckboneUntil"
-local A_DUCK_BASE       = "DuckboneBaseJump"
-local A_DUCK_USINGPOWER = "DuckboneUsingPower"
-local A_DUCK_TOKEN      = "DuckboneToken"
+local function badgeKeyJumper(): any
+	-- BadgeManager.Keys.Jumper가 있으면 사용, 없으면 문자열 "Jumper"로 호출
+	local k = (BadgeManager :: any).Keys
+	return (k and k.Jumper) or "Jumper"
+end
 
 local function getHumanoid(p: Player): Humanoid?
 	local char = p.Character
 	return char and char:FindFirstChildOfClass("Humanoid") or nil
 end
 
-local function toast(p: Player, kind: string, text: string)
-	local folder = ReplicatedStorage:FindFirstChild("BuffEvents")
-	local evt = folder and folder:FindFirstChild(kind)
-	if evt and evt:IsA("RemoteEvent") then
-		(evt :: RemoteEvent):FireClient(p, { kind = "Duckbone", text = text })
+local function toast(p: Player, text: string, kind: "BuffApplied" | "BuffExpired")
+	if kind == "BuffApplied" and BuffApplied then
+		BuffApplied:FireClient(p, { kind = "Duckbone", text = text })
+	elseif kind == "BuffExpired" and BuffExpired then
+		BuffExpired:FireClient(p, { kind = "Duckbone", text = text })
 	end
-end
-
-local function reapplyDuckboneIfActive(p: Player)
-	local untilAt = p:GetAttribute(A_DUCK_UNTIL)
-	if typeof(untilAt) ~= "number" or untilAt <= os.time() then return end
-	local hum = getHumanoid(p)
-	if not hum then return end
-	p:SetAttribute(A_DUCK_BASE, DUCKBONE_BASE_POWER)
-	p:SetAttribute(A_DUCK_USINGPOWER, 1)
-	hum.UseJumpPower = true
-	hum.JumpPower = DUCKBONE_BUFF_POWER
-end
-
-local function scheduleDuckboneExpiry(p: Player, token: string, endAt: number)
-	task.delay(math.max(0, endAt - os.time()), function()
-		if not p or not p.Parent then return end
-		if p:GetAttribute(A_DUCK_TOKEN) ~= token then return end
-		if (p:GetAttribute(A_DUCK_UNTIL) :: any) > os.time() then return end
-
-		local hum = getHumanoid(p)
-		if hum then
-			hum.UseJumpPower = true
-			hum.JumpPower = DUCKBONE_BASE_POWER
-		end
-		p:SetAttribute(A_DUCK_TOKEN, nil)
-		p:SetAttribute(A_DUCK_UNTIL, nil)
-		p:SetAttribute(A_DUCK_BASE, nil)
-		p:SetAttribute(A_DUCK_USINGPOWER, nil)
-
-		toast(p, "BuffExpired", "Jump power buff ends")
-	end)
-end
-
-local function applyDuckbone(p: Player)
-	local hum = getHumanoid(p)
-	p:SetAttribute(A_DUCK_BASE, DUCKBONE_BASE_POWER)
-	p:SetAttribute(A_DUCK_USINGPOWER, 1)
-	if hum then
-		hum.UseJumpPower = true
-		hum.JumpPower = DUCKBONE_BUFF_POWER
-	end
-	local token = HttpService:GenerateGUID(false)
-	local endAt = os.time() + DUCKBONE_SECS
-	p:SetAttribute(A_DUCK_TOKEN, token)
-	p:SetAttribute(A_DUCK_UNTIL, endAt)
-	toast(p, "BuffApplied", "JUMP UP! (30 min)")
-	scheduleDuckboneExpiry(p, token, endAt)
 end
 
 local function getCoins(p: Player): number
+	-- 프로젝트 CoinService에 맞춰 사용 (이미 다른 곳에서 사용중)
 	return CoinService:GetBalance(p)
 end
 
@@ -166,10 +101,61 @@ local function getLevel(p: Player): number
 	return tonumber(p:GetAttribute("Level")) or 1
 end
 
+----------------------------------------------------------------
+-- Item tables / gates
+----------------------------------------------------------------
+-- 표시명 → 내부 처리 키 매핑
+local ITEM_KEYMAP: {[string]: string} = {
+	munchies = "Munchies",
+	doggum   = "DogGum",
+	snack    = "Snack",
+	duckbone = "duckbone",    -- 점프버프
+	jumpup   = "duckbone",    -- "Jump up" 별칭
+	jumpup2  = "duckbone",    -- 안전(혹시 다른 표기)
+}
+
+-- 유효 아이템 집합
+local VALID_ITEMS: {[string]: boolean} = {
+	Munchies = true, DogGum = true, Snack = true, duckbone = true
+}
+
+-- 배지 게이트: Jumper 필요
+local BADGE_GATE: {[string]: boolean} = {
+	duckbone = true,
+}
+
+-- 요구 레벨/코인
+local TREAT_LEVEL_REQ = { Munchies = 30, duckbone = 20, DogGum = 10, Snack = 10 }
+local TREAT_COIN_COST = { Munchies = 5,  duckbone = 3,  DogGum = 3,  Snack = 1 }
+
+-- 버프 파라미터
+local SPEED_BOOST_SECS = 1800
+local MUNCHIES_SECS    = 1800
+local DOGGUM_DELTA     = 5
+
+-- duckbone (Jump Up) - 상점 표준값
+local DUCKBONE_SECS        = 1800
+local DUCKBONE_BASE_POWER  = 50
+local DUCKBONE_BUFF_POWER  = 80
+
+----------------------------------------------------------------
+-- Badge check (always real-time)
+----------------------------------------------------------------
+local function hasJumper(p: Player): boolean
+	local key = badgeKeyJumper()
+	local ok, res = pcall(function()
+		return BadgeManager.HasRobloxBadge(p, key)
+	end)
+	return ok and res == true
+end
+
+----------------------------------------------------------------
+-- Effects
+----------------------------------------------------------------
 local function applySnack(p: Player)
+	-- Speed 버프는 BuffService가 WalkSpeed를 관리 (기본속도 대비 곱)
 	local base: number = 16
-	local char = p.Character
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local hum = getHumanoid(p)
 	local baseAttr = p:GetAttribute("BaseWalkSpeed")
 	if typeof(baseAttr) == "number" then
 		base = baseAttr
@@ -178,51 +164,43 @@ local function applySnack(p: Player)
 	end
 	local add = 4
 	local mult = (base + add) / math.max(1, base)
-	BuffService:ApplyBuff(p, "Speed", SPEED_BOOST_SECS, { mult = mult }, "Speed UP!")
+	BuffService:ApplyBuff(p, "Speed", SPEED_BOOST_SECS, { mult = mult }, "SpeedUP!")
 end
 
-local DOGGUM_DELTA = 5
 local function applyDogGum(p: Player)
+	-- 애정도 +5 (최대치 고려)
 	local cur, maxv = PetAffectionService.Get(p)
 	local target = math.min(cur + DOGGUM_DELTA, maxv)
 	local delta = target - cur
 	if delta > 0 then
 		PetAffectionService.Adjust(p, delta, "DogGum")
-		local folder = ReplicatedStorage:FindFirstChild("BuffEvents")
-		local BuffApplied = folder and folder:FindFirstChild("BuffApplied")
-		if BuffApplied then
-			(BuffApplied :: RemoteEvent):FireClient(p, { kind = "Affection", text = "+5 Affection!" })
-		end
+		toast(p, "+5 Affection!", "BuffApplied")
 	end
 end
 
 local function applyMunchies(p: Player)
-	BuffService:ApplyBuff(p, "Exp2x", MUNCHIES_SECS, { mult = 2 }, "Exp x2!")
+	-- Exp 2배 30분
+	BuffService:ApplyBuff(p, "Exp2x", MUNCHIES_SECS, { mult = 2 }, "EXPx2")
 end
 
--- ─────────── 구매 게이트 ───────────
-
-local function hasJumper(p: Player): boolean
-	if not BadgeManager then return false end
-	local ok, res = pcall(function()
-		-- BadgeManager.Keys를 안 쓰고 문자열로 직접
-		return BadgeManager.HasRobloxBadge(p, "Jumper")
-	end)
-	return ok and res == true
+-- JumpUp(duckbone) 구매 시 BuffService 사용(상점과 동일: 50 -> 80 = 1.6배)
+local function applyDuckbone(p: Player)
+	BuffService:ApplyBuff(p, "JumpUp", DUCKBONE_SECS, { mult = DUCKBONE_BUFF_POWER / DUCKBONE_BASE_POWER }, "JUMP UP")
 end
 
-
--- 클라가 GUI 열 때 호출해서 버튼 활성화 결정
+----------------------------------------------------------------
+-- Remote: GetTreatUnlocks (for GUI button enabling)
+----------------------------------------------------------------
 GetTreatUnlocks.OnServerInvoke = function(p: Player)
 	local j = hasJumper(p)
-	-- jumpup 별칭도 같이 내려줌(클라에서 키 매칭 편의)
-	return {
-		duckbone = j,
-		jumpup   = j,
-	}
+	-- 속성도 함께 갱신해서 클라가 AttributeChanged로 반응 가능
+	p:SetAttribute("HasJumperBadge", j)
+	return { duckbone = j, jumpup = j }
 end
 
--- ===== 구매 RF =====
+----------------------------------------------------------------
+-- Remote: TryBuyTreat
+----------------------------------------------------------------
 type BuyResp = { ok: boolean, coins: number, reason: string? }
 
 TryBuyTreat.OnServerInvoke = function(p: Player, payload): BuyResp
@@ -230,21 +208,24 @@ TryBuyTreat.OnServerInvoke = function(p: Player, payload): BuyResp
 		return { ok = false, coins = 0, reason = "InvalidPlayer" }
 	end
 
-	-- ★ 아이템 이름 정규화/매핑
+	-- 아이템 키 정규화/매핑
 	local raw = (typeof(payload) == "table" and payload.item) or tostring(payload)
-	local key = ITEM_KEYMAP[canonItem(raw)]
-	if not key or not VALID_ITEMS[key] then
+	local mapped = ITEM_KEYMAP[canonItem(raw)]
+	if not mapped or not VALID_ITEMS[mapped] then
 		return { ok = false, coins = getCoins(p), reason = "InvalidItem" }
 	end
 
-	-- ★ 배지 게이트: Jumper 배지 없으면 구매 불가(버튼은 기본 비활성화)
-	if BADGE_GATE[key] and not hasJumper(p) then
+	-- 배지 게이트
+	if BADGE_GATE[mapped] and not hasJumper(p) then
+		-- 속성 동기화(클라 UI 갱신용)
+		p:SetAttribute("HasJumperBadge", false)
 		return { ok = false, coins = getCoins(p), reason = "LockedByBadge" }
 	end
 
-	-- 기존 요구 조건
-	local reqLv = TREAT_LEVEL_REQ[key] or math.huge
-	local cost  = TREAT_COIN_COST[key] or math.huge
+	-- 레벨/코인 요구
+	local reqLv = TREAT_LEVEL_REQ[mapped] or math.huge
+	local cost  = TREAT_COIN_COST[mapped] or math.huge
+
 	if getLevel(p) < reqLv then
 		return { ok = false, coins = getCoins(p), reason = "LevelTooLow" }
 	end
@@ -254,32 +235,34 @@ TryBuyTreat.OnServerInvoke = function(p: Player, payload): BuyResp
 	end
 
 	-- 효과 적용
-	if key == "Snack" then
+	if mapped == "Snack" then
 		applySnack(p)
-	elseif key == "DogGum" then
+	elseif mapped == "DogGum" then
 		applyDogGum(p)
-	elseif key == "Munchies" then
+	elseif mapped == "Munchies" then
 		applyMunchies(p)
-	elseif key == "duckbone" then
+	elseif mapped == "duckbone" then
 		applyDuckbone(p)
 	end
 
-	return { ok = true, coins = getCoins(p) }
+	local bal = getCoins(p)
+	CoinUpdate:FireClient(p, bal) -- 글로벌 코인 HUD와의 일관 동기화
+	return { ok = true, coins = bal }
 end
 
--- 접속 시 잔액 동기화 + 캐릭터 리스폰 시 버프 재적용
+----------------------------------------------------------------
+-- Lifecycle
+----------------------------------------------------------------
 Players.PlayerAdded:Connect(function(p)
+	-- 코인 HUD 초기 동기화
 	CoinUpdate:FireClient(p, getCoins(p))
-	p.CharacterAdded:Connect(function()
-		task.defer(function()
-			reapplyDuckboneIfActive(p)
-		end)
+
+	-- 접속 시 배지 보유 속성 한 번 동기화 (GUI가 바로 쓸 수 있게)
+	task.spawn(function()
+		local j = hasJumper(p)
+		p:SetAttribute("HasJumperBadge", j)
 	end)
 end)
 
-Players.PlayerRemoving:Connect(function(p)
-	p:SetAttribute(A_DUCK_TOKEN, nil)
-	p:SetAttribute(A_DUCK_UNTIL, nil)
-	p:SetAttribute(A_DUCK_BASE, nil)
-	p:SetAttribute(A_DUCK_USINGPOWER, nil)
-end)
+-- duckbone에 대한 별도 재적용/정리 로직은 BuffService가 처리하므로 제거
+Players.PlayerRemoving:Connect(function(_p) end)

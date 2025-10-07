@@ -22,7 +22,7 @@ local DEACTIVATE_SECS     = 300                      -- 트리거 후 모델 비
 local ANCHOR_PET          = true                    -- 펫을 Anchored로 고정할지(권장 true)
 
 -- 🔹 [추가] 보상/패널티 기본값 (원하는 수치로!)
-local XP_PER_TRIGGER      = 100   -- StreetFood 한 번 완료 시 얻는 경험치
+local XP_PER_TRIGGER      = 50   -- StreetFood 한 번 완료 시 얻는 경험치
 local AFFECTION_PENALTY   = 1     -- StreetFood 한 번 완료 시 감소할 펫 어펙션
 
 -- ===== 경로 =====
@@ -334,13 +334,6 @@ ProximityPromptService.PromptTriggered:Connect(function(prompt, player)
 	-- 이미 처리 중이면 무시
 	if processing[rootModel] then return end
 	processing[rootModel] = true
-
-	player:SetAttribute("ExpMultiplier", 2)
-	task.delay(1800, function()
-		if player and player.Parent then
-			player:SetAttribute("ExpMultiplier", 1)
-		end
-	end)
 	
 	-- 🔹 [Marker] 먼저 숨김 (이후 ServerStorage로 이동되면 클라에서 참조가 사라질 수 있으므로)
 	WangEvent:FireClient(player, "HideMarker", {

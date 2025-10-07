@@ -30,9 +30,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["vendor_ninja(Lv.100)"] = {
 		templates = {"Plain"}, -- 템플릿 이름 예시
 		lines = {
-			"눈에 보이는 것만이 전부가 아니야",
-			"나보다 약한 자들에게 볼일은 없어",
-			"특별히 네 애완동물이 부럽진 않아",
+			"What you see isn't everything",
+			"I have no business with those weaker than me",
+			"I'm not particularly jealous of your pet",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -42,16 +42,16 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["grandma"] = {
 		templates = {"Plain"},
 		lines = {
-			"나이들수록 잠이 없어져서 큰일이야",
-			"오늘은 일찍 나왔네?",
-			"나이 먹고 보니 사는 거 참 별거 없어",
-			"이 마을에는 숨겨진 비밀이 많아",
+			"The older I get, the less I sleep—it's a problem",
+			"Out early today, huh?",
+			"After getting older, life doesn't seem like much",
+			"This town has many hidden secrets",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["Amona"] = {
 		templates = {"Plain"},
 		lines = {
@@ -62,54 +62,54 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["Walkingman"] = {
 		templates = {"Plain"},
 		lines = {
-			"출근은 힘들어~",
-			"가족을 위해 오늘도 힘내자!",
+			"Going to work is tough~",
+			"Let's keep going today for the family!",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["engineer"] = {
 		templates = {"Plain"},
 		lines = {
-			"어디 고장난 곳 있어?",
-			"집 수리 좀 해줄까?",
-			"얼마 전 사다리 시공을 했었지. 위치는 비밀이야",
+			"Something broken somewhere?",
+			"Need me to fix your house?",
+			"I installed a ladder not long ago. The location is a secret",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["illidan"] = {
 		templates = {"Plain"},
 		lines = {
-			"너희 아직, 준비가 안됐다!",
-			"낭비할 시간 없다.",
-			"난 너같은 조무래기에는 관심 없다",
+			"You are not prepared yet!",
+			"There is no time to waste.",
+			"I have no interest in small fry like you",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["nightwatch_savage"] = {
 		templates = {"Plain"},
 		lines = {
-			"어디 시비 걸만한 놈 없을까?",
-			"뭘 쳐다보지?",
-			"개, 개 따윈 하나도 무섭지 않아...",
+			"Anyone around worth picking a fight with?",
+			"What are you looking at?",
+			"Dogs? I'm not scared of them at all...",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["nightwatch_zombie"] = {
 		templates = {"Plain"},
 		lines = {
@@ -120,7 +120,7 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["nightwatch_zombie2"] = {
 		templates = {"Plain"},
 		lines = {
@@ -131,35 +131,35 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["snakeman"] = {
 		templates = {"Plain"},
 		lines = {
-			"애완동물은 나처럼 고급스러운걸 키워야지",
-			"니 애완동물 우리 귀염둥이 간식으로 딱인데?",
+			"Pets should be as classy as me",
+			"Your pet would make the perfect snack for my cutie",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["thief"] = {
 		templates = {"Plain"},
 		lines = {
-			"뭐 훔칠만한 것 좀 없나?",
-			"이봐, 혹시 오는길에 경찰은 없었어?",
+			"Anything worth stealing?",
+			"Hey, you didn't see any cops on your way here, did you?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["timthespamm"] = {
 		templates = {"Plain"},
 		lines = {
-			"여~ 좋은 아침?",
-			"니 강아지 안물지?",
-			"니 강아지 이름이 뭐야?",
+			"Yo~ good morning?",
+			"Your dog doesn't bite, right?",
+			"What's your dog's name?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -169,9 +169,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["Mewrila"] = {
 		templates = {"Plain"},
 		lines = {
-			"어머 귀여워~ ❤️",
-			"니 애완동물은 몇살이야?",
-			"동물병원은 세탁소 지나 좌회전해서 조금만 더 가면 있어",
+			"Oh my, so cute~ ❤️",
+			"How old is your pet?",
+			"The animal hospital is past the laundromat, then a left, just a bit further",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -179,110 +179,110 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	},
 
 	["nightwatch_blackcat"] = {
-		
+
 		templates = {"Plain"},
 		lines = {
-			"너 개인은 강할지 몰라도, 팀을 이길 순 없어",
-			"애송이와는 말을 섞고 싶지 않아",
-			"언젠가 니가 더 강해진다면 상대해주지",
+			"You might be strong alone, but you can't beat a team",
+			"I don't care to talk with rookies",
+			"If you become stronger someday, I'll face you",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["STARCODEE_GUN"] = {
 		templates = {"Plain"},
 		lines = {
-			"입마개는 하셔야 하는 거 아니에요??",
-			"털 날리거 봐..",
-			"큰 개는 무서워..",
+			"Shouldn't you put a muzzle on??",
+			"Look at all that fur shedding..",
+			"Big dogs are scary..",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["sportsman"] = {
 		templates = {"Plain"},
 		lines = {
-			"세차하기 딱 좋은 날씨네?",
-			"니 애완동물도 타고 달릴 수 있어?",
-			"타지도 못하는 거에 돈은 왜 쓰는거야?",
+			"Perfect weather for a car wash, huh?",
+			"Can your pet ride and run too?",
+			"Why spend money on something you can't even ride?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["xiaoleung"] = {
 		templates = {"Plain"},
 		lines = {
-			"강아지들이 좀 자라야 간식을 먹을 수 있어",
-			"새로운 간식 많이 들어왔어",
-			"인간적으로 토요일은 휴무여야 하는 거 아냐?",
+			"Puppies need to grow a bit before they can have treats",
+			"Got lots of new treats in",
+			"Honestly, shouldn't Saturdays be a day off?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["bleus_p"] = {
 		templates = {"Plain"},
 		lines = {
-			"마을 구석 폐건물 구역은 가지 않는 것이 좋아",
-			"가끔 산 중턱을 지날 때 상자 같은 것이 보이던데?",
-			"대부분의 사람이 잠든 밤에 가끔씩 밖에서 이상한 소리가 들려",
+			"Better not go to the abandoned buildings at the edge of town",
+			"Sometimes I see box-like things halfway up the mountain",
+			"Sometimes at night, when most people are asleep, strange sounds come from outside",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["Crimson"] = {
 		templates = {"Plain"},
 		lines = {
-			"니 옷 좋아보이는데?",
-			"니 애완동물 맛있어 보이는데?",
-			"지금 머리숱 많다고 나 무시해?",
+			"Your outfit looks nice",
+			"Your pet looks delicious",
+			"Are you ignoring me because you have a lot of hair now?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["police_c"] = {
 		templates = {"Plain"},
 		lines = {
-			"수상한 사람 못봤어?",
-			"야간 근무는 힘들어~",
-			"킁킁, 어디서 타는 냄새 나는 것 같은데?",
-			
+			"Seen anyone suspicious?",
+			"Night shifts are tough~",
+			"Sniff sniff, I think I smell something burning?",
+
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["police_b"] = {
 		templates = {"Plain"},
 		lines = {
-			"수상한 사람 못봤어?",
-			"야간 근무는 힘들어~",
-			"10시 이후는 돌아다닐 때 조심해",
+			"Seen anyone suspicious?",
+			"Night shifts are tough~",
+			"Be careful walking around after 10",
 
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["police_a"] = {
 		templates = {"Plain"},
 		lines = {
-			"파출소는 함부로 뒤지는 거 아냐",
-			"새 경찰차는 언제 들어오는거야?",
-			"너무 늦은 밤 공원은 돌아다니지 마",
+			"You can't rummage through the substation",
+			"When is the new police car arriving?",
+			"Don't wander around the park too late at night",
 
 		},
 		offsetY = 3.25,
@@ -290,127 +290,127 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 		interval = {min=30, max=60},
 	},
 
-	
+
 	["nightwatch_flower"] = {
 		templates = {"Plain"},
 		lines = {
-			"오늘은 너를 만날 수 있을까?",
-			"너를 내 옆에 잡아둘거야, 다리를 부러뜨려서라도",
-			"제가 당신을 도울 수 있도록 도와줘요",
+			"Will I be able to meet you today?",
+			"I'll keep you by my side, even if I have to break your legs",
+			"Help me so I can help you",
 
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["c"] = {
 		templates = {"Plain"},
 		lines = {
-			"숲을 보고 있으니 악몽같은 기억이 떠오르는군",
-			"이봐, 마을 뒷산에 가본 적 있어?",
-			"멀리서 보이면 뒤도 돌아보지 말고 도망쳐",
+			"Staring at the forest brings back nightmare-like memories",
+			"Hey, have you ever been to the hill behind town?",
+			"If you see it from afar, don't look back—just run",
 
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["thegirl"] = {
 		templates = {"Plain"},
 		lines = {
-			"버스는 왜 항상 늦는거야?",
-			"난 개털 알레르기가 있어",
-			"당신, 강아지는 내 옆에 태우지 마",
+			"Why is the bus always late?",
+			"I'm allergic to dog hair",
+			"Hey you, don't seat your dog next to me",
 
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["vendor_bloxmart"] = {
 		templates = {"Plain"},
 		lines = {
-			"어서오세요~ 블록스마트 입니다.",
-			"없는 것 빼고 다 있어요",
-			"(퇴근 후 그녀에게 고백해볼까?..)",
+			"Welcome~ This is Bloxmart.",
+			"We have everything except what's not here",
+			"(Should I confess to her after work?..)",
 
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["payleey"] = {
 		templates = {"Plain"},
 		lines = {
-			"빨래하기 좋은 날씨네",
-			"마을이 발전하면 축제도 생기지 않을까?",
-			"강아지랑 놀아주는 방법은 다양해",
+			"Good weather for doing laundry",
+			"If the town grows, maybe we'll have festivals?",
+			"There are many ways to play with dogs",
 
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["Nasynia"] = {
 		templates = {"Plain"},
 		lines = {
-			"우리 남편 못 봤어요?",
-			"아이구 귀여워라~ 얘는 털 많이 빠져요?",
-			"도대체 어디를 간거야",
+			"Have you seen my husband?",
+			"Oh, how cute~ Does this one shed a lot?",
+			"Where on earth did he go",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["HideHusband"] = {
 		templates = {"Plain"},
 		lines = {
-			"뭐야 너 남에 집에 어떻게 들어왔어?",
-			"아내 몰래 짱박혀 노는 게 스릴이 최고지!",
-			"이봐 아내에겐 비밀이야, 알겠지?",
-		
+			"What—how did you get into someone else's house?",
+			"Hiding and hanging out behind my wife's back is the best thrill!",
+			"Hey, it's a secret from my wife, got it?",
+
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["Personaje"] = {
 		templates = {"Plain"},
 		lines = {
-			"어머나, 귀여운 강아지네요, 이름이 뭐에요?",
-			"오늘 저녁엔 뭐하고 놀지?",
-			"언젠가 특이한 애완동물을 데리고 다니는 사람을 본 적이 있어",
+			"Oh my, what a cute dog—what's the name?",
+			"What should we do for fun tonight?",
+			"I once saw someone walking around with a very unusual pet",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["KlTSUBEE"] = {
 		templates = {"Plain"},
 		lines = {
-			"맛있어 보이는 음식을 치우면 강아지들이 싫어할 걸?",
-			"마을에 보물을 노리는 도둑들이 있다던데?",
-			"애완동물을 키우다보면 몇마리 더 키우고 싶어질 때가 있지",
+			"Dogs won't like it if you put away the tasty-looking food",
+			"They say there are thieves in town after treasure",
+			"When you raise pets, you sometimes want to keep a few more",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
-	
+
 	["cowman"] = {
 		templates = {"Plain"},
 		lines = {
-			"마을 북쪽 골짜기에는 가지마",
-			"애정도를 높게 유지하면 특별한 능력이 생긴다는데?",
-			"10년 후에는 어떤 세상이 올까?",
+			"Don't go to the northern ravine of the town",
+			"They say keeping affection high grants special abilities",
+			"What kind of world will it be in 10 years?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -420,9 +420,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["ninja_bae"] = {
 		templates = {"Plain"},
 		lines = {
-			"가끔씩 마을 바닥에서 무슨 소리가 들려.. 들어봤어?",
-			"등산은 고되지만 보상을 얻을 수도 있어!",
-			"강아지들을 아프게 하지마",
+			"Sometimes there are sounds from beneath the town... have you heard?",
+			"Hiking is tough, but you might earn rewards!",
+			"Don't hurt the dogs",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -432,9 +432,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["gentleman"] = {
 		templates = {"Plain"},
 		lines = {
-			"고대인들은 특별한 애완동물을 데리고 다녔다던데?",
-			"물 속을 들여다 본 적 있어?",
-			"사람을 보고 짖을때는 살살 달래면 돼",
+			"They say ancients carried special pets with them",
+			"Have you ever looked into the water?",
+			"When they bark at people, just calm them gently",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -444,9 +444,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["gentlecow"] = {
 		templates = {"Plain"},
 		lines = {
-			"강아지들이 졸려할 때는 너네 집 침대로 가봐",
-			"다양한 장난감들로 놀아줄 수 있다.",
-			"니 강아지는 고양이를 너무 좋아하는데?",
+			"When the dogs are sleepy, try your home bed",
+			"You can play with them using various toys.",
+			"Your dog really likes cats, huh?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -456,9 +456,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["starcow"] = {
 		templates = {"Plain"},
 		lines = {
-			"애정도가 낮게 유지되면 애들이 말을 안듣기 시작해",
-			"반려동물을 키우는 사람들이 많아지면 축제도 생기지 않을까?",
-			"이름이 뭐야?",
+			"If affection stays low, they start disobeying",
+			"If more people keep pets, wouldn't festivals appear?",
+			"What's your name?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -468,9 +468,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["hba"] = {
 		templates = {"Plain"},
 		lines = {
-			"애정도를 높게 유지하면 특별한 능력이 생긴다는데?",
-			"10년 후에는 어떤 세상이 올까?",
-			"이놈에 코드는 뭐 하나 수정하면 다른 게 다 고장나네",
+			"They say keeping affection high grants special abilities",
+			"What kind of world will it be in 10 years?",
+			"This darn code breaks everything else when I fix one thing",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -480,9 +480,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["cowman2"] = {
 		templates = {"Plain"},
 		lines = {
-			"등산은 고되지만 보상을 얻을 수도 있어!",
-			"강아지들을 아프게 하지마",
-			"스팸 전화 좀 그만 해...",
+			"Hiking is tough, but you might earn rewards!",
+			"Don't hurt the dogs",
+			"Stop with the spam calls...",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -492,9 +492,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["cowman3"] = {
 		templates = {"Plain"},
 		lines = {
-			"물 속을 들여다 본 적 있어?",
-			"사람을 보고 짖을때는 살살 달래면 돼",
-			"보험 가입하실래요?",
+			"Have you ever looked into the water?",
+			"When they bark at people, calm them gently",
+			"Would you like to buy insurance?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -504,9 +504,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["smurf"] = {
 		templates = {"Plain"},
 		lines = {
-			"다양한 장난감들로 놀아줄 수 있다.",
-			"니 강아지는 고양이를 너무 좋아하는데?",
-			"여~ 좋은 아침?",
+			"You can play with them using various toys.",
+			"Your dog really likes cats, huh?",
+			"Yo~ good morning?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -516,9 +516,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["boxman"] = {
 		templates = {"Plain"},
 		lines = {
-			"반려동물을 키우는 사람들이 많아지면 축제도 생기지 않을까?",
-			"이름이 뭐야?",
-			"니 강아지 안물지?",
+			"If more people keep pets, won't there be festivals?",
+			"What's your name?",
+			"Your dog doesn't bite, right?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -528,9 +528,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["yellowman"] = {
 		templates = {"Plain"},
 		lines = {
-			"10년 후에는 어떤 세상이 올까?",
-			"이놈에 코드는 뭐 하나 수정하면 다른 게 다 고장나네",
-			"니 강아지 이름이 뭐야?",
+			"What kind of world will it be in 10 years?",
+			"Fix one thing in this darn code and everything else breaks",
+			"What's your dog's name?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -540,9 +540,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["bluebird"] = {
 		templates = {"Plain"},
 		lines = {
-			"강아지들을 아프게 하지마",
-			"스팸 전화 좀 그만 해...",
-			"마을 구석 폐건물 구역은 가지 않는 것이 좋아",
+			"Don't hurt the dogs",
+			"Stop with the spam calls...",
+			"Better not go to the abandoned buildings at the edge of town",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -552,9 +552,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["defaultman"] = {
 		templates = {"Plain"},
 		lines = {
-			"사람을 보고 짖을때는 살살 달래면 돼",
-			"보험 가입하실래요?",
-			"가끔 산 중턱을 지날 때 상자 같은 것이 보이던데?",
+			"When they bark at people, just calm them gently",
+			"Would you like to buy insurance?",
+			"Sometimes I see box-like things halfway up the mountain",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -564,9 +564,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["signup"] = {
 		templates = {"Plain"},
 		lines = {
-			"니 강아지는 고양이를 너무 좋아하는데?",
-			"여~ 좋은 아침?",
-			"대부분의 사람이 잠든 밤에 가끔씩 밖에서 이상한 소리가 들려",
+			"Your dog really likes cats, huh?",
+			"Yo~ good morning?",
+			"Sometimes at night, when most people are asleep, strange sounds come from outside",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -576,9 +576,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["morning_sportsman"] = {
 		templates = {"Plain"},
 		lines = {
-			"이름이 뭐야?",
-			"니 강아지 안물지?",
-			"빨래하기 좋은 날씨네",
+			"What's your name?",
+			"Your dog doesn't bite, right?",
+			"Good weather for doing laundry",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -588,9 +588,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["stussy"] = {
 		templates = {"Plain"},
 		lines = {
-			"이놈에 코드는 뭐 하나 수정하면 다른 게 다 고장나네",
-			"니 강아지 이름이 뭐야?",
-			"마을이 발전하면 축제도 생기지 않을까?",
+			"Fix one thing in this darn code and everything else breaks",
+			"What's your dog's name?",
+			"If the town develops, maybe we'll have festivals?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -600,9 +600,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["biking"] = {
 		templates = {"Plain"},
 		lines = {
-			"스팸 전화 좀 그만 해...",
-			"마을 구석 폐건물 구역은 가지 않는 것이 좋아",
-			"강아지랑 놀아주는 방법은 다양해",
+			"Stop with the spam calls...",
+			"It's better not to go to the abandoned building area at the edge of town",
+			"There are many ways to play with dogs",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -612,9 +612,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["d"] = {
 		templates = {"Plain"},
 		lines = {
-			"보험 가입하실래요?",
-			"가끔 산 중턱을 지날 때 상자 같은 것이 보이던데?",
-			"어머나, 귀여운 강아지네요, 이름이 뭐에요?",
+			"Would you like to buy insurance?",
+			"Sometimes I see box-like things halfway up the mountain",
+			"Oh my, what a cute dog—what's the name?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -624,9 +624,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["nerf"] = {
 		templates = {"Plain"},
 		lines = {
-			"마을 구석 폐건물 구역은 가지 않는 것이 좋아",
-			"대부분의 사람이 잠든 밤에 가끔씩 밖에서 이상한 소리가 들려",
-			"오늘 저녁엔 뭐하고 놀지?",
+			"Better not go to the abandoned buildings at the edge of town",
+			"Sometimes at night, when most people are asleep, strange sounds are heard outside",
+			"What should we do for fun tonight?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -636,9 +636,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["Indian"] = {
 		templates = {"Plain"},
 		lines = {
-			"가끔 산 중턱을 지날 때 상자 같은 것이 보이던데?",
-			"빨래하기 좋은 날씨네",
-			"언젠가 특이한 애완동물을 데리고 다니는 사람을 본 적이 있어",
+			"Sometimes I see box-like things halfway up the mountain",
+			"Good weather for doing laundry",
+			"I once saw someone walking around with a very unusual pet",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -648,9 +648,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["Dxummy_gaurd"] = {
 		templates = {"Plain"},
 		lines = {
-			"대부분의 사람이 잠든 밤에 가끔씩 밖에서 이상한 소리가 들려",
-			"강아지랑 놀아주는 방법은 다양해",
-			"마을 북쪽 골짜기에는 가지마",
+			"Sometimes at night, when most people are asleep, strange sounds come from outside",
+			"There are many ways to play with dogs",
+			"Don't go to the northern ravine of the town",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -660,9 +660,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["timthespam"] = {
 		templates = {"Plain"},
 		lines = {
-			"빨래하기 좋은 날씨네",
-			"어머나, 귀여운 강아지네요, 이름이 뭐에요?",
-			"가끔씩 마을 바닥에서 무슨 소리가 들려.. 들어봤어?",
+			"Good weather for doing laundry",
+			"Oh my, what a cute dog—what's the name?",
+			"Sometimes there are sounds from under the town... have you heard?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -672,9 +672,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["Prabzil"] = {
 		templates = {"Plain"},
 		lines = {
-			"강아지랑 놀아주는 방법은 다양해",
-			"오늘 저녁엔 뭐하고 놀지?",
-			"고대인들은 특별한 애완동물을 데리고 다녔다던데?",
+			"There are many ways to play with dogs",
+			"What should we do for fun tonight?",
+			"They say the ancients carried special pets with them",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -684,9 +684,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["peter"] = {
 		templates = {"Plain"},
 		lines = {
-			"어머나, 귀여운 강아지네요, 이름이 뭐에요?",
-			"언젠가 특이한 애완동물을 데리고 다니는 사람을 본 적이 있어",
-			"강아지들이 졸려할 때는 너네 집 침대로 가봐",
+			"Oh my, what a cute dog—what's the name?",
+			"I've seen someone walking around with a very unusual pet",
+			"When the dogs are sleepy, try your home bed",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -696,9 +696,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["hellotatta"] = {
 		templates = {"Plain"},
 		lines = {
-			"오늘 저녁엔 뭐하고 놀지?",
-			"마을 북쪽 골짜기에는 가지마",
-			"애정도가 낮게 유지되면 애들이 말을 안듣기 시작해",
+			"What should we do for fun tonight?",
+			"Don't go to the northern ravine of the town",
+			"If affection stays low, they'll start disobeying",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -708,9 +708,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["catman"] = {
 		templates = {"Plain"},
 		lines = {
-			"고대인들은 특별한 애완동물을 데리고 다녔다던데?",
-			"이름이 뭐야?",
-			"등산은 고되지만 보상을 얻을 수도 있어!",
+			"They say ancients carried special pets",
+			"What's your name?",
+			"Hiking is tough, but you might earn rewards!",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -720,9 +720,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["afternoon_cowman"] = {
 		templates = {"Plain"},
 		lines = {
-			"강아지들이 졸려할 때는 너네 집 침대로 가봐",
-			"니 강아지 안물지?",
-			"물 속을 들여다 본 적 있어?",
+			"When the dogs are sleepy, try your home bed",
+			"Your dog doesn't bite, right?",
+			"Have you ever looked into the water?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -732,9 +732,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["eagle"] = {
 		templates = {"Plain"},
 		lines = {
-			"애정도가 낮게 유지되면 애들이 말을 안듣기 시작해",
-			"니 강아지 이름이 뭐야?",
-			"다양한 장난감들로 놀아줄 수 있다.",
+			"If affection stays low, they start disobeying",
+			"What's your dog's name?",
+			"You can play with them using various toys.",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -744,9 +744,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["mmp"] = {
 		templates = {"Plain"},
 		lines = {
-			"등산은 고되지만 보상을 얻을 수도 있어!",
-			"마을 구석 폐건물 구역은 가지 않는 것이 좋아",
-			"반려동물을 키우는 사람들이 많아지면 축제도 생기지 않을까?",
+			"Hiking is tough, but you might earn rewards!",
+			"Better not go to the abandoned building area at the edge of town",
+			"If more people keep pets, maybe we'll have festivals?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -756,9 +756,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["ninjapark"] = {
 		templates = {"Plain"},
 		lines = {
-			"물 속을 들여다 본 적 있어?",
-			"가끔 산 중턱을 지날 때 상자 같은 것이 보이던데?",
-			"10년 후에는 어떤 세상이 올까?",
+			"Have you ever looked into the water?",
+			"Sometimes I see box-like things halfway up the mountain",
+			"What kind of world will it be in 10 years?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -768,9 +768,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["canada"] = {
 		templates = {"Plain"},
 		lines = {
-			"다양한 장난감들로 놀아줄 수 있다.",
-			"대부분의 사람이 잠든 밤에 가끔씩 밖에서 이상한 소리가 들려",
-			"강아지들을 아프게 하지마",
+			"You can play with them using various toys.",
+			"Sometimes at night, strange sounds come from outside when most people are asleep",
+			"Don't hurt the dogs",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -780,9 +780,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["b"] = {
 		templates = {"Plain"},
 		lines = {
-			"반려동물을 키우는 사람들이 많아지면 축제도 생기지 않을까?",
-			"빨래하기 좋은 날씨네",
-			"사람을 보고 짖을때는 살살 달래면 돼",
+			"If more people keep pets, maybe we'll have festivals?",
+			"Good weather for doing laundry",
+			"When they bark at people, calm them gently",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -792,9 +792,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["afternoon_gentlecolor"] = {
 		templates = {"Plain"},
 		lines = {
-			"10년 후에는 어떤 세상이 올까?",
-			"강아지랑 놀아주는 방법은 다양해",
-			"니 강아지는 고양이를 너무 좋아하는데?",
+			"What kind of world will it be in 10 years?",
+			"There are many ways to play with dogs",
+			"Your dog really likes cats, huh?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -804,9 +804,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["afternoon_musicman"] = {
 		templates = {"Plain"},
 		lines = {
-			"강아지들을 아프게 하지마",
-			"어머나, 귀여운 강아지네요, 이름이 뭐에요?",
-			"여~ 좋은 아침?",
+			"Don't hurt the dogs",
+			"Oh my, what a cute dog—what's the name?",
+			"Yo~ good morning?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -816,9 +816,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["king"] = {
 		templates = {"Plain"},
 		lines = {
-			"사람을 보고 짖을때는 살살 달래면 돼",
-			"오늘 저녁엔 뭐하고 놀지?",
-			"가끔씩 마을 바닥에서 무슨 소리가 들려.. 들어봤어?",
+			"When they bark at people, just calm them gently",
+			"What should we do for fun tonight?",
+			"Sometimes there are sounds from beneath the town... have you heard?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -828,9 +828,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["afternoon_smurf"] = {
 		templates = {"Plain"},
 		lines = {
-			"니 강아지는 고양이를 너무 좋아하는데?",
-			"가끔 산 중턱을 지날 때 상자 같은 것이 보이던데?",
-			"고대인들은 특별한 애완동물을 데리고 다녔다던데?",
+			"Your dog really likes cats, huh?",
+			"Sometimes I see box-like things halfway up the mountain",
+			"They say ancients carried special pets",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -840,9 +840,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["afternoon_gentlecow"] = {
 		templates = {"Plain"},
 		lines = {
-			"여~ 좋은 아침?",
-			"대부분의 사람이 잠든 밤에 가끔씩 밖에서 이상한 소리가 들려",
-			"강아지들이 졸려할 때는 너네 집 침대로 가봐",
+			"Yo~ good morning?",
+			"Sometimes at night, when most people are asleep, strange sounds come from outside",
+			"When the dogs are sleepy, try your home bed",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -852,9 +852,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["afternoon_ninja"] = {
 		templates = {"Plain"},
 		lines = {
-			"니 강아지 안물지?",
-			"빨래하기 좋은 날씨네",
-			"애정도가 낮게 유지되면 애들이 말을 안듣기 시작해",
+			"Your dog doesn't bite, right?",
+			"Good weather for doing laundry",
+			"If affection stays low, they start disobeying",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -864,9 +864,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["robloxman"] = {
 		templates = {"Plain"},
 		lines = {
-			"니 강아지 이름이 뭐야?",
-			"마을이 발전하면 축제도 생기지 않을까?",
-			"등산은 고되지만 보상을 얻을 수도 있어!",
+			"What's your dog's name?",
+			"If the town develops, maybe there'll be festivals?",
+			"Hiking is tough, but you might earn rewards!",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -876,9 +876,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["electroman"] = {
 		templates = {"Plain"},
 		lines = {
-			"마을 구석 폐건물 구역은 가지 않는 것이 좋아",
-			"강아지랑 놀아주는 방법은 다양해",
-			"물 속을 들여다 본 적 있어?",
+			"Better not go to the abandoned building area at the edge of town",
+			"There are many ways to play with dogs",
+			"Have you ever looked into the water?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -888,9 +888,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["BarbieBankz"] = {
 		templates = {"Plain"},
 		lines = {
-			"가끔 산 중턱을 지날 때 상자 같은 것이 보이던데?",
-			"어머나, 귀여운 강아지네요, 이름이 뭐에요?",
-			"다양한 장난감들로 놀아줄 수 있다.",
+			"Sometimes I see box-like things halfway up the mountain",
+			"Oh my, what a cute dog—what's the name?",
+			"You can play with them using various toys.",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -900,9 +900,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["IconicFatma"] = {
 		templates = {"Plain"},
 		lines = {
-			"대부분의 사람이 잠든 밤에 가끔씩 밖에서 이상한 소리가 들려",
-			"오늘 저녁엔 뭐하고 놀지?",
-			"반려동물을 키우는 사람들이 많아지면 축제도 생기지 않을까?",
+			"Sometimes at night, when most people are asleep, strange sounds come from outside",
+			"What should we do for fun tonight?",
+			"If more people keep pets, maybe we'll have festivals?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -912,9 +912,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["TheOdd"] = {
 		templates = {"Plain"},
 		lines = {
-			"빨래하기 좋은 날씨네",
-			"고대인들은 특별한 애완동물을 데리고 다녔다던데?",
-			"10년 후에는 어떤 세상이 올까?",
+			"Good weather for doing laundry",
+			"They say ancients carried special pets",
+			"What kind of world will it be in 10 years?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -924,9 +924,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["theman"] = {
 		templates = {"Plain"},
 		lines = {
-			"마을이 발전하면 축제도 생기지 않을까?",
-			"강아지들이 졸려할 때는 너네 집 침대로 가봐",
-			"가끔씩 마을 바닥에서 무슨 소리가 들려.. 들어봤어?",
+			"If the town develops, maybe we'll have festivals?",
+			"When the dogs are sleepy, try your home bed",
+			"Sometimes there are sounds from beneath the town... have you heard?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -936,9 +936,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["ninja"] = {
 		templates = {"Plain"},
 		lines = {
-			"오늘 저녁엔 뭐하고 놀지?",
-			"애정도가 낮게 유지되면 애들이 말을 안듣기 시작해",
-			"등산은 고되지만 보상을 얻을 수도 있어!",
+			"What should we do for fun tonight?",
+			"If affection stays low, they start disobeying",
+			"Hiking is tough, but you might earn rewards!",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -948,9 +948,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["savage"] = {
 		templates = {"Plain"},
 		lines = {
-			"언젠가 특이한 애완동물을 데리고 다니는 사람을 본 적이 있어",
-			"등산은 고되지만 보상을 얻을 수도 있어!",
-			"물 속을 들여다 본 적 있어?",
+			"I've seen someone walking around with a very unusual pet",
+			"Hiking is tough, but you might earn rewards!",
+			"Have you ever looked into the water?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -960,9 +960,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["sol"] = {
 		templates = {"Plain"},
 		lines = {
-			"마을 북쪽 골짜기에는 가지마",
-			"물 속을 들여다 본 적 있어?",
-			"사람을 보고 짖을때는 살살 달래면 돼",
+			"Don't go to the northern ravine of the town",
+			"Have you ever looked into the water?",
+			"When they bark at people, calm them gently",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -972,9 +972,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["night_cowman"] = {
 		templates = {"Plain"},
 		lines = {
-			"가끔씩 마을 바닥에서 무슨 소리가 들려.. 들어봤어?",
-			"다양한 장난감들로 놀아줄 수 있다.",
-			"니 강아지는 고양이를 너무 좋아하는데?",
+			"Sometimes there are sounds beneath the town... have you heard?",
+			"You can play with them using various toys.",
+			"Your dog really likes cats, huh?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -984,9 +984,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["gentlecolor"] = {
 		templates = {"Plain"},
 		lines = {
-			"고대인들은 특별한 애완동물을 데리고 다녔다던데?",
-			"반려동물을 키우는 사람들이 많아지면 축제도 생기지 않을까?",
-			"이름이 뭐야?",
+			"They say ancients carried special pets",
+			"If more people keep pets, maybe we'll have festivals?",
+			"What's your name?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -996,9 +996,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["bleus"] = {
 		templates = {"Plain"},
 		lines = {
-			"강아지들이 졸려할 때는 너네 집 침대로 가봐",
-			"10년 후에는 어떤 세상이 올까?",
-			"이놈에 코드는 뭐 하나 수정하면 다른 게 다 고장나네",
+			"When the dogs are sleepy, try your home bed",
+			"What kind of world will it be in 10 years?",
+			"Fix one thing in this darn code and everything else breaks",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -1008,9 +1008,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["ggocalcon"] = {
 		templates = {"Plain"},
 		lines = {
-			"애정도가 낮게 유지되면 애들이 말을 안듣기 시작해",
-			"강아지들을 아프게 하지마",
-			"스팸 전화 좀 그만 해...",
+			"If affection stays low, they start disobeying",
+			"Don't hurt the dogs",
+			"Stop with the spam calls...",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -1020,9 +1020,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["a"] = {
 		templates = {"Plain"},
 		lines = {
-			"등산은 고되지만 보상을 얻을 수도 있어!",
-			"사람을 보고 짖을때는 살살 달래면 돼",
-			"보험 가입하실래요?",
+			"Hiking is tough, but you might earn rewards!",
+			"When they bark at people, calm them gently",
+			"Would you like to buy insurance?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -1032,9 +1032,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["night_cowman2"] = {
 		templates = {"Plain"},
 		lines = {
-			"물 속을 들여다 본 적 있어?",
-			"니 강아지는 고양이를 너무 좋아하는데?",
-			"여~ 좋은 아침?",
+			"Have you ever looked into the water?",
+			"Your dog really likes cats, huh?",
+			"Yo~ good morning?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -1044,9 +1044,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["musicman"] = {
 		templates = {"Plain"},
 		lines = {
-			"다양한 장난감들로 놀아줄 수 있다.",
-			"이름이 뭐야?",
-			"니 강아지 안물지?",
+			"You can play with them using various toys.",
+			"What's your name?",
+			"Your dog doesn't bite, right?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -1056,9 +1056,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["musicman2"] = {
 		templates = {"Plain"},
 		lines = {
-			"반려동물을 키우는 사람들이 많아지면 축제도 생기지 않을까?",
-			"이놈에 코드는 뭐 하나 수정하면 다른 게 다 고장나네",
-			"니 강아지 이름이 뭐야?",
+			"If more people keep pets, maybe we'll have festivals?",
+			"Fix one thing in this darn code and everything else breaks",
+			"What's your dog's name?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -1068,9 +1068,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["night_boxman"] = {
 		templates = {"Plain"},
 		lines = {
-			"10년 후에는 어떤 세상이 올까?",
-			"스팸 전화 좀 그만 해...",
-			"마을 구석 폐건물 구역은 가지 않는 것이 좋아",
+			"What kind of world will it be in 10 years?",
+			"Stop with the spam calls...",
+			"Better not go to the abandoned building area at the edge of town",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -1080,9 +1080,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["youtubu"] = {
 		templates = {"Plain"},
 		lines = {
-			"강아지들을 아프게 하지마",
-			"보험 가입하실래요?",
-			"가끔 산 중턱을 지날 때 상자 같은 것이 보이던데?",
+			"Don't hurt the dogs",
+			"Would you like to buy insurance?",
+			"Sometimes I see box-like things halfway up the mountain",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -1092,9 +1092,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["blackman"] = {
 		templates = {"Plain"},
 		lines = {
-			"사람을 보고 짖을때는 살살 달래면 돼",
-			"여~ 좋은 아침?",
-			"대부분의 사람이 잠든 밤에 가끔씩 밖에서 이상한 소리가 들려",
+			"When they bark at people, calm them gently",
+			"Yo~ good morning?",
+			"Sometimes at night, when most people are asleep, strange sounds come from outside",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -1104,9 +1104,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["night_ninja_bae"] = {
 		templates = {"Plain"},
 		lines = {
-			"니 강아지는 고양이를 너무 좋아하는데?",
-			"니 강아지 이름이 뭐야?",
-			"빨래하기 좋은 날씨네",
+			"Your dog really likes cats, huh?",
+			"What's your dog's name?",
+			"Good weather for doing laundry",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -1116,9 +1116,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["sunglasscow"] = {
 		templates = {"Plain"},
 		lines = {
-			"여~ 좋은 아침?",
-			"마을이 발전하면 축제도 생기지 않을까?",
-			"가끔씩 마을 바닥에서 무슨 소리가 들려.. 들어봤어?",
+			"Yo~ good morning?",
+			"If the town develops, maybe we'll have festivals?",
+			"Sometimes there are sounds from beneath the town... have you heard?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -1128,9 +1128,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["purpleman"] = {
 		templates = {"Plain"},
 		lines = {
-			"니 강아지 안물지?",
-			"강아지들이 졸려할 때는 너네 집 침대로 가봐",
-			"고대인들은 특별한 애완동물을 데리고 다녔다던데?",
+			"Your dog doesn't bite, right?",
+			"When the dogs are sleepy, try your home bed",
+			"They say ancients carried special pets",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -1140,9 +1140,9 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["runner"] = {
 		templates = {"Plain"},
 		lines = {
-			"니 강아지 이름이 뭐야?",
-			"등산은 고되지만 보상을 얻을 수도 있어!",
-			"반려동물을 키우는 사람들이 많아지면 축제도 생기지 않을까?",
+			"What's your dog's name?",
+			"Hiking is tough, but you might earn rewards!",
+			"If more people keep pets, maybe we'll have festivals?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -1164,21 +1164,21 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["eightman"] = {
 		templates = {"Plain"},
 		lines = {
-			"강아지들이 졸려할 때는 너네 집 침대로 가봐",
-			"다양한 장난감들로 놀아줄 수 있다.",
-			"대부분의 사람이 잠든 밤에 가끔씩 밖에서 이상한 소리가 들려",
+			"When the pets are sleepy, go to your bed",
+			"You can play with a variety of toys",
+			"Sometimes at night when people are asleep, strange noises are heard outside",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
-		interval = {min=30, max=60},
+		interval = {min=20, max=50},
 	},
 
 	["walkingman"] = {
 		templates = {"Plain"},
 		lines = {
-			"애정도가 낮게 유지되면 애들이 말을 안듣기 시작해",
-			"반려동물을 키우는 사람들이 많아지면 축제도 생기지 않을까?",
-			"오늘 저녁엔 뭐하고 놀지?",
+			"If your affection level remains low, your children will start to disobey you",
+			"If more people start raising pets, wouldn't there be festivals?",
+			"What are you doing tonight?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
@@ -1188,13 +1188,25 @@ local NPC_CONFIGS: {[string]: NpcCfg} = {
 	["vendor_Chef"] = {
 		templates = {"Plain"},
 		lines = {
-			"비싼 와인을 마시지도 않고 놓고 가는 손님들이 있어",
-			"어서오세요~ 예약 하셨어요?",
+			"There are customers who leave expensive wine without even drinking it",
+			"Welcome~ Have you made a reservation?",
 		},
 		offsetY = 3.25,
 		duration = {min=5.5, max=6.5},
 		interval = {min=30, max=60},
 	},
+	
+	["vendor_doctor2"] = {
+		templates = {"Plain"},
+		lines = {
+			"Mentally ill patients sometimes disappear after drinking alcohol",
+			"Where does the cold wind keep coming from?",
+		},
+		offsetY = 3.25,
+		duration = {min=5.5, max=6.5},
+		interval = {min=20, max=50},
+	},
+
 
 	
 
