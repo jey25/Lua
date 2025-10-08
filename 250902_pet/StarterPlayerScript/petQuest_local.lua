@@ -10,6 +10,21 @@ local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local RemoteFolder = ReplicatedStorage:WaitForChild("RemoteEvents")
 
+-- (추가) 모바일 터치 릴레이
+local QuestTapRelay = RemoteFolder:FindFirstChild("QuestTapRelay") or Instance.new("RemoteEvent")
+if not QuestTapRelay.Parent then
+	QuestTapRelay.Name = "QuestTapRelay"
+	QuestTapRelay.Parent = RemoteFolder
+end
+
+-- (추가) StreetFood 모바일 탭 릴레이
+local StreetFoodTapRelay = RemoteFolder:FindFirstChild("StreetFoodTapRelay") or Instance.new("RemoteEvent")
+if not StreetFoodTapRelay.Parent then
+	StreetFoodTapRelay.Name = "StreetFoodTapRelay"
+	StreetFoodTapRelay.Parent = RemoteFolder
+end
+
+
 -- Wang 3회-클릭 취소(Remote) — 서버에서만 카운트/판정
 local WangCancelClick = RemoteFolder:WaitForChild("WangCancelClick")
 
@@ -566,15 +581,28 @@ mouse.Button1Down:Connect(function()
 	sendCancelIfMyPetClick(mouse.Target)
 end)
 
--- 모바일: 월드 탭
-local UserInputService = game:GetService("UserInputService")
+
+
 if UserInputService.TouchEnabled then
 	UserInputService.TouchTapInWorld:Connect(function(_, processedByUI)
 		if processedByUI then return end
-		sendCancelIfMyPetClick(mouse.Target) -- 터치도 mouse.Target 갱신됨
+
+		-- 1) Wang 취소(기존)
+		sendCancelIfMyPetClick(mouse.Target)
+
+		-- 2) 퀘스트 대상 터치 릴레이(신규)
+		local hit = mouse.Target
+		if hit and QuestTapRelay then
+			-- 서버가 분류/검증 → 동일 완료 로직 실행
+			QuestTapRelay:FireServer(hit)
+		end
+		
+		-- (추가) StreetFood 탭 릴레이
+		if StreetFoodTapRelay and mouse.Target then
+			StreetFoodTapRelay:FireServer(mouse.Target)
+		end
 	end)
 end
-
 
 
 

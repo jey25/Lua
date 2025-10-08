@@ -1,29 +1,25 @@
--- LocalScript: 내 캐릭터만 감시+UI 제어
+-- LocalScript: 내 캐릭터만 감시+UI 제어 (교체본)
+--!strict
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
 
--- 리소스(이름 정확히 맞추기)
-local NPCClickTemplate = ReplicatedStorage:WaitForChild("NPCClick")      -- ScreenGui (안에 TextButton "NPCClick")
-local PetDoctorTemplate = ReplicatedStorage:WaitForChild("petdoctor")    -- ScreenGui (Children: hi, Inoculation, result, toosoon)
+-- 리소스
+local NPCClickTemplate = ReplicatedStorage:WaitForChild("NPCClick")      :: ScreenGui
+local PetDoctorTemplate = ReplicatedStorage:WaitForChild("petdoctor")    :: ScreenGui
 local DoctorTryVaccinate = ReplicatedStorage:WaitForChild("DoctorTryVaccinate") :: RemoteFunction
 local RemoteFolder = ReplicatedStorage:WaitForChild("RemoteEvents")
---local VaccinationFX = RemoteFolder:WaitForChild("VaccinationFX", 10)
---if not VaccinationFX then
---	warn("[Vaccination] VaccinationFX RemoteEvent not found within 10s; FX will be skipped.")
---end
+
 -- NPC 위치
 local npc_doctor = workspace.World.Building["Pet Hospital"].Doctor
 local interactionDistance = 5
-local playedFX = false  -- 파일 상단 어딘가에 지역변수로
 
--- 우측 상단 카운트 미니 UI (클라 표시용)
+-- HUD
 local maxVaccinations = 5
--- 상단 우측 반응형 배치: 화면 높이의 4% 아래, 우측 16px 여백
 local RIGHT_MARGIN = 16
 local TOP_MARGIN_SCALE = 0.04
-
 
 local function ensureCountGui()
 	local pg = LocalPlayer:WaitForChild("PlayerGui")
@@ -32,21 +28,18 @@ local function ensureCountGui()
 		gui = Instance.new("ScreenGui")
 		gui.Name = "VaccinationCountGui"
 		gui.ResetOnSpawn = false
-		gui.IgnoreGuiInset = false -- 노치/상단바 안전영역 고려
+		gui.IgnoreGuiInset = false
 		gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 		gui.Parent = pg
-	else
-		gui.IgnoreGuiInset = false
 	end
 
-	-- 컨테이너: 상단-우측 고정 + 세로 비율 위치
 	local hud = gui:FindFirstChild("CounterHud") :: Frame
 	if not hud then
 		hud = Instance.new("Frame")
 		hud.Name = "CounterHud"
 		hud.AnchorPoint = Vector2.new(1, 0)
 		hud.Position = UDim2.new(1, -RIGHT_MARGIN, TOP_MARGIN_SCALE, 0)
-		hud.Size = UDim2.new(0, 180, 0, 0) -- 폭만 고정, 높이는 목록이 채움
+		hud.Size = UDim2.new(0, 180, 0, 0)
 		hud.BackgroundTransparency = 1
 		hud.Parent = gui
 
@@ -58,12 +51,10 @@ local function ensureCountGui()
 		layout.Padding = UDim.new(0, 6)
 		layout.Parent = hud
 	else
-		-- 반복 호출 시에도 위치 유지
 		hud.AnchorPoint = Vector2.new(1, 0)
 		hud.Position = UDim2.new(1, -RIGHT_MARGIN, TOP_MARGIN_SCALE, 0)
 	end
 
-	-- Title
 	local title = hud:FindFirstChild("TitleLabel") :: TextLabel
 	if not title then
 		title = Instance.new("TextLabel")
@@ -78,7 +69,6 @@ local function ensureCountGui()
 		title.Parent = hud
 	end
 
-	-- Count
 	local count = hud:FindFirstChild("CountLabel") :: TextLabel
 	if not count then
 		count = Instance.new("TextLabel")
@@ -98,63 +88,105 @@ local function ensureCountGui()
 		corner.Parent = count
 	end
 
-	-- 이미 존재해도 공통 스타일 재적용
 	title.TextStrokeTransparency = 0.6
 	title.TextStrokeColor3 = Color3.new(0,0,0)
 
-	count.TextStrokeTransparency = 0.45
-	count.TextStrokeColor3 = Color3.new(0,0,0)
+	local countLbl = hud:FindFirstChild("CountLabel") :: TextLabel
+	countLbl.TextStrokeTransparency = 0.45
+	countLbl.TextStrokeColor3 = Color3.new(0,0,0)
 
-	return gui, count
+	return gui, countLbl
 end
 
-
-
-local function setCountLabel(n)
+local function setCountLabel(n: number?)
 	local _, lbl = ensureCountGui()
 	if lbl then
-		lbl.Text = ("%d/%d"):format(n or 0, maxVaccinations)
-		if (n or 0) >= maxVaccinations then
-			-- 꽉 차면 그냥 고정표시 (원하면 gui:Destroy() 가능)
-		end
+		lbl.Text = ("%d/%d"):format(tonumber(n) or 0, maxVaccinations)
 	end
 end
 
--- 서버가 Player Attribute로 심어둔 값을 즉시 반영
 local function syncVaccinationFromAttr()
 	local n = LocalPlayer:GetAttribute("VaccinationCount")
 	setCountLabel(tonumber(n) or 0)
 end
 
--- 최초 1회
 syncVaccinationFromAttr()
--- 서버가 값을 바꾸면 즉시 반영
 LocalPlayer:GetAttributeChangedSignal("VaccinationCount"):Connect(syncVaccinationFromAttr)
 
+-- 이펙트 호출(중복 방지 가드)
+local lastFxAt = 0
+local function tryPlayFX()
+	local now = time()
+	if now - lastFxAt < 0.25 then return end
+	lastFxAt = now
+
+	-- ClearModule 시도 → 실패 시 폴백
+	local okReq, ClearModule = pcall(function()
+		return require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("ClearModule"))
+	end)
+	if okReq and type(ClearModule) == "table" and type(ClearModule.showClearEffect) == "function" then
+		pcall(function() ClearModule.showClearEffect(LocalPlayer) end)
+	else
+		-- 간단 폴백(원하면 제거 가능)
+		local pg = LocalPlayer:WaitForChild("PlayerGui")
+		local sg = Instance.new("ScreenGui"); sg.Parent = pg
+		local tl = Instance.new("TextLabel"); tl.Parent = sg
+		tl.Size = UDim2.new(1,0,0,80); tl.Position = UDim2.new(0,0,0.4,0)
+		tl.BackgroundTransparency = 1; tl.TextScaled = true
+		tl.Text = "Clear !!"
+		task.delay(1.2, function() sg:Destroy() end)
+	end
+end
+
+local function bindVaccinationFX(ev: Instance)
+	if ev and ev:IsA("RemoteEvent") and ev.Name == "VaccinationFX" then
+		-- 이미 바인딩돼 있으면 재바인딩 방지
+		if ev:GetAttribute("Bound_"..LocalPlayer.UserId) then return end
+		ev:SetAttribute("Bound_"..LocalPlayer.UserId, true)
+
+		ev.OnClientEvent:Connect(function(data)
+			-- ⛳️ 의미 검증: 성공 이벤트만 허용
+			if type(data) ~= "table" or data.ok ~= true or data.kind ~= "vaccinate_ok" then
+				return
+			end
+
+			local newCount = tonumber(data.count) or 0
+			local curAttr = tonumber(LocalPlayer:GetAttribute("VaccinationCount")) or 0
+
+			-- ⛳️ 증분 검증: 실제 카운트가 증가했을 때만 FX
+			if newCount > curAttr then
+				-- HUD도 함께 올려주면 시각적으로 일관
+				setCountLabel(newCount)
+				tryPlayFX()
+			end
+		end)
+	end
+end
+
+
+local existing = RemoteFolder:FindFirstChild("VaccinationFX")
+if existing then bindVaccinationFX(existing) end
+RemoteFolder.ChildAdded:Connect(bindVaccinationFX)
+
+-- 닥터 UI
 local activeButtonGui: ScreenGui? = nil
 local docOpen = false
 
 local function showInteractButton()
 	local pg = LocalPlayer:WaitForChild("PlayerGui")
-
-	-- 이미 열려 있거나 버튼 있음 → 재생성 방지
 	if docOpen then return end
 	if activeButtonGui then activeButtonGui:Destroy(); activeButtonGui = nil end
 
-	-- 1) 상호작용 버튼 클론
 	local clickGui = NPCClickTemplate:Clone()
-	clickGui.Name = "NPCClickGui"       -- 버튼 TextButton 이름과 구분
+	clickGui.Name = "NPCClickGui"
 	clickGui.ResetOnSpawn = false
 	clickGui.Parent = pg
 	activeButtonGui = clickGui
 
 	local btn = clickGui:WaitForChild("NPCClick") :: TextButton
-
 	btn.MouseButton1Click:Connect(function()
-		-- 버튼은 제거
 		if activeButtonGui then activeButtonGui:Destroy(); activeButtonGui = nil end
 
-		-- 2) petdoctor GUI를 그대로 클론해서 PlayerGui에 붙이고 바로 켬
 		local docGui = PetDoctorTemplate:Clone() :: ScreenGui
 		docGui.Name = "petdoctor_runtime"
 		docGui.ResetOnSpawn = false
@@ -163,7 +195,6 @@ local function showInteractButton()
 		docGui.Parent = pg
 		docOpen = true
 
-		-- 프레임/버튼 참조
 		local hiFrame          = docGui:WaitForChild("hi") :: Frame
 		local inoculationFrame = docGui:WaitForChild("Inoculation") :: Frame
 		local resultFrame      = docGui:WaitForChild("result") :: Frame
@@ -174,11 +205,9 @@ local function showInteractButton()
 		local resultOK = resultFrame:WaitForChild("REOK") :: TextButton
 		local soonOK   = tooSoonFrame:WaitForChild("SOONOK") :: TextButton
 
-		-- 초기 표시 상태
 		hiFrame.Visible, inoculationFrame.Visible, resultFrame.Visible, tooSoonFrame.Visible =
 			true, false, false, false
 
-		-- hi → 접종 확인 화면
 		hiOK.MouseButton1Click:Connect(function()
 			hiFrame.Visible = false
 			inoculationFrame.Visible = true
@@ -193,33 +222,30 @@ local function showInteractButton()
 			inoculationFrame.Visible = false
 
 			if callOK and result and result.ok then
-				-- ✅ 성공: 결과 화면 + 카운트 갱신
 				resultFrame.Visible = true
-				setCountLabel(result.count)
+				setCountLabel(result.count) -- HUD 갱신(서버도 Attribute로 쏴줌)
+
+				-- FX는 서버 VaccinationFX에서 트리거됨(tryPlayFX 중복 방지)
 
 			else
-				-- 실패(쿨다운/최대치/기타) 화면
 				tooSoonFrame.Visible = true
 				setCountLabel(result and result.count or nil)
 
 				local msgLabel = tooSoonFrame:FindFirstChild("TextLabel") :: TextLabel?
 				if msgLabel then
 					local function formatRemain(waitSecs: number): string
-						-- 분 단위로 올림 → 총 분
 						local totalMins = math.max(1, math.ceil(waitSecs / 60))
-
 						local minsPerDay = 24 * 60
 						local days  = math.floor(totalMins / minsPerDay)
 						totalMins   = totalMins % minsPerDay
-						local hours = math.floor(totalMins / 60)
+						local hours = math.floor(totalMins / 60)   -- ✅ 오타 수정 (hour → hours)
 						local mins  = totalMins % 60
 
 						local parts = {}
 						if days > 0 then table.insert(parts, string.format("%d day", days)) end
-						if hours > 0 or days > 0 then table.insert(parts, string.format("%d hour", hour)) end
-						table.insert(parts, string.format("%d min", mins)) -- 분은 항상 노출
-
-						return ("left until next vaccination %s"):format(table.concat(parts, " "))
+						if hours > 0 or days > 0 then table.insert(parts, string.format("%d hour", hours)) end
+						table.insert(parts, string.format("%d min", mins))
+						return ("Next vaccination %s"):format(table.concat(parts, " "))
 					end
 
 					local msg: string
@@ -232,11 +258,8 @@ local function showInteractButton()
 					end
 					msgLabel.Text = msg
 				end
-
-
 			end
 		end)
-
 
 		local function closeDoc()
 			if docGui then docGui:Destroy() end
@@ -247,70 +270,7 @@ local function showInteractButton()
 	end)
 end
 
-
-local TweenService      = game:GetService("TweenService")
-local Debris            = game:GetService("Debris")
-
--- ========= [Clear 이펙트 실행 (명시적 신호에만)] =========
-local function runClearEffect()
-	local ok, ClearModule = pcall(function()
-		return require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("ClearModule"))
-	end)
-	if ok and ClearModule and ClearModule.showClearEffect then
-		pcall(function() ClearModule.showClearEffect(LocalPlayer) end)
-	end
-end
-
-
-local function playClearFXWithModule(player: Player): boolean
-	local okReq, ClearModule = pcall(function()
-		return require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("ClearModule"))
-	end)
-	if not okReq or type(ClearModule) ~= "table" or type(ClearModule.showClearEffect) ~= "function" then
-		return false
-	end
-	local okCall = pcall(function()
-		ClearModule.showClearEffect(player) -- ✅ player만 넘기기
-	end)
-	return okCall
-end
-
-
-
--- (기존) local VaccinationFX = RemoteFolder:WaitForChild("VaccinationFX", 10)
--- (기존) if VaccinationFX then VaccinationFX.OnClientEvent:Connect(function(data) ... end) end
-
-local function bindVaccinationFX(ev)
-	if ev and ev:IsA("RemoteEvent") and ev.Name == "VaccinationFX" then
-		ev.OnClientEvent:Connect(function(data)
-			print("VaccinationFX event received. Count:", data and data.count)
-			-- 안전하게 이펙트 실행
-			if not playClearFXWithModule(LocalPlayer) then
-				runClearEffect()
-			end
-		end)
-	end
-end
-
-local fx = RemoteFolder:FindFirstChild("VaccinationFX")
-if fx then bindVaccinationFX(fx) end
-RemoteFolder.ChildAdded:Connect(bindVaccinationFX)
-
-
---if VaccinationFX then
---	VaccinationFX.OnClientEvent:Connect(function(data)
---		-- data.count 같은 값 확인 가능
---		print("VaccinationFX event received. Count:", data and data.count)
-
---		if not playClearFXWithModule(LocalPlayer) then
---			runClearEffect()
---		end
---	end)
---end
-
-
-
--- NPC 근처면 버튼 띄우기(내 클라에서만 체크)
+-- NPC 근접 루프
 task.spawn(function()
 	while true do
 		task.wait(0.3)
@@ -335,5 +295,4 @@ task.spawn(function()
 	end
 end)
 
--- 교체본:
 ensureCountGui()

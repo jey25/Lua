@@ -9,6 +9,14 @@ local Workspace = game:GetService("Workspace")
 local remoteFolder = ReplicatedStorage:WaitForChild("RemoteEvents")
 local PetQuestEvent = remoteFolder:WaitForChild("PetQuestEvent")
 
+-- ✅ 모바일 탭 릴레이(신규)
+local QuestTapRelay = remoteFolder:FindFirstChild("QuestTapRelay")
+if not QuestTapRelay then
+	QuestTapRelay = Instance.new("RemoteEvent")
+	QuestTapRelay.Name = "QuestTapRelay"
+	QuestTapRelay.Parent = remoteFolder
+end
+
 -- 설정
 local INTERVAL = 60
 local WORLD = Workspace:WaitForChild("World", 10)
@@ -97,6 +105,16 @@ local function getAnyBasePart(inst: Instance): BasePart?
 	return nil
 end
 
+local function getRootModel(inst: Instance?): Model?
+	if not inst then return nil end
+	local m: Model? = (inst:IsA("Model") and inst) or inst:FindFirstAncestorOfClass("Model")
+	if not m then return nil end
+	while m.Parent and m.Parent:IsA("Model") do
+		m = m.Parent :: Model
+	end
+	return m
+end
+
 -- (호환) 플레이어의 임의 한 마리 반환
 local function findPlayersPet(player: Player): Model?
 	local map = OwnerPets[player.UserId]
@@ -154,11 +172,9 @@ local function ensurePetClickTarget(pet: Model): BasePart?
 	local base = ensurePrimaryOrAnyPart(pet)
 	if not base then return nil end
 
-	-- 이미 있으면 재사용
 	local hit = pet:FindFirstChild("PetClickHitbox")
 	if hit and hit:IsA("BasePart") then return hit end
 
-	-- 모델 외곽 크기 기준 투명 히트박스
 	local size = pet:GetExtentsSize()
 	local hitbox = Instance.new("Part")
 	hitbox.Name = "PetClickHitbox"
@@ -180,46 +196,83 @@ local function ensurePetClickTarget(pet: Model): BasePart?
 	return hitbox
 end
 
--- 중복 연결 방지형 ClickDetector (PlayBall 전용으로 계속 사용)
-local function ensureClickDetectorOnce(target: Instance, callback: (Player)->())
-	if not target then return end
-	local base : BasePart? = nil
-	if target:IsA("BasePart") then base = target
-	elseif target:IsA("Model") then base = ensurePrimaryOrAnyPart(target) end
-	if not base then return end
+-- ✅ 퀘스트 타깃(모델/파츠)용 표준 클릭 히트박스 생성/재사용
+local function ensureQuestClickHitbox(target: Instance): BasePart?
+	-- 대상 모델/파츠 판단
+	local base: BasePart? = nil
+	local parentModel: Model? = nil
 
-	local cd = base:FindFirstChildOfClass("ClickDetector")
-	if not cd then
-		cd = Instance.new("ClickDetector")
-		cd.MaxActivationDistance = 10
-		cd.Parent = base
+	if target:IsA("Model") then
+		parentModel = getRootModel(target) or target
+		base = ensurePrimaryOrAnyPart(parentModel)
+	elseif target:IsA("BasePart") then
+		base = target
+		parentModel = getRootModel(target)
+	else
+		return nil
+	end
+	if not base then return nil end
+
+	-- 모델 단위로 1개만 생성
+	if parentModel then
+		local exist = parentModel:FindFirstChild("QuestClickHitbox")
+		if exist and exist:IsA("BasePart") then return exist end
 	end
 
-	-- 이미 와이어링 됐으면 재연결하지 않음
-	if cd:GetAttribute("Wired_PlayBall") then return end
-	cd:SetAttribute("Wired_PlayBall", true)
+	-- 크기 산정
+	local sizeVec
+	if parentModel then
+		sizeVec = parentModel:GetExtentsSize()
+	else
+		sizeVec = base.Size
+	end
+	-- 모바일 탭 안정화를 위해 최소 크기 보장
+	local sx = math.max(sizeVec.X * 1.1, 2.0)
+	local sy = math.max(sizeVec.Y * 1.1, 2.0)
+	local sz = math.max(sizeVec.Z * 1.1, 2.0)
 
-	cd.MouseClick:Connect(function(player)
-		if player and player.Parent then
-			callback(player)
-		end
-	end)
+	local hitbox = Instance.new("Part")
+	hitbox.Name = "QuestClickHitbox"
+	hitbox.Size = Vector3.new(sx, sy, sz)
+	hitbox.CFrame = base.CFrame
+	hitbox.Transparency = 1
+	hitbox.CanCollide = false
+	hitbox.CanTouch = false
+	hitbox.CanQuery = true
+	hitbox.Anchored = false
+	hitbox.Massless = true
+	hitbox.Parent = parentModel or base.Parent
+
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = hitbox
+	weld.Part1 = base
+	weld.Parent = hitbox
+
+	return hitbox
 end
 
--- 서버에서 공용 오브젝트 클릭 세팅 (단일 용 - 기존 호환용)
-local function ensureClickDetector(target: Instance, callback: (Player)->())
+-- 중복 연결 방지형 ClickDetector (PlayBall 등에서 재사용)
+local function ensureClickDetectorOnce(target: Instance, callback: (Player)->())
 	if not target then return end
-	local base : BasePart? = nil
-	if target:IsA("BasePart") then base = target
-	elseif target:IsA("Model") then base = ensurePrimaryOrAnyPart(target) end
-	if not base then return end
 
-	local cd = base:FindFirstChildOfClass("ClickDetector")
+	local clickBase = ensureQuestClickHitbox(target) or getAnyBasePart(target)
+	if not clickBase then return end
+
+	local cd = clickBase:FindFirstChildOfClass("ClickDetector")
 	if not cd then
 		cd = Instance.new("ClickDetector")
-		cd.MaxActivationDistance = 10
-		cd.Parent = base
+		cd.MaxActivationDistance = 32 -- 📈 모바일 여유
+		cd.Parent = clickBase
+	else
+		-- 혹시 기존 값이 너무 작으면 보정
+		if (cd.MaxActivationDistance or 10) < 24 then
+			cd.MaxActivationDistance = 32
+		end
 	end
+
+	if cd:GetAttribute("Wired_Generic") then return end
+	cd:SetAttribute("Wired_Generic", true)
+
 	cd.MouseClick:Connect(function(player)
 		if player and player.Parent then
 			callback(player)
@@ -230,15 +283,19 @@ end
 -- ✅ 다중 이름 지원용: 지정 key로 1회만 와이어링, 클릭된 인스턴스까지 콜백 전달
 local function ensureClickDetectorOnceWithKey(target: Instance, keyAttr: string, callback: (Player, Instance)->())
 	if not target then return end
-	local base : BasePart? = target:IsA("BasePart") and target
-		or (target:IsA("Model") and ensurePrimaryOrAnyPart(target)) or nil
-	if not base then return end
 
-	local cd = base:FindFirstChildOfClass("ClickDetector")
+	local clickBase = ensureQuestClickHitbox(target) or getAnyBasePart(target)
+	if not clickBase then return end
+
+	local cd = clickBase:FindFirstChildOfClass("ClickDetector")
 	if not cd then
 		cd = Instance.new("ClickDetector")
-		cd.MaxActivationDistance = 10
-		cd.Parent = base
+		cd.MaxActivationDistance = 32 -- 📈 모바일 여유
+		cd.Parent = clickBase
+	else
+		if (cd.MaxActivationDistance or 10) < 24 then
+			cd.MaxActivationDistance = 32
+		end
 	end
 
 	if cd:GetAttribute(keyAttr) then return end
@@ -253,7 +310,6 @@ end
 
 -- ========= 타깃 탐색/가용성 판단 =========
 
--- 퀘스트별 타깃 리스트 반환
 local function getQuestTargetsFor(player: Player, questName: string): {Instance}
 	if questName == "Feed the Dog" then
 		return collectNamedDescendants(DOG_ITEMS, "FoodItem")
@@ -271,7 +327,6 @@ local function getQuestTargetsFor(player: Player, questName: string): {Instance}
 	elseif questName == "Play a Game" then
 		return collectWorkspaceAreas("FunArea")
 	elseif questName == "Pet the Dog" then
-		-- 🔧 기존 버그: table(map) 반환하던 것 수정 → 배열(Model들)
 		return getPetsOf(player)
 	end
 	return {}
@@ -306,16 +361,14 @@ local function pickEligibleQuest(player: Player): (string?, string?)
 end
 
 -- ========= 펫별 스케줄/시작/완료 =========
--- ✅ 교체본
+
 local function startQuestForPet(player: Player, petId: string, phrase: string?, questName: string?)
 	if not (player and player.Parent) then return end
 
-	-- phrase/questName 둘 다 없으면 새로 뽑기
 	if not phrase then
 		local pickedPhrase, pickedQuest = pickEligibleQuest(player)
 		if not pickedPhrase or not pickedQuest then return end
 		phrase, questName = pickedPhrase, pickedQuest
-		-- phrase만 있고 questName이 없으면 매핑으로 보완
 	elseif not questName then
 		questName = phrases[phrase]
 		if not questName then return end
@@ -323,12 +376,10 @@ local function startQuestForPet(player: Player, petId: string, phrase: string?, 
 
 	ActiveQuestByPet[petId] = questName
 
-	-- 클라 통지
 	PetQuestEvent:FireClient(player, "StartQuestForPet", {
 		petId = petId, phrase = phrase, quest = questName
 	})
 
-	-- 마커 표시 (Pet the Dog는 해당 펫 자체)
 	local targets = getQuestTargetsFor(player, questName)
 	if questName == "Pet the Dog" then
 		local m = OwnerPets[player.UserId] and OwnerPets[player.UserId][petId]
@@ -340,7 +391,6 @@ local function startQuestForPet(player: Player, petId: string, phrase: string?, 
 		})
 	end
 end
-
 
 local function scheduleNextQuestForPet(player: Player, petId: string)
 	if PendingTimerByPet[petId] then return end
@@ -358,7 +408,6 @@ local function scheduleNextQuestForPet(player: Player, petId: string)
 		if phrase then
 			startQuestForPet(player, petId, phrase, quest)
 		else
-			-- 지금은 조건이 안 맞음 → INTERVAL 후 재시도
 			scheduleNextQuestForPet(player, petId)
 		end
 	end)
@@ -368,7 +417,6 @@ local function completeQuestForPet(player: Player, petId: string, questName: str
 	if ActiveQuestByPet[petId] ~= questName then return end
 	ActiveQuestByPet[petId] = nil
 
-	-- 방어적: 소유자 확인(선택적 강화)
 	if PetOwner[petId] and PetOwner[petId] ~= player then
 		return
 	end
@@ -379,7 +427,6 @@ local function completeQuestForPet(player: Player, petId: string, questName: str
 	PetAffection.OnQuestCleared(player, questName)
 	PetAffection.Configure({ DefaultMax = 10, DecaySec = 10, MinHoldSec = 10 })
 
-	-- 마커 숨김
 	local targets = getQuestTargetsFor(player, questName)
 	if questName == "Pet the Dog" then
 		local m = OwnerPets[player.UserId] and OwnerPets[player.UserId][petId]
@@ -389,12 +436,10 @@ local function completeQuestForPet(player: Player, petId: string, questName: str
 		quest = questName, targets = targets, petId = petId
 	})
 
-	-- 해당 펫만 완료
 	PetQuestEvent:FireClient(player, "CompleteQuestForPet", {
 		quest = questName, petId = petId
 	})
 
-	-- 다음 퀘 예약
 	scheduleNextQuestForPet(player, petId)
 end
 
@@ -431,7 +476,6 @@ end
 
 -- ========= 완료 핸들러 =========
 
--- 'Pet the Dog': 클릭된 펫만 완료
 local function onPetClicked(player: Player, petModel: Model)
 	if petModel and (petModel:GetAttribute("AIState") == "wang_approach"
 		or petModel:GetAttribute("BlockPetQuestClicks") == true) then
@@ -444,14 +488,12 @@ local function onPetClicked(player: Player, petModel: Model)
 	end
 end
 
--- 아래 콜백들은 다중 동일 이름 오브젝트 지원을 위해 클릭된 인스턴스를 함께 받음
 local function onFoodClicked(player: Player, inst: Instance)
 	local pid = pickActivePetFor(player, "Feed the Dog", inst)
 	if pid then completeQuestForPet(player, pid, "Feed the Dog") end
 end
 
 local function onBallClicked(player: Player, inst: Instance)
-	-- PlayBall은 기존 ensureClickDetectorOnce로 player만 넘길 수도 있음 → inst 없으면 nil 허용
 	local pid = pickActivePetFor(player, "Play the Ball", inst)
 	if pid then completeQuestForPet(player, pid, "Play the Ball") end
 end
@@ -471,11 +513,65 @@ local function touchedArea(questName: string, player: Player, area: BasePart?)
 	if pid then completeQuestForPet(player, pid, questName) end
 end
 
+-- ========= 모바일 탭 릴레이 처리(보안 포함) =========
+
+local function classifyQuestTarget(inst: Instance): ("FoodItem"|"DogFood"|"DogMedicine"|"Ball"|nil, Instance?)
+	if not inst or not inst:IsDescendantOf(Workspace) then return nil, nil end
+
+	-- 이름 우선
+	local cur: Instance? = inst
+	while cur do
+		if cur.Name == "FoodItem" then return "FoodItem", cur end
+		if cur.Name == "DogFood" then return "DogFood", cur end
+		if cur.Name == "DogMedicine" then return "DogMedicine", cur end
+		if cur.Name == "BallItem" then return "Ball", cur end
+		cur = cur.Parent
+	end
+	-- 폴더 귀속 (PlayBallItems)
+	if PLAY_BALL_ITEMS and inst:IsDescendantOf(PLAY_BALL_ITEMS) then
+		return "Ball", inst
+	end
+	return nil, nil
+end
+
+local function isNearEnough(player: Player, targetPart: BasePart, maxDist: number): boolean
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return false end
+	local d = (hrp.Position - targetPart.Position).Magnitude
+	return d <= maxDist
+end
+
+QuestTapRelay.OnServerEvent:Connect(function(player, tappedInst: Instance)
+	if not (player and player.Parent) then return end
+	if typeof(tappedInst) ~= "Instance" then return end
+	if not tappedInst:IsDescendantOf(Workspace) then return end
+
+	-- 분류
+	local kind, anchor = classifyQuestTarget(tappedInst)
+	if not kind then return end
+
+	-- 히트박스(표준) 추출 후 거리 가드
+	local clickBase = ensureQuestClickHitbox(anchor) or getAnyBasePart(anchor)
+	if not (clickBase and clickBase:IsA("BasePart")) then return end
+	if not isNearEnough(player, clickBase, 32) then return end
+
+	-- 동일 완료 로직 실행
+	if kind == "FoodItem" then
+		onFoodClicked(player, anchor)
+	elseif kind == "DogFood" then
+		onDogFoodClicked(player, anchor)
+	elseif kind == "DogMedicine" then
+		onMedicineClicked(player, anchor)
+	elseif kind == "Ball" then
+		onBallClicked(player, anchor)
+	end
+end)
+
 -- ========= 와이어링 =========
 
--- PlayBall 전용 폴더 와이어링 (기존 동작 유지: 모든 하위에 1회 와이어링)
+-- PlayBall 전용 폴더 와이어링
 if PLAY_BALL_ITEMS then
-	-- 최초 일괄
 	for _, inst in ipairs(PLAY_BALL_ITEMS:GetDescendants()) do
 		if inst:IsA("Model") or inst:IsA("BasePart") then
 			ensureClickDetectorOnce(inst, function(player)
@@ -483,7 +579,6 @@ if PLAY_BALL_ITEMS then
 			end)
 		end
 	end
-	-- 런타임 추가
 	PLAY_BALL_ITEMS.DescendantAdded:Connect(function(inst)
 		if inst:IsA("Model") or inst:IsA("BasePart") then
 			ensureClickDetectorOnce(inst, function(player)
@@ -493,9 +588,8 @@ if PLAY_BALL_ITEMS then
 	end)
 end
 
--- 단일 아이템들 → 동일 이름 여러 개 전부 와이어링으로 확장
+-- 단일 아이템들 → 동일 이름 여러 개 전부 와이어링
 if DOG_ITEMS then
-	-- 초기 일괄: FoodItem / DogMedicine / DogFood 모두
 	for _, inst in ipairs(collectNamedDescendants(DOG_ITEMS, "FoodItem")) do
 		ensureClickDetectorOnceWithKey(inst, "Wired_FoodItem", onFoodClicked)
 	end
@@ -506,7 +600,6 @@ if DOG_ITEMS then
 		ensureClickDetectorOnceWithKey(inst, "Wired_DogFood", onDogFoodClicked)
 	end
 
-	-- 런타임 추가
 	DOG_ITEMS.DescendantAdded:Connect(function(inst)
 		if not (inst:IsA("Model") or inst:IsA("BasePart")) then return end
 		if inst.Name == "FoodItem" then
@@ -557,13 +650,11 @@ local function tryWirePetClick(inst: Instance)
 	local petId = getPetId(inst)
 	if not petId then return end
 
-	-- 여러 마리 등록
 	OwnerPets[owner] = OwnerPets[owner] or {}
 	OwnerPets[owner][petId] = inst
 	local player = Players:GetPlayerByUserId(owner)
 	PetOwner[petId] = player
 
-	-- 파괴 시 정리
 	inst.Destroying:Once(function()
 		if OwnerPets[owner] then OwnerPets[owner][petId] = nil end
 		PetOwner[petId] = nil
@@ -572,12 +663,11 @@ local function tryWirePetClick(inst: Instance)
 		QuestGenTokenByPet[petId] = nil
 	end)
 
-	-- 루트에 잘못 붙은 ClickDetector 제거
 	for _, child in ipairs(inst:GetChildren()) do
 		if child:IsA("ClickDetector") then child:Destroy() end
 	end
 
-	local clickTarget = ensurePetClickTarget(inst)  -- 히트박스 확보
+	local clickTarget = ensurePetClickTarget(inst)
 	if not clickTarget then return end
 
 	local cd = clickTarget:FindFirstChildOfClass("ClickDetector")
@@ -593,7 +683,6 @@ local function tryWirePetClick(inst: Instance)
 		end
 	end)
 
-	-- 이 펫 전용 퀘스트 스케줄 시작
 	if player then
 		scheduleNextQuestForPet(player, petId)
 	end
@@ -606,10 +695,8 @@ end
 
 -- 이후 새로 들어오는 것들 (펫 + 영역)
 Workspace.DescendantAdded:Connect(function(inst)
-	-- 펫
 	tryWirePetClick(inst)
 
-	-- 영역: SleepArea / FunArea
 	if inst:IsA("BasePart") and inst.Name == "SleepArea" and not inst:GetAttribute("Wired_SleepArea") then
 		inst:SetAttribute("Wired_SleepArea", true)
 		inst.Touched:Connect(function(hit)

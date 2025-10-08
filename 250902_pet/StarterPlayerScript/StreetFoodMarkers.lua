@@ -14,10 +14,8 @@ local WangEvent     = RemoteFolder:WaitForChild("WangEvent") :: RemoteEvent
 local ProxRelay     = RemoteFolder:WaitForChild("StreetFoodProxRelay") :: RemoteEvent
 
 -- ====== 설정 ======
-local TAPS_TO_TRIGGER = 1          -- wangattraction과 동일 동작(3회 탭) / 1로 바꾸면 한 번에 발동
-local TAP_WINDOW_SECS = 1.2        -- 연속 탭 허용 시간 창
-local RAY_DISTANCE    = 500        -- 화면 → 월드 레이캐스트 거리
-local MARKER_KEY      = "streetfood"
+local MARKER_KEY = "streetfood"
+local DEFAULT_MARKER_PX = Vector2.new(80, 80) -- size 미지정시 기본 픽셀 크기
 
 -- ====== UI/Markers/Click Icon (Decal)에서 Texture 가져오기 ======
 local CLICK_ICON_TEXTURE: string? = nil
@@ -44,6 +42,18 @@ local function getRootModelFrom(inst: Instance?): Model?
 	return m
 end
 
+local function getAnyBasePart(inst: Instance): BasePart?
+	if inst:IsA("BasePart") then return inst end
+	if inst:IsA("Model") then
+		local m = inst :: Model
+		if m.PrimaryPart then return m.PrimaryPart end
+		local hrp = m:FindFirstChild("HumanoidRootPart")
+		if hrp and hrp:IsA("BasePart") then return hrp end
+		return m:FindFirstChildWhichIsA("BasePart", true)
+	end
+	return nil
+end
+
 local function getPromptRoot(prompt: ProximityPrompt): Model?
 	local root = prompt.Parent
 	while root and root.Parent and root.Parent:IsA("Model") do
@@ -52,27 +62,9 @@ local function getPromptRoot(prompt: ProximityPrompt): Model?
 	return root
 end
 
-local function sameRoot(a: Instance?, b: Instance?): boolean
-	if not a or not b then return false end
-	return getRootModelFrom(a) == getRootModelFrom(b)
-end
-
-local cam = workspace.CurrentCamera
-local function worldRaycastFromScreen(pos: Vector2): RaycastResult?
-	if not cam then cam = workspace.CurrentCamera end
-	if not cam then return nil end
-	local unitRay = cam:ViewportPointToRay(pos.X, pos.Y)
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	local char = Players.LocalPlayer.Character
-	if char then
-		params.FilterDescendantsInstances = {char}
-	end
-	return workspace:Raycast(unitRay.Origin, unitRay.Direction * RAY_DISTANCE, params)
-end
-
 -- ====== 현재 표시 중인 StreetFood 프롬프트 추적 ======
 local currentPrompt: ProximityPrompt? = nil
+
 ProximityPromptService.PromptShown:Connect(function(prompt: ProximityPrompt)
 	if prompt.Name == "StreetFoodPrompt" then
 		currentPrompt = prompt
@@ -84,50 +76,15 @@ ProximityPromptService.PromptHidden:Connect(function(prompt: ProximityPrompt)
 	if prompt.Name == "StreetFoodPrompt" then
 		if currentPrompt == prompt then currentPrompt = nil end
 		ProxRelay:FireServer("exit", prompt)
+		-- 근접 이탈 시 해당 루트의 마커도 정리
+		local root = getPromptRoot(prompt)
+		if root then ActiveMarkers[root] = nil end
 	end
 end)
 
--- ====== 서버 → 클라: Marker 표시/숨김 (Click Icon 적용) ======
-WangEvent.OnClientEvent:Connect(function(cmd: string, arg: any)
-	if cmd == "ShowMarker" and typeof(arg) == "table" then
-		local target = arg.target
-		if typeof(target) == "Instance" then
-			MarkerClient.show(target, {
-				key          = arg.key or MARKER_KEY,
-				preset       = arg.preset or "TouchIcon",  -- ReplicatedStorage/UI/Markers/TouchIcon
-				image        = arg.image or CLICK_ICON_TEXTURE,
-				transparency = arg.transparency or 0.15,
-				size         = arg.size,                   -- e.g. UDim2.fromOffset(72,72)
-				pulse        = (arg.pulse ~= false),
-				pulsePeriod  = arg.pulsePeriod or 0.8,
-				offsetY      = arg.offsetY or 2.0,
-				alwaysOnTop  = (arg.alwaysOnTop ~= false),
-			})
-		end
-	elseif cmd == "HideMarker" and typeof(arg) == "table" then
-		local target = arg.target
-		if typeof(target) == "Instance" then
-			MarkerClient.hide(target, arg.key or MARKER_KEY)
-		end
-	end
-end)
-
-local tapState = {
-	root = nil,
-	count = 0,
-	lastTime = 0.0,
-}
-
-local function resetTap()
-	tapState.root = nil
-	tapState.count = 0
-	tapState.lastTime = 0.0
-end
-
-
+-- ====== 서버 PromptTriggered를 강제로 유도 (HoldDuration=0 가정) ======
 local function triggerPromptNow()
 	if currentPrompt then
-		-- HoldDuration=0 → Begin/End 연속 호출로 즉시 서버 PromptTriggered 발생
 		ProximityPromptService:InputHoldBegin(currentPrompt)
 		task.defer(function()
 			ProximityPromptService:InputHoldEnd(currentPrompt)
@@ -135,59 +92,105 @@ local function triggerPromptNow()
 	end
 end
 
-local function registerTapOn(hitInst: Instance)
-	if not currentPrompt then return end
-	-- 현재 보이는 StreetFoodPrompt의 루트 모델
-	local curRoot = getPromptRoot(currentPrompt)
-	if not curRoot then return end
+-- ====== 활성 Marker 정보를 저장(스크린 판정 용) ======
+type MarkerInfo = {
+	adornee: BasePart,
+	offsetY: number,
+	sizePx: Vector2,
+}
+local ActiveMarkers: {[Model]: MarkerInfo} = {}
 
-	-- 사용자가 탭한 곳(모델/마커 위)을 루트 모델로 정규화
-	local hitRoot = getRootModelFrom(hitInst)
-	if not hitRoot then return end
+-- 스크린 좌표로 Marker 히트 판정
+local cam = workspace.CurrentCamera
+local function hitTestMarkerAtScreenPos(screenPos: Vector2): boolean
+	if not cam then cam = workspace.CurrentCamera end
+	if not cam then return false end
+	if not currentPrompt then return false end
 
-	-- 같은 루트가 아니면 새 시퀀스로 교체
-	local now = os.clock()
-	if tapState.root ~= hitRoot or (now - tapState.lastTime) > TAP_WINDOW_SECS then
-		tapState.root = hitRoot
-		tapState.count = 1
-		tapState.lastTime = now
-		return
+	local promptRoot = getPromptRoot(currentPrompt)
+	if not promptRoot then return false end
+
+	-- 현재 근접 중인 prompt 루트에 한해 판정(다른 마커 탭은 무시)
+	local info = ActiveMarkers[promptRoot]
+	if not info then return false end
+	local base = info.adornee
+	if not (base and base.Parent) then return false end
+
+	-- 마커 화면 중심 좌표 계산 (offsetY 적용)
+	local wp = base.Position + Vector3.new(0, info.offsetY, 0)
+	local vp, onScreen = cam:WorldToViewportPoint(wp)
+	if not onScreen then return false end
+	local center = Vector2.new(vp.X, vp.Y)
+
+	-- 마커 사이즈 박스(픽셀) 안에 들어오면 히트
+	local half = info.sizePx * 0.5
+	if math.abs(screenPos.X - center.X) <= half.X and math.abs(screenPos.Y - center.Y) <= half.Y then
+		return true
 	end
+	return false
+end
 
-	-- 같은 루트 안에서 시간창 내 추가 탭
-	tapState.count += 1
-	tapState.lastTime = now
-
-	if tapState.count >= TAPS_TO_TRIGGER then
-		resetTap()
-		-- 최종적으로 currentPrompt가 같은 루트에 붙어있는지 확인(안전장치)
-		local promptRoot = getPromptRoot(currentPrompt)
-		if promptRoot == hitRoot then
-			-- 근접 조건 충족 상태(프롬프트 표시 중)이므로 트리거
+-- ====== 입력 훅: GUI가 입력을 먹어도 InputBegan은 온다! ======
+UserInputService.InputBegan:Connect(function(input: InputObject, _gameProcessed: boolean)
+	if input.UserInputType == Enum.UserInputType.Touch
+		or input.UserInputType == Enum.UserInputType.MouseButton1
+	then
+		local pos = Vector2.new(input.Position.X, input.Position.Y)
+		if hitTestMarkerAtScreenPos(pos) then
 			triggerPromptNow()
 		end
 	end
-end
+end)
 
--- 터치가 UI에서 소비되었더라도 좌표로 월드 레이캐스트해서 뒤의 모델을 판정
-local function onTouchPositions(touchPositions: {Vector2}?, _processedByUI: boolean)
-	if not touchPositions or #touchPositions == 0 then return end
-	for _, pos in ipairs(touchPositions) do
-		local result = worldRaycastFromScreen(pos)
-		if result and result.Instance then
-			registerTapOn(result.Instance)
+-- ====== 서버 → 클라: Marker 표시/숨김 (표시는 MarkerClient, 판정은 ActiveMarkers) ======
+WangEvent.OnClientEvent:Connect(function(cmd: string, arg: any)
+	if cmd == "ShowMarker" and typeof(arg) == "table" then
+		local target = arg.target
+		if typeof(target) == "Instance" then
+			-- 1) Marker 시각화
+			MarkerClient.show(target, {
+				key          = arg.key or MARKER_KEY,
+				preset       = arg.preset or "TouchIcon",
+				image        = arg.image or CLICK_ICON_TEXTURE,
+				transparency = arg.transparency or 0.15,
+				size         = arg.size,                 -- e.g. UDim2.fromOffset(72,72)
+				pulse        = (arg.pulse ~= false),
+				pulsePeriod  = arg.pulsePeriod or 0.8,
+				offsetY      = arg.offsetY or 2.0,
+				alwaysOnTop  = (arg.alwaysOnTop ~= false),
+			})
+
+			-- 2) 스크린 판정용 데이터 저장
+			local root = getRootModelFrom(target) or (target:IsA("Model") and target) :: Model?
+			if root then
+				local base = getAnyBasePart(root)
+				if base then
+					-- size(Udim2) → 픽셀 Vector2 변환
+					local sizePx = DEFAULT_MARKER_PX
+					local argSize = arg.size
+					if typeof(argSize) == "UDim2" then
+						-- Scale은 화면 비율이 섞여 복잡해지므로 Offset만 사용
+						if argSize.X.Scale == 0 and argSize.Y.Scale == 0 then
+							sizePx = Vector2.new(math.max(1, argSize.X.Offset), math.max(1, argSize.Y.Offset))
+						end
+					end
+					ActiveMarkers[root] = {
+						adornee = base,
+						offsetY = (arg.offsetY or 2.0) :: number,
+						sizePx  = sizePx,
+					}
+				end
+			end
+		end
+
+	elseif cmd == "HideMarker" and typeof(arg) == "table" then
+		local target = arg.target
+		if typeof(target) == "Instance" then
+			MarkerClient.hide(target, arg.key or MARKER_KEY)
+			local root = getRootModelFrom(target) or (target:IsA("Model") and target) :: Model?
+			if root then ActiveMarkers[root] = nil end
 		end
 	end
-end
+end)
 
--- 모바일: 월드 탭(3D) 이벤트
-if UserInputService.TouchEnabled then
-	-- 3D 월드 탭 전용
-	if UserInputService.TouchTapInWorld then
-		UserInputService.TouchTapInWorld:Connect(onTouchPositions)
-	end
-	-- 일부 기기/버전 대비 일반 Tap 이벤트도 후킹
-	if UserInputService.TouchTap then
-		UserInputService.TouchTap:Connect(onTouchPositions)
-	end
-end
+-- 끝: 모바일/PC 공통으로 Marker “아이콘 영역” 터치/클릭 시만 즉시 완료됨.

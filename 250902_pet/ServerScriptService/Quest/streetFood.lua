@@ -1,13 +1,13 @@
--- StreetFood: ProximityPrompt만으로 근접/상호작용 처리 (ClickDetector 제거)
+-- StreetFood: ProximityPrompt만으로 근접/상호작용 처리 (ClickDetector 제거) → 터치/클릭 대응 강화
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local ServerStorage = game:GetService("ServerStorage")
+local Workspace = game:GetService("Workspace")
 
 -- 🔹 [추가] 서비스 모듈
 local Experience = require(game.ServerScriptService:WaitForChild("ExperienceService"))
 local PetAffection = require(game.ServerScriptService:WaitForChild("PetAffectionService"))
-
 
 -- 맨 위 require들 아래에 추가
 local SFXFolder = ReplicatedStorage:WaitForChild("SFX") -- ReplicatedStorage/SFX/StreetFoodEnter (Sound)
@@ -15,15 +15,16 @@ local ENTER_SFX_COOLDOWN = 0.6  -- 같은 플레이어에 너무 자주 안 울�
 local LastEnterSfxAt : {[Player]: number} = {}
 
 -- ===== 설정(원하는 값으로 조정) =====
-local PROXIMITY_RADIUS    = 15                      -- 근접 반경(프롬프트 반경)
-local PROXIMITY_TEXT      = "Smells good!"     -- 근접 시 펫 말풍선
-local CLICK_RESTORE_TEXT  = ""                      -- E키 트리거 후 펫 말풍선(빈문자면 숨김)
+local PROXIMITY_RADIUS    = 15                       -- 근접 반경(프롬프트/클릭 감지 반경)
+local PROXIMITY_TEXT      = "Smells good!"           -- 근접 시 펫 말풍선
+local CLICK_RESTORE_TEXT  = ""                       -- 트리거 후 펫 말풍선(빈문자면 숨김)
 local DEACTIVATE_SECS     = 300                      -- 트리거 후 모델 비활성 유지 시간
-local ANCHOR_PET          = true                    -- 펫을 Anchored로 고정할지(권장 true)
+local ANCHOR_PET          = true                     -- 펫을 Anchored로 고정할지(권장 true)
+local CLICK_DISTANCE      = PROXIMITY_RADIUS         -- 클릭 허용 거리(프롬프트 반경과 동일)
 
 -- 🔹 [추가] 보상/패널티 기본값 (원하는 수치로!)
 local XP_PER_TRIGGER      = 50   -- StreetFood 한 번 완료 시 얻는 경험치
-local AFFECTION_PENALTY   = 1     -- StreetFood 한 번 완료 시 감소할 펫 어펙션
+local AFFECTION_PENALTY   = 1    -- StreetFood 한 번 완료 시 감소할 펫 어펙션
 
 -- ===== 경로 =====
 local World = workspace:WaitForChild("World")
@@ -37,7 +38,6 @@ if not HiddenContainer then
 	HiddenContainer.Name = "StreetFoodHidden"
 	HiddenContainer.Parent = ServerStorage
 end
-
 
 -- 🔹 [추가] 폴더 Attribute로 런타임 조정 지원
 local function getRuntimeConfig()
@@ -56,13 +56,20 @@ remoteFolder.Name = "RemoteEvents"
 local ProxRelay = remoteFolder:FindFirstChild("StreetFoodProxRelay") or Instance.new("RemoteEvent", remoteFolder)
 ProxRelay.Name = "StreetFoodProxRelay"
 
--- 서버 → 클라: 말풍선 갱신
+-- 서버 → 클라: 말풍선/효과 갱신
 local StreetFoodEvent = remoteFolder:FindFirstChild("StreetFoodEvent") or Instance.new("RemoteEvent", remoteFolder)
 StreetFoodEvent.Name = "StreetFoodEvent"
 
 local WangEvent = remoteFolder:FindFirstChild("WangEvent") or Instance.new("RemoteEvent", remoteFolder)
 WangEvent.Name = "WangEvent"
 
+-- 🔹 [추가] 모바일 탭 릴레이(StreetFood 전용)
+local StreetFoodTapRelay = remoteFolder:FindFirstChild("StreetFoodTapRelay")
+if not StreetFoodTapRelay then
+	StreetFoodTapRelay = Instance.new("RemoteEvent")
+	StreetFoodTapRelay.Name = "StreetFoodTapRelay"
+	StreetFoodTapRelay.Parent = remoteFolder
+end
 
 -- 🔹 [Marker] 루트 모델 찾기 & 키 상수
 local function getRootModelFrom(inst: Instance): Model?
@@ -72,7 +79,6 @@ local function getRootModelFrom(inst: Instance): Model?
 	end
 	return m
 end
-
 local MARKER_KEY = "streetfood"  -- Hide 시에도 동일 키 사용
 
 -- ===== 유틸 =====
@@ -87,8 +93,7 @@ local function getAnyBasePart(inst: Instance): BasePart?
 	return nil
 end
 
-
--- [추가] 원래 부모 저장 유틸 (ObjectValue로 안전 보관)
+-- 원래 부모 저장 유틸
 local function ensureOrigParent(root: Instance): ObjectValue
 	local ov = root:FindFirstChild("SF_OrigParent")
 	if not ov then
@@ -102,15 +107,98 @@ local function ensureOrigParent(root: Instance): ObjectValue
 	return ov :: ObjectValue
 end
 
+-- ✨ [추가] StreetFood 모델/파츠용 표준 클릭 히트박스 생성(모바일 탭 안정화)
+local function ensureStreetFoodHitbox(target: Instance): BasePart?
+	local base: BasePart? = nil
+	local root: Model? = nil
+	if target:IsA("Model") then
+		root = getRootModelFrom(target) or target
+		base = getAnyBasePart(root)
+	elseif target:IsA("BasePart") then
+		base = target
+		root = getRootModelFrom(target)
+	else
+		return nil
+	end
+	if not base then return nil end
+
+	-- 루트 모델 기준 단일 생성
+	if root then
+		local exist = root:FindFirstChild("StreetFoodHitbox")
+		if exist and exist:IsA("BasePart") then return exist end
+	end
+
+	-- 크기 산정(최소 보장)
+	local sizeVec = root and root:GetExtentsSize() or base.Size
+	local sx = math.max(sizeVec.X * 1.1, 2.0)
+	local sy = math.max(sizeVec.Y * 1.1, 2.0)
+	local sz = math.max(sizeVec.Z * 1.1, 2.0)
+
+	local hit = Instance.new("Part")
+	hit.Name = "StreetFoodHitbox"
+	hit.Size = Vector3.new(sx, sy, sz)
+	hit.CFrame = base.CFrame
+	hit.Transparency = 1
+	hit.CanCollide = false
+	hit.CanTouch = false
+	hit.CanQuery = true
+	hit.Anchored = false
+	hit.Massless = true
+	hit.Parent = root or base.Parent
+
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = hit
+	weld.Part1 = base
+	weld.Parent = hit
+
+	return hit
+end
+
+-- ✨ [추가] ClickDetector 1회 연결(거리/모바일 친화)
+local function wireClickOnce(target: Instance)
+	if not target then return end
+	local hit = ensureStreetFoodHitbox(target) or getAnyBasePart(target)
+	if not hit then return end
+
+	local cd = hit:FindFirstChildOfClass("ClickDetector")
+	if not cd then
+		cd = Instance.new("ClickDetector")
+		cd.MaxActivationDistance = CLICK_DISTANCE
+		cd.Parent = hit
+	else
+		if (cd.MaxActivationDistance or 10) < CLICK_DISTANCE then
+			cd.MaxActivationDistance = CLICK_DISTANCE
+		end
+	end
+
+	if cd:GetAttribute("Wired_StreetFood") then return end
+	cd:SetAttribute("Wired_StreetFood", true)
+
+	cd.MouseClick:Connect(function(player)
+		if not (player and player.Parent) then return end
+		-- 거리 가드
+		local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if hrp and hit then
+			if (hrp.Position - hit.Position).Magnitude > CLICK_DISTANCE + 0.5 then
+				return
+			end
+		end
+		-- 실제 트리거
+		local rootModel = getRootModelFrom(target) or getRootModelFrom(hit) or getRootModelFrom(target.Parent or hit.Parent)
+		if rootModel then
+			_G.__streetfood_trigger(player, rootModel)
+		end
+	end)
+end
 
 local function ensurePrompt(target: Instance)
 	local base = getAnyBasePart(target)
 	if not base then return end
 	if base:FindFirstChild("StreetFoodPrompt") then
-		-- 반경이 바뀌었을 수 있으니 최신화
 		local p = base:FindFirstChild("StreetFoodPrompt") :: ProximityPrompt
 		if p and p:IsA("ProximityPrompt") then
 			p.MaxActivationDistance = PROXIMITY_RADIUS
+			p.Style = Enum.ProximityPromptStyle.Custom -- 👈 UI 숨김
 		end
 		return
 	end
@@ -122,43 +210,34 @@ local function ensurePrompt(target: Instance)
 	p.HoldDuration = 0
 	p.RequiresLineOfSight = false
 	p.MaxActivationDistance = PROXIMITY_RADIUS
-	p.Style = Enum.ProximityPromptStyle.Custom   -- UI 숨김 처리
+	p.Style = Enum.ProximityPromptStyle.Custom   -- 👈 UI 숨김 (E키 표시 안 함)
 	p.Parent = base
 end
 
-
 local function resolveEnterSfxTemplate(): Sound?
-	-- 1) 폴더 Attribute로 이름 지정 가능: StreetFoodFolder:SetAttribute("EnterSfxName","StreetFoodEnter")
 	local nameAttr = StreetFoodFolder:GetAttribute("EnterSfxName")
 	if typeof(nameAttr) == "string" and #nameAttr > 0 then
 		local s = SFXFolder:FindFirstChild(nameAttr)
 		if s and s:IsA("Sound") then return s end
 	end
-	-- 2) 기본 후보들
 	for _, key in ipairs({ "walwal" }) do
 		local s = SFXFolder:FindFirstChild(key)
 		if s and s:IsA("Sound") then return s end
 	end
-	-- 3) 폴더 첫 번째 Sound 폴백
 	for _, ch in ipairs(SFXFolder:GetChildren()) do
 		if ch:IsA("Sound") then return ch end
 	end
 	return nil
 end
 
-
-
 -- [교체] 기존 setActive를 아래 구현으로 완전히 교체
 local function setActive(modelOrPart: Instance, active: boolean)
-	-- 루트 결정(모델이 있으면 모델 기준으로 토글)
 	local root = modelOrPart:IsA("Model") and modelOrPart
 		or modelOrPart:FindFirstAncestorOfClass("Model")
 		or modelOrPart
 
-	-- 원래 부모 기록(복귀용)
 	local ov = ensureOrigParent(root)
 
-	-- 활성화라면 먼저 원래 자리로 되돌린 뒤, 프롬프트/가시성 토글
 	if active then
 		local desiredParent = ov.Value or StreetFoodFolder
 		if root.Parent ~= desiredParent then
@@ -166,30 +245,24 @@ local function setActive(modelOrPart: Instance, active: boolean)
 		end
 	end
 
-	-- 프롬프트/가시성 토글
 	for _, d in ipairs(root:GetDescendants()) do
 		if d:IsA("ProximityPrompt") then
 			d.Enabled = active
-			-- 반경 최신화(설정 변경에 대응)
 			d.MaxActivationDistance = PROXIMITY_RADIUS
+			d.Style = Enum.ProximityPromptStyle.Custom
 		elseif d:IsA("BasePart") then
-			-- 원래 투명도 백업
 			if not d:GetAttribute("SF_OrigTrans") then
 				d:SetAttribute("SF_OrigTrans", d.Transparency)
 			end
 			if active then
-				-- 복귀 시 원래 투명도 회복
 				local orig = d:GetAttribute("SF_OrigTrans")
 				if typeof(orig) == "number" then d.Transparency = orig end
-				d.CanCollide = d.CanCollide -- (그대로 유지; 필요시 정책 반영)
 			else
-				-- 굳이 페이드할 필요 없지만, 원하면 약간 흐리게 했다가 숨김 처리
 				d.Transparency = math.clamp(d.Transparency + 0.3, 0, 1)
 			end
 		end
 	end
 
-	-- 비활성화라면 최종적으로 숨김 컨테이너로 이동(클라 완전 비표시)
 	if not active then
 		if root.Parent ~= HiddenContainer then
 			root.Parent = HiddenContainer
@@ -198,7 +271,6 @@ local function setActive(modelOrPart: Instance, active: boolean)
 
 	root:SetAttribute("SF_Active", active)
 end
-
 
 -- 펫 찾기(OwnerUserId == player.UserId)
 local function findPlayersPet(player: Player): Model?
@@ -218,7 +290,7 @@ local function lockPet(player: Player)
 	local pet = findPlayersPet(player)
 	if not pet then return end
 
-	pet:SetAttribute("FollowLocked", true) -- 팔로우 스크립트에서 체크 권장
+	pet:SetAttribute("FollowLocked", true)
 	local base = getAnyBasePart(pet)
 
 	local hum = pet:FindFirstChildOfClass("Humanoid")
@@ -260,94 +332,30 @@ local function unlockPet(player: Player)
 	Locked[player] = nil
 end
 
--- ===== 초기/동적 와이어링: 모델 로드 시 자동 프롬프트 생성 =====
-for _, inst in ipairs(StreetFoodFolder:GetDescendants()) do
-	if inst:IsA("Model") or inst:IsA("BasePart") then
-		ensurePrompt(inst)
-	end
-end
-
-StreetFoodFolder.DescendantAdded:Connect(function(inst)
-	if inst:IsA("Model") or inst:IsA("BasePart") then
-		ensurePrompt(inst)
-	end
-end)
-
--- ===== 근접(보임/숨김): 클라 릴레이 수신 → 서버 권위 처리 =====
-ProxRelay.OnServerEvent:Connect(function(player, action: "enter"|"exit", prompt: ProximityPrompt)
-	if not (player and prompt and prompt:IsDescendantOf(StreetFoodFolder)) then return end
-	if prompt.Name ~= "StreetFoodPrompt" then return end
-
-	if action == "enter" then
-		StreetFoodEvent:FireClient(player, "Bubble", { text = PROXIMITY_TEXT })
-		lockPet(player)
-
-		-- 🔹 [Marker] 이 플레이어에게만 해당 food 모델 위에 Marker 표시
-		local rootForMarker = getRootModelFrom(prompt)
-		if rootForMarker then
-			WangEvent:FireClient(player, "ShowMarker", {
-				target      = rootForMarker,
-				key         = MARKER_KEY,
-				preset      = "Click Icon",   -- 클라 MarkerClient 기본 프리셋
-				offsetY     = 2.0,           -- 모델 위로 살짝 띄움
-				pulse       = true,          -- 맥동 ON
-				-- size / image 등 필요 시 여기서 추가 지정 가능
-			})
-		end
-
-		-- 🔊 SFX (쿨다운 유지)
-		local now = os.clock()
-		if (LastEnterSfxAt[player] or -1e9) + ENTER_SFX_COOLDOWN <= now then
-			local tpl = resolveEnterSfxTemplate()
-			if tpl then
-				StreetFoodEvent:FireClient(player, "PlaySfxTemplate", tpl)
-				LastEnterSfxAt[player] = now
-			end
-		end
-
-
-	elseif action == "exit" then
-		-- 요구사항상: 근접 이탈 후에도 계속 고정 유지 (언락은 트리거 시점에만)
-		-- 필요 시 말풍선 끄려면 아래 주석 해제:
-		-- StreetFoodEvent:FireClient(player, "Bubble", { text = "" })
-	end
-end)
-
-
+-- ===== 트리거 공통 처리 (프롬프트/클릭/탭 공용) =====
 local processing: {[Instance]: boolean} = {}
 
+_G.__streetfood_trigger = function(player: Player, rootModel: Instance)
+	-- 루트 모델 보정
+	local root = getRootModelFrom(rootModel) or rootModel
+	if not root or not root:IsDescendantOf(StreetFoodFolder) then return end
 
--- ===== E키 트리거: 프롬프트만으로 상호작용 처리(ClickDetector 제거) =====
-ProximityPromptService.PromptTriggered:Connect(function(prompt, player)
-	if not (prompt and player) then return end
-	if prompt.Name ~= "StreetFoodPrompt" then return end
-	if not prompt:IsDescendantOf(StreetFoodFolder) then return end
+	if processing[root] then return end
+	processing[root] = true
 
-	-- 최상위 모델(rootModel) 찾기
-	local rootModel = prompt.Parent
-	while rootModel and rootModel.Parent and rootModel.Parent:IsA("Model") do
-		rootModel = rootModel.Parent
-	end
-
-	if not rootModel then return end
-
-	-- 이미 처리 중이면 무시
-	if processing[rootModel] then return end
-	processing[rootModel] = true
-	
-	-- 🔹 [Marker] 먼저 숨김 (이후 ServerStorage로 이동되면 클라에서 참조가 사라질 수 있으므로)
+	-- 🔹 [Marker] 숨김
 	WangEvent:FireClient(player, "HideMarker", {
-		target = rootModel,
+		target = root,
 		key    = MARKER_KEY,
 	})
 
-	-- ✅ StreetFood 완료 처리
-	setActive(rootModel, false)
+	-- 완료 처리
+	setActive(root, false)
 	unlockPet(player)
 	StreetFoodEvent:FireClient(player, "Bubble", { text = CLICK_RESTORE_TEXT })
 	StreetFoodEvent:FireClient(player, "ClearEffect")
 
-	-- ✅ 경험치 & 펫 어펙션 처리
+	-- 보상
 	local xpGain, affectionDown = getRuntimeConfig()
 	pcall(function() Experience.AddExp(player, xpGain) end)
 	pcall(function()
@@ -361,16 +369,99 @@ ProximityPromptService.PromptTriggered:Connect(function(prompt, player)
 		end
 	end)
 
-	-- 재활성 타이머
+	-- 재활성
 	task.delay(DEACTIVATE_SECS, function()
-		if rootModel and rootModel.Parent then
-			setActive(rootModel, true)
+		if root and root.Parent then
+			setActive(root, true)
 		end
-		processing[rootModel] = nil
+		processing[root] = nil
 	end)
+end
+
+-- ===== 초기/동적 와이어링: 프롬프트 + 클릭(히트박스) 생성 =====
+for _, inst in ipairs(StreetFoodFolder:GetDescendants()) do
+	if inst:IsA("Model") or inst:IsA("BasePart") then
+		ensurePrompt(inst)
+		wireClickOnce(inst)
+	end
+end
+
+StreetFoodFolder.DescendantAdded:Connect(function(inst)
+	if inst:IsA("Model") or inst:IsA("BasePart") then
+		ensurePrompt(inst)
+		wireClickOnce(inst)
+	end
 end)
 
+-- ===== 근접(보임/숨김): 클라 릴레이 수신 → 서버 권위 처리 =====
+ProxRelay.OnServerEvent:Connect(function(player, action: "enter"|"exit", prompt: ProximityPrompt)
+	if not (player and prompt and prompt:IsDescendantOf(StreetFoodFolder)) then return end
+	if prompt.Name ~= "StreetFoodPrompt" then return end
 
+	if action == "enter" then
+		StreetFoodEvent:FireClient(player, "Bubble", { text = PROXIMITY_TEXT })
+		lockPet(player)
+
+		local rootForMarker = getRootModelFrom(prompt)
+		if rootForMarker then
+			WangEvent:FireClient(player, "ShowMarker", {
+				target  = rootForMarker,
+				key     = MARKER_KEY,
+				preset  = "Click Icon",
+				offsetY = 2.0,
+				pulse   = true,
+			})
+		end
+
+		-- 🔊 SFX (쿨다운 유지)
+		local now = os.clock()
+		if (LastEnterSfxAt[player] or -1e9) + ENTER_SFX_COOLDOWN <= now then
+			local tpl = resolveEnterSfxTemplate()
+			if tpl then
+				StreetFoodEvent:FireClient(player, "PlaySfxTemplate", tpl)
+				LastEnterSfxAt[player] = now
+			end
+		end
+
+	elseif action == "exit" then
+		-- 요구사항상: 언락은 트리거 시점에만
+	end
+end)
+
+-- ===== E키 백업 경로(Style=Custom이라 UI는 안 보임, 그래도 남겨둠)
+ProximityPromptService.PromptTriggered:Connect(function(prompt, player)
+	if not (prompt and player) then return end
+	if prompt.Name ~= "StreetFoodPrompt" then return end
+	if not prompt:IsDescendantOf(StreetFoodFolder) then return end
+
+	local rootModel = getRootModelFrom(prompt) or prompt.Parent
+	if rootModel then
+		_G.__streetfood_trigger(player, rootModel)
+	end
+end)
+
+-- ===== 모바일 탭 릴레이(클라에서 월드 탭 좌표로 넘어옴)
+local function isNear(player: Player, part: BasePart, maxDist: number): boolean
+	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return false end
+	return (hrp.Position - part.Position).Magnitude <= maxDist + 0.5
+end
+
+StreetFoodTapRelay.OnServerEvent:Connect(function(player, tappedInst: Instance)
+	if not (player and player.Parent) then return end
+	if typeof(tappedInst) ~= "Instance" then return end
+	if not tappedInst:IsDescendantOf(StreetFoodFolder) then return end
+
+	-- 히트박스 확보 및 거리 가드
+	local hit = ensureStreetFoodHitbox(tappedInst) or getAnyBasePart(tappedInst)
+	if not (hit and hit:IsA("BasePart")) then return end
+	if not isNear(player, hit, CLICK_DISTANCE) then return end
+
+	local rootModel = getRootModelFrom(tappedInst) or getRootModelFrom(hit)
+	if rootModel then
+		_G.__streetfood_trigger(player, rootModel)
+	end
+end)
 
 -- 정리
 Players.PlayerRemoving:Connect(function(plr)

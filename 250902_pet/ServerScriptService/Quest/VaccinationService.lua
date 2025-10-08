@@ -34,34 +34,39 @@ local ExperienceService = require(ServerScriptService:WaitForChild("ExperienceSe
 local VaccinationService = { _locks = {} :: {[number]: boolean} }
 
 local MAX_VACCINES  = 5
-local COOLDOWN_SECS = 7 * 24 * 60 * 60 -- 2주
+local COOLDOWN_SECS = 7 * 24 * 60 * 60 -- 1주
 
 -- ▶ 조절 가능한 값
 local EXP_PER_VACCINE = 500  -- 접종 1회 EXP
 local AFFECTION_DECAY = 1    -- 접종 1회 애정도 감소
 
+local function asNum(n: any): number
+	if typeof(n) == "number" then return n end
+	return 0
+end
+
 -- 단일 처리 함수(성공/실패 모두 여기서 결정)
 local function doVaccinate(player: Player)
-	local cur = PlayerDataService:GetVaccineCount(player)
+	local cur = asNum(PlayerDataService:GetVaccineCount(player))
 	if cur >= MAX_VACCINES then
 		return { ok=false, count=cur, reason="max" }
 	end
 
 	local nowTs  = os.time()
-	local nextAt = PlayerDataService:GetNextVaccinationAt(player)
+	local nextAt = asNum(PlayerDataService:GetNextVaccinationAt(player))
 	if nextAt == 0 then
 		-- 과거 저장과의 호환: lastVaxAt + cooldown 으로 보정
-		local lastTs = PlayerDataService:GetLastVaxAt(player)
+		local lastTs = asNum(PlayerDataService:GetLastVaxAt(player))
 		nextAt = lastTs + COOLDOWN_SECS
 	end
 	if nextAt > nowTs then
-		return { ok=false, count=cur, reason="wait", wait=(nextAt - nowTs) }
+		return { ok=false, count=cur, reason="wait", wait=(nextAt - nowTs), nextAt=nextAt }
 	end
 
-	local newCount = PlayerDataService:IncVaccineCount(player, 1)
+	local newCount = asNum(PlayerDataService:IncVaccineCount(player, 1))
 
 	local data = PlayerDataService:Get(player)
-	local sel = data.selectedPetName
+	local sel = data and data.selectedPetName
 	if sel then
 		PlayerDataService:IncPetVaccine(player, sel, 1)
 		if AFFECTION_DECAY > 0 then PlayerDataService:AddAffection(player, sel, -AFFECTION_DECAY) end
@@ -72,29 +77,26 @@ local function doVaccinate(player: Player)
 	PlayerDataService:SetNextVaccinationAt(player, nowTs + COOLDOWN_SECS)
 
 	if EXP_PER_VACCINE > 0 then
-		local ok, err = pcall(function()
-			ExperienceService.AddExp(player, EXP_PER_VACCINE)
-		end)
-		if not ok then
-			warn("[VaccinationService] AddExp failed:", err)
-		end
+		pcall(function() ExperienceService.AddExp(player, EXP_PER_VACCINE) end)
 	end
-
 
 	-- 즉시 저장(쓰로틀 예외 허용됨)
 	PlayerDataService:Save(player.UserId, "vaccinate")
 
 	pcall(function() CoinService:Award(player, "VAX:"..tostring(newCount)) end)
-	pcall(function() VaccinationFX:FireClient(player, { count = newCount }) end)
 
-	return { ok=true, count=newCount }
+	-- ⛳️ 성공일 때만, 의미를 명확히 담아 보냄
+	pcall(function()
+		VaccinationFX:FireClient(player, { ok = true, kind = "vaccinate_ok", count = newCount, at = nowTs })
+	end)
+
+	return { ok=true, count=newCount, nextAt=(nowTs + COOLDOWN_SECS) }
 end
 
--- RemoteFunction 진입점(락으로 중복 호출 방지)
 DoctorTryVaccinate.OnServerInvoke = function(player: Player, payload: any)
 	local uid = player.UserId
 	if VaccinationService._locks[uid] then
-		return { ok = false, count = PlayerDataService:GetVaccineCount(player), reason = "busy" }
+		return { ok = false, count = asNum(PlayerDataService:GetVaccineCount(player)), reason = "busy" }
 	end
 	VaccinationService._locks[uid] = true
 	local result
@@ -105,7 +107,7 @@ DoctorTryVaccinate.OnServerInvoke = function(player: Player, payload: any)
 
 	if ok and result then return result end
 	warn("[VaccinationService] error:", err)
-	return { ok = false, count = PlayerDataService:GetVaccineCount(player), reason = "error" }
+	return { ok = false, count = asNum(PlayerDataService:GetVaccineCount(player)), reason = "error" }
 end
 
 return VaccinationService
